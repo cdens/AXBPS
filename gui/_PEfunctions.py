@@ -50,7 +50,7 @@ def makenewproftab(self):
         #tab indexing update
         newtabnum,curtabstr = self.addnewtab()
 
-        self.alltabdata[curtabstr] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"ProfileEditorInput", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True} #isprocessing and datasource are only relevant for processor tabs
+        self.alltabdata[curtabstr] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"PE_u", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True} #isprocessing and datasource are only relevant for processor tabs
         self.alltabdata[curtabstr]["tablayout"].setSpacing(10)
         
         self.setnewtabcolor(self.alltabdata[curtabstr]["tab"])
@@ -62,7 +62,13 @@ def makenewproftab(self):
         
         #Create widgets for UI
         self.alltabdata[curtabstr]["tabwidgets"] = {}
-        self.alltabdata[curtabstr]["tabwidgets"]["title"] = QLabel('Enter AXBT Drop Information:')
+        self.alltabdata[curtabstr]["tabwidgets"]["title"] = QLabel('Enter Probe Drop Information:')
+        self.alltabdata[curtabstr]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
+        self.alltabdata[curtabstr]["tabwidgets"]["probetype"] = QComboBox()
+        for p in self.probetypes:
+            self.alltabdata[curtabstr]["tabwidgets"]["probetype"].addItem(p)
+        self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
+        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
         self.alltabdata[curtabstr]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
         self.alltabdata[curtabstr]["tabwidgets"]["latedit"] = QLineEdit('XX.XXX')
         self.alltabdata[curtabstr]["tabwidgets"]["lontitle"] = QLabel('Longitude (E>0): ')
@@ -91,12 +97,11 @@ def makenewproftab(self):
         self.alltabdata[curtabstr]["tabwidgets"]["logtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         #should be 15 entries
-        widgetorder = ["title","lattitle","latedit","lontitle","lonedit","datetitle","dateedit","timetitle",
-                       "timeedit","idtitle","idedit","logtitle","logedit","logbutton","submitbutton"]
-        wrows     = [1,2,2,3,3,4,4,5,5,6,6,7,7,8,9]
-        wcols     = [1,1,2,1,2,1,2,1,2,1,2,1,2,1,1]
-        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        wcolext   = [2,1,1,1,1,1,1,1,1,1,1,1,1,2,2]    
+        widgetorder = ["title", "probetitle", "probetype", "lattitle", "latedit", "lontitle", "lonedit", "datetitle", "dateedit", "timetitle", "timeedit", "idtitle", "idedit", "logtitle", "logedit", "logbutton", "submitbutton"]
+        wrows     = [1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,10]
+        wcols     = [1,1,2,1,2,1,2,1,2,1,2,1,2,1,2,1,1]
+        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        wcolext   = [2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2]    
         
         
         #adding user inputs
@@ -161,6 +166,7 @@ def checkdatainputs_editorinput(self):
         curtabstr = "Tab " + str(self.whatTab())
         
         #pulling data from inputs
+        probetype = self.alltabdata[curtabstr]["tabwidgets"]["probetype"].currentText()
         latstr = self.alltabdata[curtabstr]["tabwidgets"]["latedit"].text()
         lonstr = self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].text()
         identifier = self.alltabdata[curtabstr]["tabwidgets"]["idedit"].text()
@@ -253,8 +259,10 @@ def checkdatainputs_editorinput(self):
         self.posterror("Failed to read profile input data")
         QApplication.restoreOverrideCursor()
         return
+        
     #only gets here if all inputs are good- this function switches the tab to profile editor view
-    self.continuetoqc(curtabstr,rawtemperature,rawdepth,lat,lon,day,month,year,time,logfile,identifier)
+    self.defaultprobe = probetype #switch default probe type to whatever was just processed
+    self.continuetoqc(curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
     
     
     
@@ -263,7 +271,7 @@ def checkdatainputs_editorinput(self):
 # =============================================================================
 #         PROFILE EDITOR TAB
 # =============================================================================
-def continuetoqc(self,curtabstr,rawtemperature,rawdepth,lat,lon,day,month,year,time,logfile,identifier):
+def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype):
     try:
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
@@ -289,21 +297,22 @@ def continuetoqc(self,curtabstr,rawtemperature,rawdepth,lat,lon,day,month,year,t
         
         #getting climatology
         try:
-            climotemps,climodepths,climotempfill,climodepthfill = oci.getclimatologyprofile(lat,lon,month,self.climodata)
+            [climotemps,climopsals,climodepths,climotempfill,climopsalfill,climodepthfill] = oci.getclimatologyprofile(lat,lon,month,self.climodata)
         except:
             climotemps = climodepths = np.array([np.NaN,np.NaN])
             climotempfill = climodepthfill = np.array([np.NaN,np.NaN,np.NaN,np.NaN])
             self.posterror("Unable to find/load climatology data for profile location!")
         
-        
+        self.alltabdata[curtabstr]["probetype"] = probetype
         self.alltabdata[curtabstr]["profileSaved"] = False #profile hasn't been saved yet
         self.alltabdata[curtabstr]["profdata"] = {"temp_raw": rawtemperature, "depth_raw": rawdepth,
                                              "lat": lat, "lon": lon, "year": year, "month": month, "day": day,
                                              "time": time, "DTG": dtg,
-                                             "climotemp": climotemps, "climodepth": climodepths,
+                                             "climotemp": climotemps, "climopsal":climopsals, 
+                                             "climodepth": climodepths,
                                              "climotempfill": climotempfill,
+                                             "climopsalfill": climopsalfill,
                                              "climodepthfill": climodepthfill,
-                                             "datasourcefile": logfile,
                                              "ID": identifier, "oceandepth": oceandepth}
         
         #deleting old buttons and inputs
@@ -467,7 +476,7 @@ def continuetoqc(self,curtabstr,rawtemperature,rawdepth,lat,lon,day,month,year,t
             self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].valueChanged.connect(self.applychanges)
             self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
 
-            self.alltabdata[curtabstr]["tabtype"] = "ProfileEditor"
+            self.alltabdata[curtabstr]["tabtype"] = "PE_p"
     except Exception:
         trace_error()
         self.posterror("Failed to build profile editor tab!")

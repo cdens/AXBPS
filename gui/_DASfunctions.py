@@ -52,7 +52,7 @@ def makenewprocessortab(self):
 
         #also creates proffig and locfig so they will both be ready to go when the tab transitions from signal processor to profile editor
         self.alltabdata[curtabstr] = {"tab":QWidget(),"tablayout":QGridLayout(),"ProcessorFig":plt.figure(),"profileSaved":True,
-                  "tabtype":"SignalProcessor_incomplete","isprocessing":False, "source":"none"}
+                  "tabtype":"DAS_u","isprocessing":False, "source":"none"}
 
         self.setnewtabcolor(self.alltabdata[curtabstr]["tab"])
         
@@ -124,6 +124,13 @@ def makenewprocessortab(self):
         self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
         self.alltabdata[curtabstr]["datasource"] = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentText()
         
+        self.alltabdata[curtabstr]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
+        self.alltabdata[curtabstr]["tabwidgets"]["probetype"] = QComboBox()
+        for p in self.probetypes:
+            self.alltabdata[curtabstr]["tabwidgets"]["probetype"].addItem(p)
+        self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
+        
+        
         self.alltabdata[curtabstr]["tabwidgets"]["channeltitle"] = QLabel('VHF Channel:') #4
         self.alltabdata[curtabstr]["tabwidgets"]["freqtitle"] = QLabel('VHF Frequency (MHz):') #5
         
@@ -170,11 +177,11 @@ def makenewprocessortab(self):
         self.alltabdata[curtabstr]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         #should be 19 entries 
-        widgetorder = ["datasourcetitle","refreshdataoptions","datasource","channeltitle","freqtitle","vhfchannel","vhffreq","startprocessing","stopprocessing","processprofile","saveprofile","datetitle","dateedit","timetitle","timeedit","lattitle","latedit","lontitle","lonedit","idtitle","idedit"]
-        wrows     = [1,1,2,3,4,3,4,5,6,7,6,1,1,2,2,3,3,4,4,5,5]
-        wcols     = [3,4,3,3,3,4,4,3,3,6,6,6,7,6,7,6,7,6,7,6,7]
-        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        wcolext   = [1,1,2,1,1,1,1,2,2,2,2,1,1,1,1,1,1,1,1,1,1]
+        widgetorder = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing", "processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle", "lonedit", "idtitle", "idedit"]
+        wrows     = [1,1,2,3,3,4,5,4,5,6,6,7,6,1,1,2,2,3,3,4,4,5,5]
+        wcols     = [3,4,3,3,4,3,3,4,4,3,4,6,6,6,7,6,7,6,7,6,7,6,7]
+        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        wcolext   = [1,1,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1]
         
 
         #adding user inputs
@@ -464,6 +471,15 @@ def runprocessor(self, curtabstr, datasource, newsource):
     #gets current tab number
     curtabnum = self.alltabdata[curtabstr]["tabnum"]
     
+    #getting probe type
+    probetype = self.alltabdata[curtabstr]["tabwidgets"]["probetype"].currentText()
+    self.defaultprobe = probetype #default probe to display for DAS and PE tabs
+    self.alltabdata[curtabstr]["probetype"] = probetype
+    
+    #disabling datasouce and probetype dropdown boxes
+    self.alltabdata[curtabstr]["tabwidgets"]["datasource"].setEnabled(False)
+    self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setEnabled(False)
+    
     #gets rid of scroll bar on table
     self.alltabdata[curtabstr]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     
@@ -518,7 +534,7 @@ def runprocessor(self, curtabstr, datasource, newsource):
     self.alltabdata[curtabstr]["isprocessing"] = True
     
     #the code is still running but data collection has at least been initialized. This allows self.savecurrenttab() to save raw data files
-    self.alltabdata[curtabstr]["tabtype"] = "SignalProcessor_completed"
+    self.alltabdata[curtabstr]["tabtype"] = "DAS_p"
     
     #autopopulating fields if necessary
     if autopopulate:
@@ -811,6 +827,7 @@ def processprofile(self):
             return
         
         #pulling data from inputs
+        probetype = self.alltabdata[curtabstr]["probetype"]
         latstr = self.alltabdata[curtabstr]["tabwidgets"]["latedit"].text()
         lonstr = self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].text()
         identifier = self.alltabdata[curtabstr]["tabwidgets"]["idedit"].text()
@@ -873,6 +890,6 @@ def processprofile(self):
         return
     
     #generating QC tab
-    self.continuetoqc(curtabstr,rawtemperature,rawdepth,lat,lon,day,month,year,time,"NotFromFile",identifier)
+    self.continuetoqc(curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
         
     

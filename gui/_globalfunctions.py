@@ -214,7 +214,7 @@ def savedataincurtab(self):
         #pulling all relevant data
         curtabstr = "Tab " + str(self.whatTab())
         
-        if self.alltabdata[curtabstr]["tabtype"] == "ProfileEditor":
+        if self.alltabdata[curtabstr]["tabtype"] == "PE_p":
             try:
                 rawtemperature = self.alltabdata[curtabstr]["profdata"]["temp_raw"]
                 rawdepth = self.alltabdata[curtabstr]["profdata"]["depth_raw"]
@@ -296,7 +296,7 @@ def savedataincurtab(self):
                     plt.close('fig2')
 
                 
-        elif self.alltabdata[curtabstr]["tabtype"] == "SignalProcessor_completed":
+        elif self.alltabdata[curtabstr]["tabtype"] == "DAS_p":
             
             if self.alltabdata[curtabstr]["isprocessing"]:
                 self.postwarning('You must stop processing the current tab before saving data!')

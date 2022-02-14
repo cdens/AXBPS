@@ -42,7 +42,7 @@ from ctypes import (Structure, pointer, c_int, c_ulong, c_char, c_uint32,
 def btconvert(input,coefficients):
     output = 0
     for (i,c) in enumerate(coefficients):
-        output += c*input**i
+        output += c*input**ipenis
     return output
     
 
@@ -209,7 +209,7 @@ class ThreadProcessor(QRunnable):
                 self.startthread = 11
                 
         elif datasource == 'Test': #test run- use included audio file
-            self.audiofile = 'testdata/MZ000006.WAV'
+            self.audiofile = 'data/testdata/AXBT_sample.WAV'
             self.isfromtest = True
             
             try: #exception if unable to read audio file if it doesn't exist or isn't WAV formatted

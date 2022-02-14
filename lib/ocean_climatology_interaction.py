@@ -68,32 +68,46 @@ def getclimatologyprofile(lat,lon,month,climodata):
     clat = flat + climodata['vals']
     depth = np.float64(climodata["depth"])
     
+    #conversions:
+    # T_int = 1000*(T_act + 6)   --> uint16, fill 66535   range -5-35
+    # S_int = 1000*S_act         --> uint16, fill 66535   range 0-45
+    # S/T_int stdev = 50*act.    --> uint8,  fill 255,    max 5
+    
     #pulling current month's temperatures + stdevs, converting to int64, correcting scale
     #TODO: add lat/lon indexing so it only pulls a small spatial subset to reduce size
-    cmonthtemps = curclimodata["temp"].astype('int64')/100
-    cmonthdevs = curclimodata["stdev"].astype('int64')/100
+    cmonthtemps = curclimodata["temp"].astype('int64')/1000 - 6
+    cmonthpsals = curclimodata["psal"].astype('int64')/1000
+    cmonthtdevs = curclimodata["tstdev"].astype('int64')/50
+    cmonthsdevs = curclimodata["sstdev"].astype('int64')/50
     
     #correting fill values to NaN
-    cmonthtemps[cmonthtemps == -320] = np.NaN
-    cmonthdevs[cmonthdevs == 2.55] = np.NaN
+    cmonthtemps[cmonthtemps >= 45] = np.NaN
+    cmonthpsals[cmonthpsals >= 55] = np.NaN
+    cmonthtdevs[cmonthtdevs > 5.01] = np.NaN
+    cmonthsdevs[cmonthsdevs > 5.01] = np.NaN
 
     #interpolate to current latitude/longitude
     climotemps = sint.interpn((depth,clat, clon), cmonthtemps, (depth,lat, lon))
+    climopsals = sint.interpn((depth,clat, clon), cmonthpsals, (depth,lat, lon))
     
     #error margin for shading is +/- 1 standard deviation
-    climotemperrors = sint.interpn((depth,clat, clon), cmonthdevs, (depth,lat, lon))
+    climotemperrors = sint.interpn((depth,clat, clon), cmonthtdevs, (depth,lat, lon))
+    climopsalerrors = sint.interpn((depth,clat, clon), cmonthsdevs, (depth,lat, lon))
     
     #find/remove NaNs
-    notnanind = ~np.isnan(climotemps*climotemperrors*depth)
+    notnanind = ~np.isnan(climotemps*climotemperrors*climopsals*climopsalerrors*depth)
     climotemps = climotemps[notnanind]
     climotemperrors = climotemperrors[notnanind]
+    climopsals = climopsals[notnanind]
+    climopsalerrors = climopsalerrors[notnanind]
     depth = depth[notnanind]
     
     #generating fill vectors
     tempfill = np.append(climotemps-climotemperrors,np.flip(climotemps+climotemperrors))
+    psalfill = np.append(climopsals-climopsalerrors,np.flip(climopsals+climopsalerrors))
     depthfill = np.append(depth,np.flip(depth))
     
-    return [climotemps,depth,tempfill,depthfill]
+    return [climotemps,climopsals,depth,tempfill,psalfill,depthfill]
         
     
     

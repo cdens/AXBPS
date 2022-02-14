@@ -87,6 +87,10 @@ def initUI(self):
     #setting up dictionary to store data for each tab
     self.alltabdata = {}
     
+    #probe options
+    self.probetypes = ["AXBT","AXCTD"]
+    self.default_probe = "AXBT"
+    
     #loading default program settings
     self.settingsdict = swin.readsettings(self.settingsfile)
     self.settingsdict["comports"],self.settingsdict["comportdetails"] = gps.listcomports() #pulling available port info from OS
@@ -195,17 +199,13 @@ def loaddata(self):
     self.bathymetrydata = {}
     
     try:
-        climodata = sio.loadmat('qcdata/climo/indices.mat')
-        self.climodata["vals"] = climodata['vals'][:, 0]
-        self.climodata["depth"] = climodata['Z'][:, 0]
-        del climodata
+        self.climodata["vals"] = np.array([float(i) for i in open('data/climo/latlonoffsets.txt').read().strip().split(',') if i != ''])
+        self.climodata["depth"] = np.array([float(i) for i in open('data/climo/Z.txt').read().strip().split(',') if i != ''])
     except:
         self.posterror("Unable to find/load climatology data")
     
     try:
-        bathydata = sio.loadmat('qcdata/bathy/indices.mat')
-        self.bathymetrydata["vals"] = bathydata['vals'][:, 0]
-        del bathydata
+        self.bathymetrydata["vals"] = = np.array([float(i) for i in open('data/bathy/vals.txt').read().strip().split(',') if i != ''])
     except:
         self.posterror("Unable to find/load bathymetry data")  
             
@@ -322,11 +322,11 @@ def configureGuiFont(self):
     for ctab in self.alltabdata:
         ctabtype = self.alltabdata[ctab]["tabtype"]
         
-        if ctabtype[:15] == "SignalProcessor": #data acquisition
+        if ctabtype[:3] == "DAS": #data acquisition
             curwidgets = daswidgets
-        elif ctabtype == "ProfileEditorInput": #prompt to select ASCII file
+        elif ctabtype == "PE_u": #prompt to select ASCII file
             curwidgets = peinputwidgets
-        elif ctabtype == "ProfileEditor": #profile editor
+        elif ctabtype == "PE_p": #profile editor
             curwidgets = pewidgets
         else:
             self.posterror(f"Unable to identify tab type when updating font: {ctabtype}")

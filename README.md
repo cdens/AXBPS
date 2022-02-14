@@ -3,7 +3,7 @@
 
 **Author: Casey Densmore (cdensmore101@gmail.com)**
 
-![Icon](qclib/dropicon.png)
+![Icon](lib/dropicon.png)
 
 
 ## Overview <a id="overview"></a>
