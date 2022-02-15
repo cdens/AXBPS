@@ -39,10 +39,10 @@ from ctypes import (Structure, pointer, c_int, c_ulong, c_char, c_uint32,
                     
 
 #convert time to depth, freq to temp given coefficient lists
-def btconvert(input,coefficients):
+def btconvert(data_in,coefficients):
     output = 0
     for (i,c) in enumerate(coefficients):
-        output += c*input**ipenis
+        output += c*data_in**i
     return output
     
 
@@ -132,7 +132,7 @@ def channelandfrequencylookup(value,direction):
 class ThreadProcessor(QRunnable):
 
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
-    def __init__(self, wrdll, datasource, vhffreq, curtabnum, starttime, istriggered, firstpointtime, 
+    def __init__(self, wrdll, datasource, vhffreq, tabID, starttime, istriggered, firstpointtime, 
         fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims, slash,tempdir, *args,**kwargs):
         super(ThreadProcessor, self).__init__()
 
@@ -140,7 +140,7 @@ class ThreadProcessor(QRunnable):
         self.startthread = 0 
         
         # UI inputs
-        self.curtabnum = curtabnum
+        self.tabID = tabID
         self.starttime = starttime
         self.istriggered = istriggered
         self.firstpointtime = firstpointtime
@@ -162,9 +162,9 @@ class ThreadProcessor(QRunnable):
         self.flims = flims
 
         #output file names
-        self.txtfilename = tempdir + slash + "sigdata_" + str(self.curtabnum) + '.txt'
+        self.txtfilename = tempdir + slash + "sigdata_" + str(self.tabID) + '.txt'
         self.txtfile = open(self.txtfilename, 'w')
-        self.wavfilename = tempdir + slash +  "tempwav_" + str(self.curtabnum) + '.WAV'
+        self.wavfilename = tempdir + slash +  "tempwav_" + str(self.tabID) + '.WAV'
         
         #to prevent ARES from consuming all computer's resources- this limits the size of WAV files used by the signal processor to a number of PCM datapoints corresponding to 1 hour of audio @ fs=64 kHz, that would produce a wav file of ~0.5 GB for 16-bit PCM data
         self.maxsavedframes = 2.5E8
@@ -335,7 +335,7 @@ class ThreadProcessor(QRunnable):
                         
                         
                 # initializes audio callback function
-                if self.wrdll.SetupStreams(self.hradio, None, None, updateaudiobuffer, c_int(self.curtabnum)) == 0:
+                if self.wrdll.SetupStreams(self.hradio, None, None, updateaudiobuffer, c_int(self.tabID)) == 0:
                     self.kill(7)
                 else:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
@@ -390,7 +390,7 @@ class ThreadProcessor(QRunnable):
                     if self.isfromaudio:
                         ctime = self.sampletimes[i]
                         if i % 10 == 0: #updates progress every 10 data points
-                            self.signals.updateprogress.emit(self.curtabnum,int(ctime / self.maxtime * 100))
+                            self.signals.updateprogress.emit(self.tabID,int(ctime / self.maxtime * 100))
 
                     #getting current data to sample from audio file- using indices like this is much more efficient than calculating times and using logical arrays
                     ctrind = int(np.round(ctime*self.f_s))
@@ -417,7 +417,7 @@ class ThreadProcessor(QRunnable):
                     self.istriggered = True
                     self.firstpointtime = ctime
                     if self.keepgoing: #won't send if keepgoing stopped since current iteration began
-                        self.signals.triggered.emit(self.curtabnum, ctime)
+                        self.signals.triggered.emit(self.tabID, ctime)
                         
                 #logic to determine whether or not point is valid
                 if self.istriggered and Sp >= self.minsiglev and Rp >= self.minfftratio:
@@ -433,7 +433,7 @@ class ThreadProcessor(QRunnable):
                 ctemp = np.round(ctemp, 2)
                 cdepth = np.round(cdepth, 1)
                 if self.keepgoing: #won't send if keepgoing stopped since current iteration began
-                    self.signals.iterated.emit(self.curtabnum, ctemp, cdepth, fp, Sp, np.round(100*Rp,1), ctime, i)
+                    self.signals.iterated.emit(self.tabID, ctemp, cdepth, fp, Sp, np.round(100*Rp,1), ctime, i)
 
                 if not self.isfromaudio: 
                     timemodule.sleep(0.1)  #pauses when processing in realtime (fs ~ 10 Hz)
@@ -455,12 +455,12 @@ class ThreadProcessor(QRunnable):
         try:
             self.waittoterminate = True #keeps run method from terminating until kill process completes
             self.keepgoing = False  # kills while loop
-            curtabnum = self.curtabnum
+            tabID = self.tabID
             
             timemodule.sleep(0.3) #gives thread 0.1 seconds to finish current segment
             
             if reason != 0: #notify event loop that processor failed if non-zero exit code provided
-                self.signals.failed.emit(self.curtabnum, reason)
+                self.signals.failed.emit(self.tabID, reason)
             
             self.isrecordingaudio = False
             if not self.isfromaudio and not self.isfromtest:
@@ -469,12 +469,12 @@ class ThreadProcessor(QRunnable):
                 wave.Wave_write.close(self.wavfile)
                 self.wrdll.CloseRadioDevice(self.hradio)
                 
-            self.signals.terminated.emit(curtabnum)  # emits signal that processor has been terminated
+            self.signals.terminated.emit(tabID)  # emits signal that processor has been terminated
             self.txtfile.close()
             
         except Exception:
             trace_error()
-            self.signals.failed.emit(self.curtabnum, 10)
+            self.signals.failed.emit(self.tabID, 10)
             
         self.waittoterminate = False #allow run method to terminate
         
@@ -484,7 +484,7 @@ class ThreadProcessor(QRunnable):
         try:
             self.isrecordingaudio = False
             wave.Wave_write.close(self.wavfile) #close WAV file
-            self.signals.failed.emit(self.curtabnum, 13) #pass warning message back to GUI
+            self.signals.failed.emit(self.tabID, 13) #pass warning message back to GUI
         except Exception:
             trace_error()
             self.kill(10)

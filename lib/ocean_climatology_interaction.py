@@ -61,7 +61,7 @@ def getclimatologyprofile(lat,lon,month,climodata):
     flat = np.floor(lat/10)*10
     
     #read file
-    curclimodata = sio.loadmat(f"data/climo/T_M{int(month)}_N{int(flat)}_E{int(flon)}.mat")
+    curclimodata = sio.loadmat(f"data/climo/c_M{int(month)}_N{int(flat)}_E{int(flon)}.mat")
     
     #accessing climatology grid data
     clon = flon + climodata['vals']

@@ -84,12 +84,13 @@ def initUI(self):
     self.defaultfilereaddir = defaultpath
     self.defaultfilewritedir = defaultpath
 
-    #setting up dictionary to store data for each tab
-    self.alltabdata = {}
+    #setting up list to store data for each tab
+    self.tabIDs = []
+    self.alltabdata = []
     
     #probe options
     self.probetypes = ["AXBT","AXCTD"]
-    self.default_probe = "AXBT"
+    self.defaultprobe = "AXBT"
     
     #loading default program settings
     self.settingsdict = swin.readsettings(self.settingsfile)
@@ -125,7 +126,7 @@ def initUI(self):
 
     #tab tracking
     self.totaltabs = 0
-    self.tabnumbers = []
+    # self.tabnumbers = []
 
     # creating threadpool
     self.threadpool = QThreadPool()
@@ -169,9 +170,9 @@ def initUI(self):
     if cursys() == 'Windows':
         try:
             if calcsize("P")*8 == 32: #32-bit
-                self.wrdll = windll.LoadLibrary("qcdata/WRG39WSBAPI_32.dll") #32-bit
+                self.wrdll = windll.LoadLibrary("data/WRG39WSBAPI_32.dll") #32-bit
             elif calcsize("P")*8 == 64: #64-bit
-                self.wrdll = windll.LoadLibrary("qcdata/WRG39WSBAPI_64.dll") #64-bit
+                self.wrdll = windll.LoadLibrary("data/WRG39WSBAPI_64.dll") #64-bit
             else:
                 self.postwarning("WiNRADIO driver not loaded (unrecognized system architecture: "+str(calcsize("P")*8)+")!")
                 self.wrdll = 0
@@ -205,12 +206,12 @@ def loaddata(self):
         self.posterror("Unable to find/load climatology data")
     
     try:
-        self.bathymetrydata["vals"] = = np.array([float(i) for i in open('data/bathy/vals.txt').read().strip().split(',') if i != ''])
+        self.bathymetrydata["vals"] = np.array([float(i) for i in open('data/bathy/vals.txt').read().strip().split(',') if i != ''])
     except:
         self.posterror("Unable to find/load bathymetry data")  
             
     try:
-        self.landshp = shapereader.Reader('qcdata/regions/GSHHS_i_L1.shp')
+        self.landshp = shapereader.Reader('data/regions/GSHHS_i_L1.shp')
     except:
         self.posterror("Unable to read land area shape file (GSHHS_i_L1.shp)")
         
@@ -319,7 +320,7 @@ def configureGuiFont(self):
     self.tabWidget.setFont(self.labelfont)
     
     #applying updates to all tabs- method dependent on which type each tab is
-    for ctab in self.alltabdata:
+    for ctab,_ in enumerate(self.alltabdata):
         ctabtype = self.alltabdata[ctab]["tabtype"]
         
         if ctabtype[:3] == "DAS": #data acquisition

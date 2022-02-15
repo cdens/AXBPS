@@ -85,7 +85,7 @@ def makelocationplot(fig,ax,lat,lon,dtg,exportlon,exportlat,exportrelief,dcoord)
         region = gplt.getoceanregion(lon,lat) #get basin and region
 
     #read/generate topography colormap
-    topo = np.genfromtxt('qclib/topocolors.txt',delimiter=',')
+    topo = np.genfromtxt('lib/topocolors.txt',delimiter=',')
     alphavals = np.ones((np.shape(topo)[0], 1))
     topo = np.append(topo, alphavals, axis=1)
     topomap = ListedColormap(topo)

@@ -48,53 +48,53 @@ from ._globalfunctions import (addnewtab, whatTab, renametab, setnewtabcolor, cl
 def makenewproftab(self):
     try:
         #tab indexing update
-        newtabnum,curtabstr = self.addnewtab()
+        opentab,tabID = self.addnewtab()
 
-        self.alltabdata[curtabstr] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"PE_u", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True} #isprocessing and datasource are only relevant for processor tabs
-        self.alltabdata[curtabstr]["tablayout"].setSpacing(10)
+        self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"PE_u", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True} #isprocessing and datasource are only relevant for processor tabs
+        self.alltabdata[opentab]["tablayout"].setSpacing(10)
         
-        self.setnewtabcolor(self.alltabdata[curtabstr]["tab"])
+        self.setnewtabcolor(self.alltabdata[opentab]["tab"])
 
-        self.tabWidget.addTab(self.alltabdata[curtabstr]["tab"],'New Tab') #self.tabWidget.addTab(self.currenttab,'New Tab')
-        self.tabWidget.setCurrentIndex(newtabnum)
-        self.tabWidget.setTabText(newtabnum,"Tab #" + str(newtabnum+1))
-        self.alltabdata[curtabstr]["tabnum"] = self.totaltabs #assigning unique, unchanging number to current tab
+        self.tabWidget.addTab(self.alltabdata[opentab]["tab"],'New Tab') #self.tabWidget.addTab(self.currenttab,'New Tab')
+        self.tabWidget.setCurrentIndex(opentab)
+        self.tabWidget.setTabText(opentab,"Tab #" + str(opentab+1))
+        self.alltabdata[opentab]["tabnum"] = tabID #assigning unique, unchanging number to current tab
         
         #Create widgets for UI
-        self.alltabdata[curtabstr]["tabwidgets"] = {}
-        self.alltabdata[curtabstr]["tabwidgets"]["title"] = QLabel('Enter Probe Drop Information:')
-        self.alltabdata[curtabstr]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
-        self.alltabdata[curtabstr]["tabwidgets"]["probetype"] = QComboBox()
+        self.alltabdata[opentab]["tabwidgets"] = {}
+        self.alltabdata[opentab]["tabwidgets"]["title"] = QLabel('Enter Probe Drop Information:')
+        self.alltabdata[opentab]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
+        self.alltabdata[opentab]["tabwidgets"]["probetype"] = QComboBox()
         for p in self.probetypes:
-            self.alltabdata[curtabstr]["tabwidgets"]["probetype"].addItem(p)
-        self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
-        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
-        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
-        self.alltabdata[curtabstr]["tabwidgets"]["latedit"] = QLineEdit('XX.XXX')
-        self.alltabdata[curtabstr]["tabwidgets"]["lontitle"] = QLabel('Longitude (E>0): ')
-        self.alltabdata[curtabstr]["tabwidgets"]["lonedit"] = QLineEdit('XX.XXX')
-        self.alltabdata[curtabstr]["tabwidgets"]["datetitle"] = QLabel('Date: ')
-        self.alltabdata[curtabstr]["tabwidgets"]["dateedit"] = QLineEdit('YYYYMMDD')
-        self.alltabdata[curtabstr]["tabwidgets"]["timetitle"] = QLabel('Time (UTC): ')
-        self.alltabdata[curtabstr]["tabwidgets"]["timeedit"] = QLineEdit('HHMM')
-        self.alltabdata[curtabstr]["tabwidgets"]["idtitle"] = QLabel('Platform ID/Tail#: ')
-        self.alltabdata[curtabstr]["tabwidgets"]["idedit"] = QLineEdit(self.settingsdict['platformid'])
-        self.alltabdata[curtabstr]["tabwidgets"]["logtitle"] = QLabel('Select Source File: ')
-        self.alltabdata[curtabstr]["tabwidgets"]["logbutton"] = QPushButton('Browse')
-        self.alltabdata[curtabstr]["tabwidgets"]["logedit"] = QTextEdit('filepath/LOGXXXXX.DTA')
-        self.alltabdata[curtabstr]["tabwidgets"]["logedit"].setMaximumHeight(100)
-        self.alltabdata[curtabstr]["tabwidgets"]["logbutton"].clicked.connect(self.selectdatafile)
-        self.alltabdata[curtabstr]["tabwidgets"]["submitbutton"] = QPushButton('PROCESS PROFILE')
-        self.alltabdata[curtabstr]["tabwidgets"]["submitbutton"].clicked.connect(self.checkdatainputs_editorinput)
+            self.alltabdata[opentab]["tabwidgets"]["probetype"].addItem(p)
+        self.alltabdata[opentab]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
+        self.alltabdata[opentab]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
+        self.alltabdata[opentab]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ')
+        self.alltabdata[opentab]["tabwidgets"]["latedit"] = QLineEdit('XX.XXX')
+        self.alltabdata[opentab]["tabwidgets"]["lontitle"] = QLabel('Longitude (E>0): ')
+        self.alltabdata[opentab]["tabwidgets"]["lonedit"] = QLineEdit('XX.XXX')
+        self.alltabdata[opentab]["tabwidgets"]["datetitle"] = QLabel('Date: ')
+        self.alltabdata[opentab]["tabwidgets"]["dateedit"] = QLineEdit('YYYYMMDD')
+        self.alltabdata[opentab]["tabwidgets"]["timetitle"] = QLabel('Time (UTC): ')
+        self.alltabdata[opentab]["tabwidgets"]["timeedit"] = QLineEdit('HHMM')
+        self.alltabdata[opentab]["tabwidgets"]["idtitle"] = QLabel('Platform ID/Tail#: ')
+        self.alltabdata[opentab]["tabwidgets"]["idedit"] = QLineEdit(self.settingsdict['platformid'])
+        self.alltabdata[opentab]["tabwidgets"]["logtitle"] = QLabel('Select Source File: ')
+        self.alltabdata[opentab]["tabwidgets"]["logbutton"] = QPushButton('Browse')
+        self.alltabdata[opentab]["tabwidgets"]["logedit"] = QTextEdit('filepath/LOGXXXXX.DTA')
+        self.alltabdata[opentab]["tabwidgets"]["logedit"].setMaximumHeight(100)
+        self.alltabdata[opentab]["tabwidgets"]["logbutton"].clicked.connect(self.selectdatafile)
+        self.alltabdata[opentab]["tabwidgets"]["submitbutton"] = QPushButton('PROCESS PROFILE')
+        self.alltabdata[opentab]["tabwidgets"]["submitbutton"].clicked.connect(self.checkdatainputs_editorinput)
         
         #formatting widgets
-        self.alltabdata[curtabstr]["tabwidgets"]["title"].setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["lontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["datetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["timetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["logtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["title"].setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["lattitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["lontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["datetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["timetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["logtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         #should be 15 entries
         widgetorder = ["title", "probetitle", "probetype", "lattitle", "latedit", "lontitle", "lonedit", "datetitle", "dateedit", "timetitle", "timeedit", "idtitle", "idedit", "logtitle", "logedit", "logbutton", "submitbutton"]
@@ -106,16 +106,16 @@ def makenewproftab(self):
         
         #adding user inputs
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
-            self.alltabdata[curtabstr]["tabwidgets"][i].setFont(self.labelfont)
-            self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["tabwidgets"][i],r,c,re,ce)
+            self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
+            self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
         
         #forces grid info to top/center of window
-        self.alltabdata[curtabstr]["tablayout"].setRowStretch(10,1)
-        self.alltabdata[curtabstr]["tablayout"].setColumnStretch(0,1)
-        self.alltabdata[curtabstr]["tablayout"].setColumnStretch(3,1)
+        self.alltabdata[opentab]["tablayout"].setRowStretch(11,1)
+        self.alltabdata[opentab]["tablayout"].setColumnStretch(0,1)
+        self.alltabdata[opentab]["tablayout"].setColumnStretch(3,1)
 
         #applying layout
-        self.alltabdata[curtabstr]["tab"].setLayout(self.alltabdata[curtabstr]["tablayout"]) 
+        self.alltabdata[opentab]["tab"].setLayout(self.alltabdata[opentab]["tablayout"]) 
 
     except Exception:
         trace_error()
@@ -130,8 +130,8 @@ def selectdatafile(self):
         "Source Data Files (*.DTA *.Dta *.dta *.EDF *.Edf *.edf *.edf *.NVO *.Nvo *.nvo *.FIN *.Fin *.fin *.JJVV *.Jjvv *.jjvv *.TXT *.Txt *.txt)","",self.fileoptions)
          
         if ok:
-            curtabstr = "Tab " + str(self.whatTab())
-            self.alltabdata[curtabstr]["tabwidgets"]["logedit"].setText(fname)
+            opentab = self.whatTab()
+            self.alltabdata[opentab]["tabwidgets"]["logedit"].setText(fname)
             
             #populate the menu with the information from the file
             if fname.lower().endswith('.edf'):
@@ -142,10 +142,10 @@ def selectdatafile(self):
                 datestr = f'{year}{month}{day}'
                 timestr = f'{hour}{minute}'
                 
-                self.alltabdata[curtabstr]['tabwidgets']['latedit'].setText(lat)
-                self.alltabdata[curtabstr]['tabwidgets']['lonedit'].setText(lon)
-                self.alltabdata[curtabstr]['tabwidgets']['dateedit'].setText(datestr)
-                self.alltabdata[curtabstr]['tabwidgets']['timeedit'].setText(timestr)
+                self.alltabdata[opentab]['tabwidgets']['latedit'].setText(lat)
+                self.alltabdata[opentab]['tabwidgets']['lonedit'].setText(lon)
+                self.alltabdata[opentab]['tabwidgets']['dateedit'].setText(datestr)
+                self.alltabdata[opentab]['tabwidgets']['timeedit'].setText(timestr)
 
                 
             
@@ -163,16 +163,16 @@ def selectdatafile(self):
 #Pull data, check to make sure it is valid before proceeding
 def checkdatainputs_editorinput(self):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         
         #pulling data from inputs
-        probetype = self.alltabdata[curtabstr]["tabwidgets"]["probetype"].currentText()
-        latstr = self.alltabdata[curtabstr]["tabwidgets"]["latedit"].text()
-        lonstr = self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].text()
-        identifier = self.alltabdata[curtabstr]["tabwidgets"]["idedit"].text()
-        profdatestr = self.alltabdata[curtabstr]["tabwidgets"]["dateedit"].text()
-        timestr = self.alltabdata[curtabstr]["tabwidgets"]["timeedit"].text()
-        logfile = self.alltabdata[curtabstr]["tabwidgets"]["logedit"].toPlainText()
+        probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
+        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+        identifier = self.alltabdata[opentab]["tabwidgets"]["idedit"].text()
+        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+        logfile = self.alltabdata[opentab]["tabwidgets"]["logedit"].toPlainText()
         
         #check that logfile exists
         if not path.isfile(logfile):
@@ -262,7 +262,7 @@ def checkdatainputs_editorinput(self):
         
     #only gets here if all inputs are good- this function switches the tab to profile editor view
     self.defaultprobe = probetype #switch default probe type to whatever was just processed
-    self.continuetoqc(curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
+    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
     
     
     
@@ -271,7 +271,7 @@ def checkdatainputs_editorinput(self):
 # =============================================================================
 #         PROFILE EDITOR TAB
 # =============================================================================
-def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype):
+def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype):
     try:
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
@@ -299,13 +299,13 @@ def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month
         try:
             [climotemps,climopsals,climodepths,climotempfill,climopsalfill,climodepthfill] = oci.getclimatologyprofile(lat,lon,month,self.climodata)
         except:
-            climotemps = climodepths = np.array([np.NaN,np.NaN])
-            climotempfill = climodepthfill = np.array([np.NaN,np.NaN,np.NaN,np.NaN])
+            climopsals = climotemps = climodepths = np.array([np.NaN,np.NaN])
+            climopsalfill = climotempfill = climodepthfill = np.array([np.NaN,np.NaN,np.NaN,np.NaN])
             self.posterror("Unable to find/load climatology data for profile location!")
         
-        self.alltabdata[curtabstr]["probetype"] = probetype
-        self.alltabdata[curtabstr]["profileSaved"] = False #profile hasn't been saved yet
-        self.alltabdata[curtabstr]["profdata"] = {"temp_raw": rawtemperature, "depth_raw": rawdepth,
+        self.alltabdata[opentab]["probetype"] = probetype
+        self.alltabdata[opentab]["profileSaved"] = False #profile hasn't been saved yet
+        self.alltabdata[opentab]["profdata"] = {"temp_raw": rawtemperature, "depth_raw": rawdepth,
                                              "lat": lat, "lon": lon, "year": year, "month": month, "day": day,
                                              "time": time, "DTG": dtg,
                                              "climotemp": climotemps, "climopsal":climopsals, 
@@ -316,117 +316,117 @@ def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month
                                              "ID": identifier, "oceandepth": oceandepth}
         
         #deleting old buttons and inputs
-        for i in self.alltabdata[curtabstr]["tabwidgets"]:
+        for i in self.alltabdata[opentab]["tabwidgets"]:
             try:
-                self.alltabdata[curtabstr]["tabwidgets"][i].deleteLater()
+                self.alltabdata[opentab]["tabwidgets"][i].deleteLater()
             except:
-                self.alltabdata[curtabstr]["tabwidgets"][i] = 1 #bs variable- overwrites spacer item
+                self.alltabdata[opentab]["tabwidgets"][i] = 1 #bs variable- overwrites spacer item
                             
         if self.settingsdict["renametabstodtg"]:
             curtab = self.tabWidget.currentIndex()
             self.tabWidget.setTabText(curtab,dtg)  
             
         #now delete widget entries
-        del self.alltabdata[curtabstr]["tabwidgets"]
-        QObjectCleanupHandler().add(self.alltabdata[curtabstr]["tablayout"])
+        del self.alltabdata[opentab]["tabwidgets"]
+        QObjectCleanupHandler().add(self.alltabdata[opentab]["tablayout"])
         
-        self.alltabdata[curtabstr]["tablayout"] = QGridLayout()
-        self.alltabdata[curtabstr]["tab"].setLayout(self.alltabdata[curtabstr]["tablayout"]) 
-        self.alltabdata[curtabstr]["tablayout"].setSpacing(10)
+        self.alltabdata[opentab]["tablayout"] = QGridLayout()
+        self.alltabdata[opentab]["tab"].setLayout(self.alltabdata[opentab]["tablayout"]) 
+        self.alltabdata[opentab]["tablayout"].setSpacing(10)
         
         #ADDING FIGURES AND AXES TO GRID LAYOUT (row column rowext colext)
-        self.alltabdata[curtabstr]["ProfFig"] = plt.figure()
-        self.alltabdata[curtabstr]["ProfCanvas"] = FigureCanvas(self.alltabdata[curtabstr]["ProfFig"]) 
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["ProfCanvas"],0,0,14,1)
-        self.alltabdata[curtabstr]["ProfCanvas"].setStyleSheet("background-color:transparent;")
-        self.alltabdata[curtabstr]["ProfFig"].patch.set_facecolor('None')
-        self.alltabdata[curtabstr]["ProfAx"] = plt.axes()
-        self.alltabdata[curtabstr]["LocFig"] = plt.figure()
-        self.alltabdata[curtabstr]["LocCanvas"] = FigureCanvas(self.alltabdata[curtabstr]["LocFig"]) 
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["LocCanvas"],11,2,1,5)
-        self.alltabdata[curtabstr]["LocCanvas"].setStyleSheet("background-color:transparent;")
-        self.alltabdata[curtabstr]["LocFig"].patch.set_facecolor('None')
-        self.alltabdata[curtabstr]["LocAx"] = plt.axes()
+        self.alltabdata[opentab]["ProfFig"] = plt.figure()
+        self.alltabdata[opentab]["ProfCanvas"] = FigureCanvas(self.alltabdata[opentab]["ProfFig"]) 
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["ProfCanvas"],0,0,14,1)
+        self.alltabdata[opentab]["ProfCanvas"].setStyleSheet("background-color:transparent;")
+        self.alltabdata[opentab]["ProfFig"].patch.set_facecolor('None')
+        self.alltabdata[opentab]["ProfAx"] = plt.axes()
+        self.alltabdata[opentab]["LocFig"] = plt.figure()
+        self.alltabdata[opentab]["LocCanvas"] = FigureCanvas(self.alltabdata[opentab]["LocFig"]) 
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["LocCanvas"],11,2,1,5)
+        self.alltabdata[opentab]["LocCanvas"].setStyleSheet("background-color:transparent;")
+        self.alltabdata[opentab]["LocFig"].patch.set_facecolor('None')
+        self.alltabdata[opentab]["LocAx"] = plt.axes()
 
         #adding toolbar for profile editor
-        self.alltabdata[curtabstr]["ProfToolbar"] = CustomToolbar(self.alltabdata[curtabstr]["ProfCanvas"], self) 
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["ProfToolbar"],2,2,1,2)
+        self.alltabdata[opentab]["ProfToolbar"] = CustomToolbar(self.alltabdata[opentab]["ProfCanvas"], self) 
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["ProfToolbar"],2,2,1,2)
         
         #adding toolbar for location
-        self.alltabdata[curtabstr]["LocToolbar"] = CustomToolbar(self.alltabdata[curtabstr]["LocCanvas"], self) 
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["LocToolbar"],12,3,1,3)
+        self.alltabdata[opentab]["LocToolbar"] = CustomToolbar(self.alltabdata[opentab]["LocCanvas"], self) 
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["LocToolbar"],12,3,1,3)
 
         #Create widgets for UI populated with test example
-        self.alltabdata[curtabstr]["tabwidgets"] = {}
+        self.alltabdata[opentab]["tabwidgets"] = {}
         
         #first column: profile editor functions:
-        self.alltabdata[curtabstr]["tabwidgets"]["toggleclimooverlay"] = QPushButton('Overlay Climatology') #1
-        self.alltabdata[curtabstr]["tabwidgets"]["toggleclimooverlay"].setCheckable(True)
-        self.alltabdata[curtabstr]["tabwidgets"]["toggleclimooverlay"].setChecked(True)
-        self.alltabdata[curtabstr]["tabwidgets"]["toggleclimooverlay"].clicked.connect(self.toggleclimooverlay) 
+        self.alltabdata[opentab]["tabwidgets"]["toggleclimooverlay"] = QPushButton('Overlay Climatology') #1
+        self.alltabdata[opentab]["tabwidgets"]["toggleclimooverlay"].setCheckable(True)
+        self.alltabdata[opentab]["tabwidgets"]["toggleclimooverlay"].setChecked(True)
+        self.alltabdata[opentab]["tabwidgets"]["toggleclimooverlay"].clicked.connect(self.toggleclimooverlay) 
         
-        self.alltabdata[curtabstr]["tabwidgets"]["addpoint"] = QPushButton('Add Point') #2
-        self.alltabdata[curtabstr]["tabwidgets"]["addpoint"].clicked.connect(self.addpoint)
-        self.alltabdata[curtabstr]["tabwidgets"]["addpoint"].setToolTip("After clicking, select a single point to add")
+        self.alltabdata[opentab]["tabwidgets"]["addpoint"] = QPushButton('Add Point') #2
+        self.alltabdata[opentab]["tabwidgets"]["addpoint"].clicked.connect(self.addpoint)
+        self.alltabdata[opentab]["tabwidgets"]["addpoint"].setToolTip("After clicking, select a single point to add")
         
-        self.alltabdata[curtabstr]["tabwidgets"]["removepoint"] = QPushButton('Remove Point') #3
-        self.alltabdata[curtabstr]["tabwidgets"]["removepoint"].clicked.connect(self.removepoint)
-        self.alltabdata[curtabstr]["tabwidgets"]["removepoint"].setToolTip("After clicking, select a single point to remove")
+        self.alltabdata[opentab]["tabwidgets"]["removepoint"] = QPushButton('Remove Point') #3
+        self.alltabdata[opentab]["tabwidgets"]["removepoint"].clicked.connect(self.removepoint)
+        self.alltabdata[opentab]["tabwidgets"]["removepoint"].setToolTip("After clicking, select a single point to remove")
 
-        self.alltabdata[curtabstr]["tabwidgets"]["removerange"] = QPushButton('Remove Range') #4
-        self.alltabdata[curtabstr]["tabwidgets"]["removerange"].clicked.connect(self.removerange)
-        self.alltabdata[curtabstr]["tabwidgets"]["removerange"].setToolTip("After clicking, click and drag over a (vertical) range of points to remove")
+        self.alltabdata[opentab]["tabwidgets"]["removerange"] = QPushButton('Remove Range') #4
+        self.alltabdata[opentab]["tabwidgets"]["removerange"].clicked.connect(self.removerange)
+        self.alltabdata[opentab]["tabwidgets"]["removerange"].setToolTip("After clicking, click and drag over a (vertical) range of points to remove")
         
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrectiontitle"] = QLabel('Isothermal Layer (m):') #5
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"] = QSpinBox() #6
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].setRange(0, int(np.max(rawdepth+200)))
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].setSingleStep(1)
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].setValue(0)
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrectiontitle"] = QLabel('Isothermal Layer (m):') #5
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"] = QSpinBox() #6
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setRange(0, int(np.max(rawdepth+200)))
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setSingleStep(1)
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setValue(0)
         
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepthtitle"] = QLabel('Maximum Depth (m):') #7
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"] = QSpinBox() #8
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].setSingleStep(1)
-        # self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].setValue(int(np.round(1000)))
+        self.alltabdata[opentab]["tabwidgets"]["maxdepthtitle"] = QLabel('Maximum Depth (m):') #7
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"] = QSpinBox() #8
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setSingleStep(1)
+        # self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(1000)))
         
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelaytitle"] = QLabel('Depth Delay (m):') #9
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"] = QSpinBox() #10
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].setSingleStep(1)
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].setValue(0)
+        self.alltabdata[opentab]["tabwidgets"]["depthdelaytitle"] = QLabel('Depth Delay (m):') #9
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"] = QSpinBox() #10
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setSingleStep(1)
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setValue(0)
 
-        self.alltabdata[curtabstr]["tabwidgets"]["runqc"] = QPushButton('Re-QC Profile (Reset)') #11
-        self.alltabdata[curtabstr]["tabwidgets"]["runqc"].clicked.connect(self.runqc) 
+        self.alltabdata[opentab]["tabwidgets"]["runqc"] = QPushButton('Re-QC Profile (Reset)') #11
+        self.alltabdata[opentab]["tabwidgets"]["runqc"].clicked.connect(self.runqc) 
         
         
         #Second column: profile information
-        self.alltabdata[curtabstr]["tabwidgets"]["proftxt"] = QLabel(' ')#12
-        self.alltabdata[curtabstr]["tabwidgets"]["isbottomstrike"] = QCheckBox('Bottom Strike?') #13
-        self.alltabdata[curtabstr]["tabwidgets"]["rcodetitle"] = QLabel('Profile Quality:') #14
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"] = QComboBox() #15
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Good Profile")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("No Signal")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Spotty/Intermittent")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Hung Probe/Early Start")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Isothermal")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Late Start")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Slow Falling")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Bottom Strike")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Climatology Mismatch")
-        self.alltabdata[curtabstr]["tabwidgets"]["rcode"].addItem("Action Required/Reprocess")
+        self.alltabdata[opentab]["tabwidgets"]["proftxt"] = QLabel(' ')#12
+        self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"] = QCheckBox('Bottom Strike?') #13
+        self.alltabdata[opentab]["tabwidgets"]["rcodetitle"] = QLabel('Profile Quality:') #14
+        self.alltabdata[opentab]["tabwidgets"]["rcode"] = QComboBox() #15
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Good Profile")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("No Signal")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Spotty/Intermittent")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Hung Probe/Early Start")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Isothermal")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Late Start")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Slow Falling")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Bottom Strike")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Climatology Mismatch")
+        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Action Required/Reprocess")
         
         #profile save button
-        self.alltabdata[curtabstr]["tabwidgets"]["saveprof"] = QPushButton('Save Profile') #11
-        self.alltabdata[curtabstr]["tabwidgets"]["saveprof"].clicked.connect(self.savedataincurtab)    
+        self.alltabdata[opentab]["tabwidgets"]["saveprof"] = QPushButton('Save Profile') #11
+        self.alltabdata[opentab]["tabwidgets"]["saveprof"].clicked.connect(self.savedataincurtab)    
         
             
         #formatting widgets
-        self.alltabdata[curtabstr]["tabwidgets"]["proftxt"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["rcodetitle"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelaytitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrectiontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepthtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["proftxt"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["rcodetitle"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["depthdelaytitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrectiontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["maxdepthtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         
         #should be 15 entries
@@ -439,44 +439,44 @@ def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month
         
         #adding user inputs
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
-            self.alltabdata[curtabstr]["tabwidgets"][i].setFont(self.labelfont)
-            self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["tabwidgets"][i],r,c,re,ce)
+            self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
+            self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
             
 
         #adjusting stretch factors for all rows/columns
         colstretch = [13,1,1,1,1,1,1,1,1]
         for col,cstr in zip(range(0,len(colstretch)),colstretch):
-            self.alltabdata[curtabstr]["tablayout"].setColumnStretch(col,cstr)
+            self.alltabdata[opentab]["tablayout"].setColumnStretch(col,cstr)
         rowstretch = [0,1,1,1,1,1,1,1,0,1,1,9,1]
         for row,rstr in zip(range(0,len(rowstretch)),rowstretch):
-            self.alltabdata[curtabstr]["tablayout"].setRowStretch(row,rstr)
+            self.alltabdata[opentab]["tablayout"].setRowStretch(row,rstr)
 
         #run autoQC code, pull variables from self.alltabdata dict
-        self.alltabdata[curtabstr]["hasbeenprocessed"] = False
+        self.alltabdata[opentab]["hasbeenprocessed"] = False
         
         if self.runqc(): #only executes following code if autoQC runs sucessfully
-            depth = self.alltabdata[curtabstr]["profdata"]["depth_plot"]
-            temperature = self.alltabdata[curtabstr]["profdata"]["temp_plot"]
-            matchclimo = self.alltabdata[curtabstr]["profdata"]["matchclimo"]
+            depth = self.alltabdata[opentab]["profdata"]["depth_plot"]
+            temperature = self.alltabdata[opentab]["profdata"]["temp_plot"]
+            matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
 
             # plot data, refresh plots on window
-            self.alltabdata[curtabstr]["climohandle"] = tplot.makeprofileplot(self.alltabdata[curtabstr]["ProfAx"],
+            self.alltabdata[opentab]["climohandle"] = tplot.makeprofileplot(self.alltabdata[opentab]["ProfAx"],
                                                                          rawtemperature,
                                                                          rawdepth, temperature, depth,
                                                                          climotempfill,
                                                                          climodepthfill, dtg, matchclimo)
-            tplot.makelocationplot(self.alltabdata[curtabstr]["LocFig"],self.alltabdata[curtabstr]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
-            self.alltabdata[curtabstr]["ProfCanvas"].draw() #update figure canvases
-            self.alltabdata[curtabstr]["LocCanvas"].draw()
-            self.alltabdata[curtabstr]["pt_type"] = 0  # sets that none of the point selector buttons have been pushed
-            self.alltabdata[curtabstr]["hasbeenprocessed"] = True #note that the autoQC driver has run at least once
+            tplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
+            self.alltabdata[opentab]["ProfCanvas"].draw() #update figure canvases
+            self.alltabdata[opentab]["LocCanvas"].draw()
+            self.alltabdata[opentab]["pt_type"] = 0  # sets that none of the point selector buttons have been pushed
+            self.alltabdata[opentab]["hasbeenprocessed"] = True #note that the autoQC driver has run at least once
 
             #configure spinboxes to run "applychanges" function after being changed
-            self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].valueChanged.connect(self.applychanges)
-            self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].valueChanged.connect(self.applychanges)
-            self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
+            self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].valueChanged.connect(self.applychanges)
+            self.alltabdata[opentab]["tabwidgets"]["maxdepth"].valueChanged.connect(self.applychanges)
+            self.alltabdata[opentab]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
 
-            self.alltabdata[curtabstr]["tabtype"] = "PE_p"
+            self.alltabdata[opentab]["tabtype"] = "PE_p"
     except Exception:
         trace_error()
         self.posterror("Failed to build profile editor tab!")
@@ -493,16 +493,16 @@ def continuetoqc(self, curtabstr, rawtemperature, rawdepth, lat, lon, day, month
 
 def runqc(self):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
 
         # getting necessary data for QC from dictionary
-        rawtemperature = self.alltabdata[curtabstr]["profdata"]["temp_raw"]
-        rawdepth = self.alltabdata[curtabstr]["profdata"]["depth_raw"]
-        climotemps = self.alltabdata[curtabstr]["profdata"]["climotemp"]
-        climodepths = self.alltabdata[curtabstr]["profdata"]["climodepth"]
-        climotempfill = self.alltabdata[curtabstr]["profdata"]["climotempfill"]
-        climodepthfill = self.alltabdata[curtabstr]["profdata"]["climodepthfill"]
-        oceandepth = self.alltabdata[curtabstr]["profdata"]["oceandepth"]
+        rawtemperature = self.alltabdata[opentab]["profdata"]["temp_raw"]
+        rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
+        climotemps = self.alltabdata[opentab]["profdata"]["climotemp"]
+        climodepths = self.alltabdata[opentab]["profdata"]["climodepth"]
+        climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
+        climodepthfill = self.alltabdata[opentab]["profdata"]["climodepthfill"]
+        oceandepth = self.alltabdata[opentab]["profdata"]["oceandepth"]
         
 
         # TODO: Integrate this into the settings window
@@ -526,8 +526,8 @@ def runqc(self):
         
             
         #saving QC profile first (before truncating depth due to ID'd bottom strikes)
-        self.alltabdata[curtabstr]["profdata"]["depth_qc"] = depth.copy() #using copy method so further edits made won't be reflected in these stored versions of the QC'ed profile
-        self.alltabdata[curtabstr]["profdata"]["temp_qc"] = temperature.copy()
+        self.alltabdata[opentab]["profdata"]["depth_qc"] = depth.copy() #using copy method so further edits made won't be reflected in these stored versions of the QC'ed profile
+        self.alltabdata[opentab]["profdata"]["temp_qc"] = temperature.copy()
         
 
         # limit profile depth by climatology cutoff, ocean depth cutoff
@@ -544,20 +544,20 @@ def runqc(self):
         depth = depth[isbelowmaxdepth]
 
         # writing values to alltabs structure: prof temps, and matchclimo
-        self.alltabdata[curtabstr]["profdata"]["depth_plot"] = depth
-        self.alltabdata[curtabstr]["profdata"]["temp_plot"] = temperature
-        self.alltabdata[curtabstr]["profdata"]["matchclimo"] = matchclimo
+        self.alltabdata[opentab]["profdata"]["depth_plot"] = depth
+        self.alltabdata[opentab]["profdata"]["temp_plot"] = temperature
+        self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
 
         # resetting depth correction QSpinBoxes
-        self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
-        self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].setValue(0)
-        self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].setValue(0)
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setValue(0)
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setValue(0)
 
         # adjusting bottom strike checkbox as necessary
         if isbottomstrike == 1:
-            self.alltabdata[curtabstr]["tabwidgets"]["isbottomstrike"].setChecked(True)
+            self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(True)
         else:
-            self.alltabdata[curtabstr]["tabwidgets"]["isbottomstrike"].setChecked(False)
+            self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(False)
 
         self.updateprofeditplots() #update profile plot, data on window
         
@@ -578,17 +578,17 @@ def runqc(self):
 #apply changes from sfc correction/max depth/depth delay spin boxes
 def applychanges(self):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         #current t/d profile
-        tempplot = self.alltabdata[curtabstr]["profdata"]["temp_qc"].copy()
-        depthplot = self.alltabdata[curtabstr]["profdata"]["depth_qc"].copy()
+        tempplot = self.alltabdata[opentab]["profdata"]["temp_qc"].copy()
+        depthplot = self.alltabdata[opentab]["profdata"]["depth_qc"].copy()
         
         if len(tempplot) > 0 and len(depthplot) > 0:
 
             #new depth correction settings
-            sfcdepth = self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].value()
-            maxdepth = self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].value()
-            depthdelay = self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].value()
+            sfcdepth = self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].value()
+            maxdepth = self.alltabdata[opentab]["tabwidgets"]["maxdepth"].value()
+            depthdelay = self.alltabdata[opentab]["tabwidgets"]["depthdelay"].value()
 
             if depthdelay > 0: #shifitng entire profile up if necessary
                 depthplot = depthplot - depthdelay
@@ -607,8 +607,8 @@ def applychanges(self):
                 depthplot = depthplot[ind]
 
             #replacing t/d profile values
-            self.alltabdata[curtabstr]["profdata"]["temp_plot"] = tempplot
-            self.alltabdata[curtabstr]["profdata"]["depth_plot"] = depthplot
+            self.alltabdata[opentab]["profdata"]["temp_plot"] = tempplot
+            self.alltabdata[opentab]["profdata"]["depth_plot"] = depthplot
 
             #re-plotting, updating text
             self.updateprofeditplots()
@@ -620,24 +620,24 @@ def applychanges(self):
 
         
 def updateprofeditplots(self):
-    curtabstr = "Tab " + str(self.whatTab())
+    opentab = self.whatTab()
 
     try:
-        tempplot = self.alltabdata[curtabstr]["profdata"]["temp_plot"]
-        depthplot = self.alltabdata[curtabstr]["profdata"]["depth_plot"]
+        tempplot = self.alltabdata[opentab]["profdata"]["temp_plot"]
+        depthplot = self.alltabdata[opentab]["profdata"]["depth_plot"]
         
         # Replace drop info
-        proftxt = self.generateprofiledescription(curtabstr,len(tempplot))
-        self.alltabdata[curtabstr]["tabwidgets"]["proftxt"].setText(proftxt)
+        proftxt = self.generateprofiledescription(opentab,len(tempplot))
+        self.alltabdata[opentab]["tabwidgets"]["proftxt"].setText(proftxt)
 
         # re-plotting (if not first pass through editor)
-        if self.alltabdata[curtabstr]["hasbeenprocessed"]:
-            del self.alltabdata[curtabstr]["ProfAx"].lines[-1]
-            self.alltabdata[curtabstr]["ProfAx"].plot(tempplot, depthplot, 'r', linewidth=2, label='QC')
-            self.alltabdata[curtabstr]["ProfCanvas"].draw()
+        if self.alltabdata[opentab]["hasbeenprocessed"]:
+            del self.alltabdata[opentab]["ProfAx"].lines[-1]
+            self.alltabdata[opentab]["ProfAx"].plot(tempplot, depthplot, 'r', linewidth=2, label='QC')
+            self.alltabdata[opentab]["ProfCanvas"].draw()
             
-        self.alltabdata[curtabstr]["profileSaved"] = False
-        self.add_asterisk()
+        self.alltabdata[opentab]["profileSaved"] = False
+        self.add_asterisk(opentab)
 
     except Exception:
         trace_error()
@@ -645,15 +645,15 @@ def updateprofeditplots(self):
 
         
         
-def generateprofiledescription(self,curtabstr,numpoints):
+def generateprofiledescription(self,opentab,numpoints):
     try:
-        sfcdepth = self.alltabdata[curtabstr]["tabwidgets"]["sfccorrection"].value()
-        maxdepth = self.alltabdata[curtabstr]["tabwidgets"]["maxdepth"].value()
-        depthdelay = self.alltabdata[curtabstr]["tabwidgets"]["depthdelay"].value()
+        sfcdepth = self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].value()
+        maxdepth = self.alltabdata[opentab]["tabwidgets"]["maxdepth"].value()
+        depthdelay = self.alltabdata[opentab]["tabwidgets"]["depthdelay"].value()
         
-        lon = self.alltabdata[curtabstr]["profdata"]["lon"]
-        lat = self.alltabdata[curtabstr]["profdata"]["lat"]
-        oceandepth = self.alltabdata[curtabstr]["profdata"]["oceandepth"]
+        lon = self.alltabdata[opentab]["profdata"]["lon"]
+        lat = self.alltabdata[opentab]["profdata"]["lat"]
+        oceandepth = self.alltabdata[opentab]["profdata"]["oceandepth"]
         
         if lon >= 0: #prepping coordinate string
             ewhem = ' \xB0E'
@@ -684,13 +684,13 @@ def generateprofiledescription(self,curtabstr,numpoints):
         
 #add point on profile
 def addpoint(self):
-    curtabstr = "Tab " + str(self.whatTab())
-    if self.alltabdata[curtabstr]["pt_type"] == 0:
+    opentab = self.whatTab()
+    if self.alltabdata[opentab]["pt_type"] == 0:
         try:
             QApplication.setOverrideCursor(Qt.CrossCursor)
-            curtabstr = "Tab " + str(self.whatTab())
-            self.alltabdata[curtabstr]["pt_type"] = 1
-            self.alltabdata[curtabstr]["pt"] = self.alltabdata[curtabstr]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
+            opentab = self.whatTab()
+            self.alltabdata[opentab]["pt_type"] = 1
+            self.alltabdata[opentab]["pt"] = self.alltabdata[opentab]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
         except Exception:
             trace_error()
             self.posterror("Failed to add point")
@@ -699,13 +699,13 @@ def addpoint(self):
         
 #remove point on profile
 def removepoint(self):
-    curtabstr = "Tab " + str(self.whatTab())
-    if self.alltabdata[curtabstr]["pt_type"] == 0:
+    opentab = self.whatTab()
+    if self.alltabdata[opentab]["pt_type"] == 0:
         try:
             QApplication.setOverrideCursor(Qt.CrossCursor)
-            curtabstr = "Tab " + str(self.whatTab())
-            self.alltabdata[curtabstr]["pt_type"] = 2
-            self.alltabdata[curtabstr]["pt"] = self.alltabdata[curtabstr]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
+            opentab = self.whatTab()
+            self.alltabdata[opentab]["pt_type"] = 2
+            self.alltabdata[opentab]["pt"] = self.alltabdata[opentab]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
         except Exception:
             trace_error()
             self.posterror("Failed to remove point")
@@ -714,14 +714,14 @@ def removepoint(self):
 
 #remove range of points (e.g. profile spike)
 def removerange(self):
-    curtabstr = "Tab " + str(self.whatTab())
-    if self.alltabdata[curtabstr]["pt_type"] == 0:
+    opentab = self.whatTab()
+    if self.alltabdata[opentab]["pt_type"] == 0:
         try:
             QApplication.setOverrideCursor(Qt.CrossCursor)
-            curtabstr = "Tab " + str(self.whatTab())
-            self.alltabdata[curtabstr]["pt_type"] = 3
-            self.alltabdata[curtabstr]["ptspike"] = self.alltabdata[curtabstr]["ProfCanvas"].mpl_connect('button_press_event', self.on_press_spike)
-            self.alltabdata[curtabstr]["pt"] = self.alltabdata[curtabstr]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
+            opentab = self.whatTab()
+            self.alltabdata[opentab]["pt_type"] = 3
+            self.alltabdata[opentab]["ptspike"] = self.alltabdata[opentab]["ProfCanvas"].mpl_connect('button_press_event', self.on_press_spike)
+            self.alltabdata[opentab]["pt"] = self.alltabdata[opentab]["ProfCanvas"].mpl_connect('button_release_event', self.on_release)
         except Exception:
             trace_error()
             self.posterror("Failed to remove range")
@@ -736,19 +736,19 @@ def on_press_spike(self,event):
 #update profile with selected point to add or remove
 def on_release(self,event):
 
-    curtabstr = "Tab " + str(self.whatTab())
+    opentab = self.whatTab()
     try:
         xx = event.xdata #selected x and y points
         yy = event.ydata
         
         #retrieve and update values
-        tempplot = self.alltabdata[curtabstr]["profdata"]["temp_qc"]
-        depthplot = self.alltabdata[curtabstr]["profdata"]["depth_qc"]
+        tempplot = self.alltabdata[opentab]["profdata"]["temp_qc"]
+        depthplot = self.alltabdata[opentab]["profdata"]["depth_qc"]
         
         #ADD A POINT
-        if self.alltabdata[curtabstr]["pt_type"] == 1:
-            rawt = self.alltabdata[curtabstr]["profdata"]["temp_raw"]
-            rawd = self.alltabdata[curtabstr]["profdata"]["depth_raw"]
+        if self.alltabdata[opentab]["pt_type"] == 1:
+            rawt = self.alltabdata[opentab]["profdata"]["temp_raw"]
+            rawd = self.alltabdata[opentab]["profdata"]["depth_raw"]
             pt = np.argmin(abs(rawt-xx)**2 + abs(rawd-yy)**2)
             addtemp = rawt[pt]
             adddepth = rawd[pt]
@@ -767,7 +767,7 @@ def on_release(self,event):
                     tempplot.insert(i,addtemp)
                     
         #REMOVE A POINT
-        elif self.alltabdata[curtabstr]["pt_type"] == 2:
+        elif self.alltabdata[opentab]["pt_type"] == 2:
             pt = np.argmin(abs(tempplot-xx)**2 + abs(depthplot-yy)**2)
             try: #if its an array
                 tempplot = np.delete(tempplot,pt)
@@ -777,7 +777,7 @@ def on_release(self,event):
                 depthplot.pop(pt)
 
         #REMOVE A SPIKE
-        elif self.alltabdata[curtabstr]["pt_type"] == 3:
+        elif self.alltabdata[opentab]["pt_type"] == 3:
             y1 = np.min([self.y1_spike,yy])
             y2 = np.max([self.y1_spike,yy])
             goodvals = (depthplot < y1) | (depthplot > y2)
@@ -785,8 +785,8 @@ def on_release(self,event):
             depthplot = depthplot[goodvals]
                 
         #replace values in profile
-        self.alltabdata[curtabstr]["profdata"]["depth_qc"] = depthplot
-        self.alltabdata[curtabstr]["profdata"]["temp_qc"] = tempplot
+        self.alltabdata[opentab]["profdata"]["depth_qc"] = depthplot
+        self.alltabdata[opentab]["profdata"]["temp_qc"] = tempplot
         
         #applying user corrections
         self.applychanges()
@@ -799,12 +799,12 @@ def on_release(self,event):
     finally:
         #restore cursor type, delete current indices, reset for next correction
         QApplication.restoreOverrideCursor()
-        self.alltabdata[curtabstr]["ProfCanvas"].mpl_disconnect(self.alltabdata[curtabstr]["pt"])
-        del self.alltabdata[curtabstr]["pt"]
-        if self.alltabdata[curtabstr]["pt_type"] == 3: #if spike selection, remove additional mpl connection
-            self.alltabdata[curtabstr]["ProfCanvas"].mpl_disconnect(self.alltabdata[curtabstr]["ptspike"])
-            del self.alltabdata[curtabstr]["ptspike"]
-        self.alltabdata[curtabstr]["pt_type"] = 0 #reset
+        self.alltabdata[opentab]["ProfCanvas"].mpl_disconnect(self.alltabdata[opentab]["pt"])
+        del self.alltabdata[opentab]["pt"]
+        if self.alltabdata[opentab]["pt_type"] == 3: #if spike selection, remove additional mpl connection
+            self.alltabdata[opentab]["ProfCanvas"].mpl_disconnect(self.alltabdata[opentab]["ptspike"])
+            del self.alltabdata[opentab]["ptspike"]
+        self.alltabdata[opentab]["pt_type"] = 0 #reset
 
         
         
@@ -812,12 +812,12 @@ def on_release(self,event):
 #toggle visibility of climatology profile
 def toggleclimooverlay(self,pressed):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         if pressed:
-            self.alltabdata[curtabstr]["climohandle"].set_visible(True)     
+            self.alltabdata[opentab]["climohandle"].set_visible(True)     
         else:
-            self.alltabdata[curtabstr]["climohandle"].set_visible(False)
-        self.alltabdata[curtabstr]["ProfCanvas"].draw()
+            self.alltabdata[opentab]["climohandle"].set_visible(False)
+        self.alltabdata[opentab]["ProfCanvas"].draw()
     except Exception:
         trace_error()
         self.posterror("Failed to toggle climatology overlay")

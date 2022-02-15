@@ -48,50 +48,50 @@ from ._PEfunctions import continuetoqc
 def makenewprocessortab(self):     
     try:
 
-        newtabnum,curtabstr = self.addnewtab()
+        opentab,tabID = self.addnewtab()
 
         #also creates proffig and locfig so they will both be ready to go when the tab transitions from signal processor to profile editor
-        self.alltabdata[curtabstr] = {"tab":QWidget(),"tablayout":QGridLayout(),"ProcessorFig":plt.figure(),"profileSaved":True,
+        self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"ProcessorFig":plt.figure(),"profileSaved":True,
                   "tabtype":"DAS_u","isprocessing":False, "source":"none"}
 
-        self.setnewtabcolor(self.alltabdata[curtabstr]["tab"])
+        self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
         #initializing raw data storage
-        self.alltabdata[curtabstr]["rawdata"] = {"temperature":np.array([]),
+        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]),
                   "depth":np.array([]),"frequency":np.array([]),"time":np.array([]),
                   "istriggered":False,"firstpointtime":0,"starttime":0}
         
-        self.alltabdata[curtabstr]["tablayout"].setSpacing(10)
+        self.alltabdata[opentab]["tablayout"].setSpacing(10)
 
         #creating new tab, assigning basic info
-        self.tabWidget.addTab(self.alltabdata[curtabstr]["tab"],'New Tab') 
-        self.tabWidget.setCurrentIndex(newtabnum)
-        self.tabWidget.setTabText(newtabnum, "New Drop #" + str(self.totaltabs)) 
-        self.alltabdata[curtabstr]["tabnum"] = self.totaltabs #assigning unique, unchanging number to current tab
-        self.alltabdata[curtabstr]["tablayout"].setSpacing(10)
+        self.tabWidget.addTab(self.alltabdata[opentab]["tab"],'New Tab') 
+        self.tabWidget.setCurrentIndex(opentab)
+        self.tabWidget.setTabText(opentab, "New Drop #" + str(self.totaltabs)) 
+        self.alltabdata[opentab]["tabnum"] = tabID #assigning unique, unchanging number to current tab
+        self.alltabdata[opentab]["tablayout"].setSpacing(10)
         
         #ADDING FIGURE TO GRID LAYOUT
-        self.alltabdata[curtabstr]["ProcessorCanvas"] = FigureCanvas(self.alltabdata[curtabstr]["ProcessorFig"]) 
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["ProcessorCanvas"],0,0,11,1)
-        self.alltabdata[curtabstr]["ProcessorCanvas"].setStyleSheet("background-color:transparent;")
-        self.alltabdata[curtabstr]["ProcessorFig"].patch.set_facecolor('None')
+        self.alltabdata[opentab]["ProcessorCanvas"] = FigureCanvas(self.alltabdata[opentab]["ProcessorFig"]) 
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["ProcessorCanvas"],0,0,11,1)
+        self.alltabdata[opentab]["ProcessorCanvas"].setStyleSheet("background-color:transparent;")
+        self.alltabdata[opentab]["ProcessorFig"].patch.set_facecolor('None')
 
         #making profile processing result plots
-        self.alltabdata[curtabstr]["ProcessorAx"] = plt.axes()
+        self.alltabdata[opentab]["ProcessorAx"] = plt.axes()
 
 
         #prep window to plot data
-        self.alltabdata[curtabstr]["ProcessorAx"].set_xlabel('Temperature ($^\circ$C)')
-        self.alltabdata[curtabstr]["ProcessorAx"].set_ylabel('Depth (m)')
-        self.alltabdata[curtabstr]["ProcessorAx"].set_title('Data Received',fontweight="bold")
-        self.alltabdata[curtabstr]["ProcessorAx"].grid()
-        self.alltabdata[curtabstr]["ProcessorAx"].set_xlim([-2,32])
-        self.alltabdata[curtabstr]["ProcessorAx"].set_ylim([5,1000])
-        self.alltabdata[curtabstr]["ProcessorAx"].invert_yaxis()
-        self.alltabdata[curtabstr]["ProcessorCanvas"].draw() #refresh plots on window
+        self.alltabdata[opentab]["ProcessorAx"].set_xlabel('Temperature ($^\circ$C)')
+        self.alltabdata[opentab]["ProcessorAx"].set_ylabel('Depth (m)')
+        self.alltabdata[opentab]["ProcessorAx"].set_title('Data Received',fontweight="bold")
+        self.alltabdata[opentab]["ProcessorAx"].grid()
+        self.alltabdata[opentab]["ProcessorAx"].set_xlim([-2,32])
+        self.alltabdata[opentab]["ProcessorAx"].set_ylim([5,1000])
+        self.alltabdata[opentab]["ProcessorAx"].invert_yaxis()
+        self.alltabdata[opentab]["ProcessorCanvas"].draw() #refresh plots on window
         
         #and add new buttons and other widgets
-        self.alltabdata[curtabstr]["tabwidgets"] = {}
+        self.alltabdata[opentab]["tabwidgets"] = {}
                 
         #Getting necessary data
         if self.wrdll != 0:
@@ -100,81 +100,81 @@ def makenewprocessortab(self):
             winradiooptions = []
 
         #making widgets
-        self.alltabdata[curtabstr]["tabwidgets"]["datasourcetitle"] = QLabel('Data Source:') #1
-        self.alltabdata[curtabstr]["tabwidgets"]["refreshdataoptions"] = QPushButton('Refresh')  # 2
-        self.alltabdata[curtabstr]["tabwidgets"]["refreshdataoptions"].clicked.connect(self.datasourcerefresh)
-        self.alltabdata[curtabstr]["tabwidgets"]["datasource"] = QComboBox() #3
-        self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem('Test')
-        self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem('Audio')
+        self.alltabdata[opentab]["tabwidgets"]["datasourcetitle"] = QLabel('Data Source:') #1
+        self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"] = QPushButton('Refresh')  # 2
+        self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"].clicked.connect(self.datasourcerefresh)
+        self.alltabdata[opentab]["tabwidgets"]["datasource"] = QComboBox() #3
+        self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Test')
+        self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Audio')
         for wr in winradiooptions:
-            self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem(wr) #ADD COLOR OPTION
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(wr) #ADD COLOR OPTION
         
         #default receiver selection if 1+ receivers are connected and not actively processing
-        self.alltabdata[curtabstr]["datasource"] = "Initializing" #filler value for loop, overwritten after active receivers identified
+        self.alltabdata[opentab]["datasource"] = "Initializing" #filler value for loop, overwritten after active receivers identified
         if len(winradiooptions) > 0:
             isnotbusy = [True]*len(winradiooptions)
             for iii,serialnum in enumerate(winradiooptions):
                 for ctab in self.alltabdata:
-                    if ctab != curtabstr and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
+                    if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
                         isnotbusy[iii] = False
             if sum(isnotbusy) > 0:
-                self.alltabdata[curtabstr]["tabwidgets"]["datasource"].setCurrentIndex(np.where(isnotbusy)[0][0]+2)
+                self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(np.where(isnotbusy)[0][0]+2)
         
         #connect datasource dropdown to changer function, pull current datasource
-        self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
-        self.alltabdata[curtabstr]["datasource"] = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentText()
+        self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
+        self.alltabdata[opentab]["datasource"] = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
         
-        self.alltabdata[curtabstr]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
-        self.alltabdata[curtabstr]["tabwidgets"]["probetype"] = QComboBox()
+        self.alltabdata[opentab]["tabwidgets"]["probetitle"] = QLabel('Probe Type:')
+        self.alltabdata[opentab]["tabwidgets"]["probetype"] = QComboBox()
         for p in self.probetypes:
-            self.alltabdata[curtabstr]["tabwidgets"]["probetype"].addItem(p)
-        self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
+            self.alltabdata[opentab]["tabwidgets"]["probetype"].addItem(p)
+        self.alltabdata[opentab]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
         
         
-        self.alltabdata[curtabstr]["tabwidgets"]["channeltitle"] = QLabel('VHF Channel:') #4
-        self.alltabdata[curtabstr]["tabwidgets"]["freqtitle"] = QLabel('VHF Frequency (MHz):') #5
+        self.alltabdata[opentab]["tabwidgets"]["channeltitle"] = QLabel('Channel:') #4
+        self.alltabdata[opentab]["tabwidgets"]["freqtitle"] = QLabel('Frequency (MHz):') #5
         
-        self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"] = QSpinBox() #6
-        self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"].setRange(1,99)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"].setSingleStep(1)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"].setValue(12)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"].valueChanged.connect(self.changefrequencytomatchchannel)
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"] = QSpinBox() #6
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setRange(1,99)
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setSingleStep(1)
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setValue(12)
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].valueChanged.connect(self.changefrequencytomatchchannel)
         
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"] = QDoubleSpinBox() #7
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].setRange(136, 173.5)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].setSingleStep(0.375)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].setDecimals(3)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].setValue(170.5)
-        self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].valueChanged.connect(self.changechanneltomatchfrequency)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"] = QDoubleSpinBox() #7
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setRange(136, 173.5)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setSingleStep(0.375)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setDecimals(3)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setValue(170.5)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].valueChanged.connect(self.changechanneltomatchfrequency)
         
-        self.alltabdata[curtabstr]["tabwidgets"]["startprocessing"] = QPushButton('Start') #8
-        self.alltabdata[curtabstr]["tabwidgets"]["startprocessing"].clicked.connect(self.startprocessor)
-        self.alltabdata[curtabstr]["tabwidgets"]["stopprocessing"] = QPushButton('Stop') #9
-        self.alltabdata[curtabstr]["tabwidgets"]["stopprocessing"].clicked.connect(self.stopprocessor)
-        self.alltabdata[curtabstr]["tabwidgets"]["processprofile"] = QPushButton('Process Profile') #10
-        self.alltabdata[curtabstr]["tabwidgets"]["processprofile"].clicked.connect(self.processprofile)
-        self.alltabdata[curtabstr]["tabwidgets"]["saveprofile"] = QPushButton('Save Profile') #21
-        self.alltabdata[curtabstr]["tabwidgets"]["saveprofile"].clicked.connect(self.savedataincurtab)
+        self.alltabdata[opentab]["tabwidgets"]["startprocessing"] = QPushButton('Start') #8
+        self.alltabdata[opentab]["tabwidgets"]["startprocessing"].clicked.connect(self.startprocessor)
+        self.alltabdata[opentab]["tabwidgets"]["stopprocessing"] = QPushButton('Stop') #9
+        self.alltabdata[opentab]["tabwidgets"]["stopprocessing"].clicked.connect(self.stopprocessor)
+        self.alltabdata[opentab]["tabwidgets"]["processprofile"] = QPushButton('Process Profile') #10
+        self.alltabdata[opentab]["tabwidgets"]["processprofile"].clicked.connect(self.processprofile)
+        self.alltabdata[opentab]["tabwidgets"]["saveprofile"] = QPushButton('Save Profile') #21
+        self.alltabdata[opentab]["tabwidgets"]["saveprofile"].clicked.connect(self.savedataincurtab)
         
-        self.alltabdata[curtabstr]["tabwidgets"]["datetitle"] = QLabel('Date: ') #11
-        self.alltabdata[curtabstr]["tabwidgets"]["dateedit"] = QLineEdit('YYYYMMDD') #12
-        self.alltabdata[curtabstr]["tabwidgets"]["timetitle"] = QLabel('Time (UTC): ') #13
-        self.alltabdata[curtabstr]["tabwidgets"]["timeedit"] = QLineEdit('HHMM') #14
-        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ') #15
-        self.alltabdata[curtabstr]["tabwidgets"]["latedit"] = QLineEdit('XX.XXX') #16
-        self.alltabdata[curtabstr]["tabwidgets"]["lontitle"] = QLabel('Longitude (E>0): ') #17
-        self.alltabdata[curtabstr]["tabwidgets"]["lonedit"] = QLineEdit('XX.XXX') #18
-        self.alltabdata[curtabstr]["tabwidgets"]["idtitle"] = QLabel('Platform ID/Tail#: ') #19
-        self.alltabdata[curtabstr]["tabwidgets"]["idedit"] = QLineEdit(self.settingsdict["platformid"]) #20
+        self.alltabdata[opentab]["tabwidgets"]["datetitle"] = QLabel('Date: ') #11
+        self.alltabdata[opentab]["tabwidgets"]["dateedit"] = QLineEdit('YYYYMMDD') #12
+        self.alltabdata[opentab]["tabwidgets"]["timetitle"] = QLabel('Time (UTC): ') #13
+        self.alltabdata[opentab]["tabwidgets"]["timeedit"] = QLineEdit('HHMM') #14
+        self.alltabdata[opentab]["tabwidgets"]["lattitle"] = QLabel('Latitude (N>0): ') #15
+        self.alltabdata[opentab]["tabwidgets"]["latedit"] = QLineEdit('XX.XXX') #16
+        self.alltabdata[opentab]["tabwidgets"]["lontitle"] = QLabel('Longitude (E>0): ') #17
+        self.alltabdata[opentab]["tabwidgets"]["lonedit"] = QLineEdit('XX.XXX') #18
+        self.alltabdata[opentab]["tabwidgets"]["idtitle"] = QLabel('Platform ID/Tail#: ') #19
+        self.alltabdata[opentab]["tabwidgets"]["idedit"] = QLineEdit(self.settingsdict["platformid"]) #20
         
         #formatting widgets
-        self.alltabdata[curtabstr]["tabwidgets"]["channeltitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["freqtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["lattitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["lontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["datetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["timetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.alltabdata[curtabstr]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["channeltitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["freqtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["lattitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["lontitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["datetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["timetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.alltabdata[opentab]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         #should be 19 entries 
         widgetorder = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing", "processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle", "lonedit", "idtitle", "idedit"]
@@ -186,34 +186,34 @@ def makenewprocessortab(self):
 
         #adding user inputs
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
-            self.alltabdata[curtabstr]["tabwidgets"][i].setFont(self.labelfont)
-            self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["tabwidgets"][i],r,c,re,ce)
+            self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
+            self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
                 
         #adding table widget after all other buttons populated
-        self.alltabdata[curtabstr]["tabwidgets"]["table"] = QTableWidget() #19
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setColumnCount(6)
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setRowCount(0) 
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setFont(self.labelfont)
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].verticalHeader().setVisible(False)
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #removes scroll bars
-        self.alltabdata[curtabstr]["tabwidgets"]["tableheader"] = self.alltabdata[curtabstr]["tabwidgets"]["table"].horizontalHeader() 
-        self.alltabdata[curtabstr]["tabwidgets"]["tableheader"].setFont(self.labelfont)
+        self.alltabdata[opentab]["tabwidgets"]["table"] = QTableWidget() #19
+        self.alltabdata[opentab]["tabwidgets"]["table"].setColumnCount(6)
+        self.alltabdata[opentab]["tabwidgets"]["table"].setRowCount(0) 
+        self.alltabdata[opentab]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
+        self.alltabdata[opentab]["tabwidgets"]["table"].setFont(self.labelfont)
+        self.alltabdata[opentab]["tabwidgets"]["table"].verticalHeader().setVisible(False)
+        self.alltabdata[opentab]["tabwidgets"]["table"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #removes scroll bars
+        self.alltabdata[opentab]["tabwidgets"]["tableheader"] = self.alltabdata[opentab]["tabwidgets"]["table"].horizontalHeader() 
+        self.alltabdata[opentab]["tabwidgets"]["tableheader"].setFont(self.labelfont)
         for ii in range(0,6):
-            self.alltabdata[curtabstr]["tabwidgets"]["tableheader"].setSectionResizeMode(ii, QHeaderView.Stretch)  
-        self.alltabdata[curtabstr]["tabwidgets"]["table"].setEditTriggers(QTableWidget.NoEditTriggers)
-        self.alltabdata[curtabstr]["tablayout"].addWidget(self.alltabdata[curtabstr]["tabwidgets"]["table"],9,2,2,7)
+            self.alltabdata[opentab]["tabwidgets"]["tableheader"].setSectionResizeMode(ii, QHeaderView.Stretch)  
+        self.alltabdata[opentab]["tabwidgets"]["table"].setEditTriggers(QTableWidget.NoEditTriggers)
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"]["table"],9,2,2,7)
 
         #adjusting stretch factors for all rows/columns
         colstretch = [8,0,1,1,1,1,1,1,1]
         for col,cstr in enumerate(colstretch):
-            self.alltabdata[curtabstr]["tablayout"].setColumnStretch(col,cstr)
+            self.alltabdata[opentab]["tablayout"].setColumnStretch(col,cstr)
         rowstretch = [1,1,1,1,1,1,1,1,1,10]
         for row,rstr in enumerate(rowstretch):
-            self.alltabdata[curtabstr]["tablayout"].setRowStretch(row,rstr)
+            self.alltabdata[opentab]["tablayout"].setRowStretch(row,rstr)
 
         #making the current layout for the tab
-        self.alltabdata[curtabstr]["tab"].setLayout(self.alltabdata[curtabstr]["tablayout"])
+        self.alltabdata[opentab]["tab"].setLayout(self.alltabdata[opentab]["tablayout"])
 
     except Exception: #if something breaks
         trace_error()
@@ -228,21 +228,21 @@ def makenewprocessortab(self):
 #refresh list of available receivers
 def datasourcerefresh(self): 
     try:
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         # only lets you change the WINRADIO if the current tab isn't already processing
-        if not self.alltabdata[curtabstr]["isprocessing"]:
-            self.alltabdata[curtabstr]["tabwidgets"]["datasource"].clear()
-            self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem('Test')
-            self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem('Audio')
+        if not self.alltabdata[opentab]["isprocessing"]:
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].clear()
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Test')
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Audio')
             # Getting necessary data
             if self.wrdll != 0:
                 winradiooptions = vsp.listwinradios(self.wrdll)
             else:
                 winradiooptions = []
             for wr in winradiooptions:
-                self.alltabdata[curtabstr]["tabwidgets"]["datasource"].addItem(wr)  # ADD COLOR OPTION
-            self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
-            self.alltabdata[curtabstr]["datasource"] = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentText()
+                self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(wr)  # ADD COLOR OPTION
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
+            self.alltabdata[opentab]["datasource"] = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
 
         else:
             self.postwarning("You cannot refresh input devices while processing. Please click STOP to discontinue processing before refreshing device list")
@@ -255,30 +255,30 @@ def datasourcerefresh(self):
 def datasourcechange(self):
     try:
         #only lets you change the data source if it isn't currently processing
-        curtabstr = "Tab " + str(self.whatTab())
-        index = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].findText(self.alltabdata[curtabstr]["datasource"], Qt.MatchFixedString)
+        opentab = self.whatTab()
+        index = self.alltabdata[opentab]["tabwidgets"]["datasource"].findText(self.alltabdata[opentab]["datasource"], Qt.MatchFixedString)
         
         isbusy = False
 
         #checks to see if selection is busy
-        woption = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentText()
+        woption = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
         if woption != "Audio" and woption != "Test":
             for ctab in self.alltabdata:
-                if ctab != curtabstr and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == woption:
+                if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == woption:
                     isbusy = True
 
         if isbusy:
             self.posterror("This WINRADIO appears to currently be in use! Please stop any other active tabs using this device before proceeding.")
             if index >= 0:
-                self.alltabdata[curtabstr]["tabwidgets"]["datasource"].setCurrentIndex(index)
+                self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(index)
             return
  
         #only lets you change the WINRADIO if the current tab isn't already processing
-        if not self.alltabdata[curtabstr]["isprocessing"]:
-            self.alltabdata[curtabstr]["datasource"] = woption
-        elif self.alltabdata[curtabstr]["datasource"] != woption:
+        if not self.alltabdata[opentab]["isprocessing"]:
+            self.alltabdata[opentab]["datasource"] = woption
+        elif self.alltabdata[opentab]["datasource"] != woption:
             if index >= 0:
-                 self.alltabdata[curtabstr]["tabwidgets"]["datasource"].setCurrentIndex(index)
+                 self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(index)
             self.postwarning("You cannot change input devices while processing. Please click STOP to discontinue processing before switching devices")
     except Exception:
         trace_error()
@@ -292,9 +292,9 @@ def changefrequencytomatchchannel(self,newchannel):
         if self.changechannelunlocked: #to prevent recursion
             self.changechannelunlocked = False 
             
-            curtabstr = "Tab " + str(self.whatTab())
+            opentab = self.whatTab()
             newfrequency,newchannel = vsp.channelandfrequencylookup(newchannel,'findfrequency')
-            self.changechannelandfrequency(newchannel,newfrequency,curtabstr)
+            self.changechannelandfrequency(newchannel,newfrequency,opentab)
             self.changechannelunlocked = True 
         
     except Exception:
@@ -309,10 +309,10 @@ def changechanneltomatchfrequency(self,newfrequency):
         if self.changechannelunlocked: #to prevent recursion
             self.changechannelunlocked = False 
             
-            curtabstr = "Tab " + str(self.whatTab())
+            opentab = self.whatTab()
             #special step to skip invalid frequencies!
             if newfrequency == 161.5 or newfrequency == 161.875:
-                oldchannel = self.alltabdata[curtabstr]["tabwidgets"]["vhfchannel"].value()
+                oldchannel = self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].value()
                 oldfrequency,_ = vsp.channelandfrequencylookup(oldchannel,'findfrequency')
                 if oldfrequency >= 161.6:
                     newfrequency = 161.125
@@ -320,7 +320,7 @@ def changechanneltomatchfrequency(self,newfrequency):
                     newfrequency = 162.25
                     
             newchannel,newfrequency = vsp.channelandfrequencylookup(newfrequency,'findchannel')
-            self.changechannelandfrequency(newchannel,newfrequency,curtabstr)
+            self.changechannelandfrequency(newchannel,newfrequency,opentab)
             self.changechannelunlocked = True 
         
     except Exception:
@@ -329,10 +329,10 @@ def changechanneltomatchfrequency(self,newfrequency):
         
         
         
-def changechannelandfrequency(self,newchannel,newfrequency,curtabstr):
+def changechannelandfrequency(self,newchannel,newfrequency,opentab):
     try:
 
-        curdatasource = self.alltabdata[curtabstr]["datasource"]
+        curdatasource = self.alltabdata[opentab]["datasource"]
         
         # sets all tabs with the current receiver to the same channel/freq
         for ctab in self.alltabdata:
@@ -343,7 +343,7 @@ def changechannelandfrequency(self,newchannel,newfrequency,curtabstr):
                 
                 #sends signal to processor thread to change demodulation VHF frequency for any actively processing non-test/non-audio tabs
                 if self.alltabdata[ctab]["isprocessing"] and curdatasource != 'Audio' and curdatasource != 'Test':
-                    self.alltabdata[curtabstr]["processor"].changecurrentfrequency(newfrequency)
+                    self.alltabdata[opentab]["processor"].changecurrentfrequency(newfrequency)
             
     except Exception:
         trace_error()
@@ -367,14 +367,14 @@ def updatefftsettings(self):
 #starting signal processing thread
 def startprocessor(self):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
-        if not self.alltabdata[curtabstr]["isprocessing"]:
+        opentab = self.whatTab()
+        if not self.alltabdata[opentab]["isprocessing"]:
             
-            status, datasource, newsource = self.prepprocessor(curtabstr)
+            status, datasource, newsource = self.prepprocessor(opentab)
             if status:
-                self.runprocessor(curtabstr, datasource, newsource)
-                self.alltabdata[curtabstr]["profileSaved"] = False
-                self.add_asterisk()
+                self.runprocessor(opentab, datasource, newsource)
+                self.alltabdata[opentab]["profileSaved"] = False
+                self.add_asterisk(opentab)
                 
     except Exception:
         trace_error()
@@ -383,8 +383,8 @@ def startprocessor(self):
         
         
         
-def prepprocessor(self, curtabstr):
-    datasource = self.alltabdata[curtabstr]["datasource"]
+def prepprocessor(self, opentab):
+    datasource = self.alltabdata[opentab]["datasource"]
     #running processor here
     
     #if too many signal processor threads are already running
@@ -400,7 +400,7 @@ def prepprocessor(self, curtabstr):
     else:
         newsource = "rf"
         
-    oldsource = self.alltabdata[curtabstr]["source"]
+    oldsource = self.alltabdata[opentab]["source"]
     if oldsource == "none":
         pass #wait to change source until method has made it past possible catching points (so user can restart in same tab)
         
@@ -417,7 +417,7 @@ def prepprocessor(self, curtabstr):
             # getting filename
             fname, ok = QFileDialog.getOpenFileName(self, 'Open file',self.defaultfilereaddir,"Source Data Files (*.WAV *.Wav *.wav *PCM *Pcm *pcm *MP3 *Mp3 *mp3)","",self.fileoptions)
             if not ok or fname == "":
-                self.alltabdata[curtabstr]["isprocessing"] = False
+                self.alltabdata[opentab]["isprocessing"] = False
                 return False,"No","No"
             else:
                 splitpath = path.split(fname)
@@ -440,7 +440,7 @@ def prepprocessor(self, curtabstr):
                     return False,"No","No"
                     
                 else:
-                    self.audioChannelSelector = AudioWindow(nchannels, curtabstr, fname) #creating and connecting window
+                    self.audioChannelSelector = AudioWindow(nchannels, opentab, fname) #creating and connecting window
                     self.audioChannelSelector.signals.closed.connect(self.audioWindowClosed)
                     self.audioChannelSelector.show() #bring window to front
                     self.audioChannelSelector.raise_()
@@ -456,7 +456,7 @@ def prepprocessor(self, curtabstr):
         
         #checks to make sure current receiver isn't busy
         for ctab in self.alltabdata:
-            if ctab != curtabstr and self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == datasource:
+            if ctab != opentab and self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == datasource:
                 self.posterror("This WINRADIO appears to currently be in use! Please stop any other active tabs using this device before proceeding.")
                 return False,"No"
     
@@ -466,29 +466,29 @@ def prepprocessor(self, curtabstr):
     
     
     
-def runprocessor(self, curtabstr, datasource, newsource):
+def runprocessor(self, opentab, datasource, newsource):
                 
     #gets current tab number
-    curtabnum = self.alltabdata[curtabstr]["tabnum"]
+    tabID = self.alltabdata[opentab]["tabnum"]
     
     #getting probe type
-    probetype = self.alltabdata[curtabstr]["tabwidgets"]["probetype"].currentText()
+    probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
     self.defaultprobe = probetype #default probe to display for DAS and PE tabs
-    self.alltabdata[curtabstr]["probetype"] = probetype
+    self.alltabdata[opentab]["probetype"] = probetype
     
     #disabling datasouce and probetype dropdown boxes
-    self.alltabdata[curtabstr]["tabwidgets"]["datasource"].setEnabled(False)
-    self.alltabdata[curtabstr]["tabwidgets"]["probetype"].setEnabled(False)
+    self.alltabdata[opentab]["tabwidgets"]["datasource"].setEnabled(False)
+    self.alltabdata[opentab]["tabwidgets"]["probetype"].setEnabled(False)
     
     #gets rid of scroll bar on table
-    self.alltabdata[curtabstr]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    self.alltabdata[opentab]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
     
     autopopulate = False #tracking whether to autopopulate fields (waits until after thread has been started to prevent from hanging on GPS stream)
 
     #saving start time for current drop
-    if self.alltabdata[curtabstr]["rawdata"]["starttime"] == 0:
+    if self.alltabdata[opentab]["rawdata"]["starttime"] == 0:
         starttime = dt.datetime.utcnow()
-        self.alltabdata[curtabstr]["rawdata"]["starttime"] = starttime
+        self.alltabdata[opentab]["rawdata"]["starttime"] = starttime
         
         #autopopulating selected fields
         if datasource[:5] != 'Audio': #but not if reprocessing from audio file
@@ -496,11 +496,11 @@ def runprocessor(self, curtabstr, datasource, newsource):
     
     #add gps coordinates if a good gps fix is available
     if self.goodPosition == True:
-        self.alltabdata[curtabstr]['tabwidgets']['latedit'].setText(str(round(self.lat, 3)))
-        self.alltabdata[curtabstr]['tabwidgets']['lonedit'].setText(str(round(self.lon, 3)))
+        self.alltabdata[opentab]['tabwidgets']['latedit'].setText(str(round(self.lat, 3)))
+        self.alltabdata[opentab]['tabwidgets']['lonedit'].setText(str(round(self.lon, 3)))
                 
     else:
-        starttime = self.alltabdata[curtabstr]["rawdata"]["starttime"]
+        starttime = self.alltabdata[opentab]["rawdata"]["starttime"]
         
     #this should never happen (if there is no DLL loaded there shouldn't be any receivers detected), but just in case
     if self.wrdll == 0 and datasource != 'Test' and datasource[:5] != 'Audio':
@@ -508,63 +508,63 @@ def runprocessor(self, curtabstr, datasource, newsource):
         return
     elif datasource[:5] == 'Audio': #build audio progress bar
         # building progress bar
-        self.alltabdata[curtabstr]["tabwidgets"]["audioprogressbar"] = QProgressBar()
-        self.alltabdata[curtabstr]["tablayout"].addWidget(
-            self.alltabdata[curtabstr]["tabwidgets"]["audioprogressbar"], 8, 2, 1, 7)
-        self.alltabdata[curtabstr]["tabwidgets"]["audioprogressbar"].setValue(0)
+        self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"] = QProgressBar()
+        self.alltabdata[opentab]["tablayout"].addWidget(
+            self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"], 8, 2, 1, 7)
+        self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"].setValue(0)
         QApplication.processEvents()
         
         
     #initializing thread, connecting signals/slots
-    self.alltabdata[curtabstr]["source"] = newsource #assign current source as processor if previously unassigned (no restarting in this tab beyond this point)
-    vhffreq = self.alltabdata[curtabstr]["tabwidgets"]["vhffreq"].value()
-    self.alltabdata[curtabstr]["processor"] = vsp.ThreadProcessor(self.wrdll, datasource, vhffreq, curtabnum,  starttime, self.alltabdata[curtabstr]["rawdata"]["istriggered"], self.alltabdata[curtabstr]["rawdata"]["firstpointtime"], self.settingsdict["fftwindow"], self.settingsdict["minfftratio"],self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"],self.settingsdict["triggersiglev"], self.settingsdict["tcoeff"], self.settingsdict["zcoeff"], self.settingsdict["flims"], self.slash, self.tempdir)
+    self.alltabdata[opentab]["source"] = newsource #assign current source as processor if previously unassigned (no restarting in this tab beyond this point)
+    vhffreq = self.alltabdata[opentab]["tabwidgets"]["vhffreq"].value()
+    self.alltabdata[opentab]["processor"] = vsp.ThreadProcessor(self.wrdll, datasource, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.settingsdict["fftwindow"], self.settingsdict["minfftratio"],self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"],self.settingsdict["triggersiglev"], self.settingsdict["tcoeff"], self.settingsdict["zcoeff"], self.settingsdict["flims"], self.slash, self.tempdir)
     
-    self.alltabdata[curtabstr]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
-    self.alltabdata[curtabstr]["processor"].signals.iterated.connect(self.updateUIinfo)
-    self.alltabdata[curtabstr]["processor"].signals.triggered.connect(self.triggerUI)
-    self.alltabdata[curtabstr]["processor"].signals.terminated.connect(self.updateUIfinal)
+    self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
+    self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
+    self.alltabdata[opentab]["processor"].signals.triggered.connect(self.triggerUI)
+    self.alltabdata[opentab]["processor"].signals.terminated.connect(self.updateUIfinal)
 
     #connecting audio file-specific signal (to update progress bar on GUI)
     if datasource[:5] == 'Audio':
-        self.alltabdata[curtabstr]["processor"].signals.updateprogress.connect(self.updateaudioprogressbar)
+        self.alltabdata[opentab]["processor"].signals.updateprogress.connect(self.updateaudioprogressbar)
     
     #starting thread
-    self.threadpool.start(self.alltabdata[curtabstr]["processor"])
-    self.alltabdata[curtabstr]["isprocessing"] = True
+    self.threadpool.start(self.alltabdata[opentab]["processor"])
+    self.alltabdata[opentab]["isprocessing"] = True
     
     #the code is still running but data collection has at least been initialized. This allows self.savecurrenttab() to save raw data files
-    self.alltabdata[curtabstr]["tabtype"] = "DAS_p"
+    self.alltabdata[opentab]["tabtype"] = "DAS_p"
     
     #autopopulating fields if necessary
     if autopopulate:
         if self.settingsdict["autodtg"]:#populates date and time if requested
             curdatestr = str(starttime.year) + str(starttime.month).zfill(2) + str(starttime.day).zfill(2)
-            self.alltabdata[curtabstr]["tabwidgets"]["dateedit"].setText(curdatestr)
+            self.alltabdata[opentab]["tabwidgets"]["dateedit"].setText(curdatestr)
             curtimestr = str(starttime.hour).zfill(2) + str(starttime.minute).zfill(2)
-            self.alltabdata[curtabstr]["tabwidgets"]["timeedit"].setText(curtimestr)
+            self.alltabdata[opentab]["tabwidgets"]["timeedit"].setText(curtimestr)
         if self.settingsdict["autolocation"] and self.settingsdict["comport"] != 'n':
             if abs((self.datetime - starttime).total_seconds()) <= 30: #GPS ob within 30 seconds
-                self.alltabdata[curtabstr]["tabwidgets"]["latedit"].setText(str(round(self.lat,3)))
-                self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].setText(str(round(self.lon,3)))
+                self.alltabdata[opentab]["tabwidgets"]["latedit"].setText(str(round(self.lat,3)))
+                self.alltabdata[opentab]["tabwidgets"]["lonedit"].setText(str(round(self.lon,3)))
             else:
                 self.postwarning("Last GPS fix expired (> 30 seconds old) \n No Lat/Lon provided")
         if self.settingsdict["autoid"]:
-            self.alltabdata[curtabstr]["tabwidgets"]["idedit"].setText(self.settingsdict["platformid"])
+            self.alltabdata[opentab]["tabwidgets"]["idedit"].setText(self.settingsdict["platformid"])
             
     
         
 #aborting processor
 def stopprocessor(self):
     try:
-        curtabstr = "Tab " + str(self.whatTab())
-        if self.alltabdata[curtabstr]["isprocessing"]:
-            curtabstr = "Tab " + str(self.whatTab())
-            datasource = self.alltabdata[curtabstr]["datasource"]
+        opentab = self.whatTab()
+        if self.alltabdata[opentab]["isprocessing"]:
+            opentab = self.whatTab()
+            datasource = self.alltabdata[opentab]["datasource"]
             
-            self.alltabdata[curtabstr]["isprocessing"] = False #processing is done
-            self.alltabdata[curtabstr]["processor"].abort()
-            self.alltabdata[curtabstr]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+            self.alltabdata[opentab]["isprocessing"] = False #processing is done
+            self.alltabdata[opentab]["processor"].abort()
+            self.alltabdata[opentab]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
                 
     except Exception:
         trace_error()
@@ -579,7 +579,7 @@ def stopprocessor(self):
 
 class AudioWindow(QWidget):
     
-    def __init__(self, nchannels, curtabstr, fname):
+    def __init__(self, nchannels, opentab, fname):
         super(AudioWindow, self).__init__()
         
         self.layout = QVBoxLayout()
@@ -589,7 +589,7 @@ class AudioWindow(QWidget):
         self.wasClosed = False
         self.nchannels = nchannels
         self.fname = fname
-        self.curtabstr = curtabstr
+        self.opentab = opentab
         
         self.signals = AudioWindowSignals()
         
@@ -617,7 +617,7 @@ class AudioWindow(QWidget):
         self.datasource = f"Audio{self.selectedChannel:05d}{self.fname}" 
         
         #emit signal
-        self.signals.closed.emit(True, self.curtabstr, self.datasource)
+        self.signals.closed.emit(True, self.opentab, self.datasource)
         
         #close dialogue box
         self.wasClosed = True
@@ -628,19 +628,19 @@ class AudioWindow(QWidget):
     def closeEvent(self, event):
         event.accept()
         if not self.wasClosed:
-            self.signals.closed.emit(False, "No", "No")
+            self.signals.closed.emit(False, 0, "none")
             self.wasClosed = True
             
 #initializing signals for data to be passed back to main loop
 class AudioWindowSignals(QObject): 
-    closed = pyqtSignal(int, str, str)
+    closed = pyqtSignal(int, int, str)
 
 
 #slot in main program to close window (only one channel selector window can be open at a time)
-@pyqtSlot(int, str, str)
-def audioWindowClosed(self, wasGood, curtabstr, datasource):
+@pyqtSlot(int, int, str)
+def audioWindowClosed(self, wasGood, opentab, datasource):
     if wasGood:
-        self.runprocessor(curtabstr, datasource, "audio")
+        self.runprocessor(opentab, datasource, "audio")
     
     
 
@@ -651,20 +651,18 @@ def audioWindowClosed(self, wasGood, curtabstr, datasource):
 #        SIGNAL PROCESSOR SLOTS AND OTHER CODE
 # =============================================================================
 #getting tab string (self.alltabdata key for specified tab) from tab number
-def gettabstrfromnum(self,tabnum):
-    for tabname in self.alltabdata:
-        if self.alltabdata[tabname]["tabnum"] == tabnum:
-            return tabname
+def gettabnumfromID(self,tabID):
+    return self.tabIDs.index(tabID)
 
             
             
 #slot to notify main GUI that the thread has been triggered with AXBT data
 @pyqtSlot(int,float)
-def triggerUI(self,plottabnum,firstpointtime):
+def triggerUI(self,tabID,firstpointtime):
     try:
-        plottabstr = self.gettabstrfromnum(plottabnum)
-        self.alltabdata[plottabstr]["rawdata"]["firstpointtime"] = firstpointtime
-        self.alltabdata[plottabstr]["rawdata"]["istriggered"] = True
+        plottabnum = self.gettabnumfromID(tabID)
+        self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = firstpointtime
+        self.alltabdata[plottabnum]["rawdata"]["istriggered"] = True
     except Exception:
         self.posterror("Failed to trigger temperature/depth profile in GUI!")
         trace_error()
@@ -673,34 +671,34 @@ def triggerUI(self,plottabnum,firstpointtime):
         
 #slot to pass AXBT data from thread to main GUI
 @pyqtSlot(int,float,float,float,float,float,float,int)
-def updateUIinfo(self,plottabnum,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
+def updateUIinfo(self,tabID,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
     try:
-        plottabstr = self.gettabstrfromnum(plottabnum)
+        plottabnum = self.gettabnumfromID(tabID)
         
-        if self.alltabdata[plottabstr]["isprocessing"]:
+        if self.alltabdata[plottabnum]["isprocessing"]:
             
             #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
             lastdepth = -1
-            if len(self.alltabdata[plottabstr]["rawdata"]["depth"]) > 0:
-                lastdepth = self.alltabdata[plottabstr]["rawdata"]["depth"][-1]
+            if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
+                lastdepth = self.alltabdata[plottabnum]["rawdata"]["depth"][-1]
                 
             #only appending a datapoint if depths are different
             if cdepth != lastdepth:
                 #writing data to tab dictionary
-                self.alltabdata[plottabstr]["rawdata"]["time"] = np.append(self.alltabdata[plottabstr]["rawdata"]["time"],ctime)
-                self.alltabdata[plottabstr]["rawdata"]["depth"] = np.append(self.alltabdata[plottabstr]["rawdata"]["depth"],cdepth)
-                self.alltabdata[plottabstr]["rawdata"]["frequency"] = np.append(self.alltabdata[plottabstr]["rawdata"]["frequency"],cfreq)
-                self.alltabdata[plottabstr]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabstr]["rawdata"]["temperature"],ctemp)
+                self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"],ctime)
+                self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"],cdepth)
+                self.alltabdata[plottabnum]["rawdata"]["frequency"] = np.append(self.alltabdata[plottabnum]["rawdata"]["frequency"],cfreq)
+                self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"],ctemp)
     
                 #plot the most recent point
                 if i%50 == 0: #draw the canvas every fifty points (~5 sec for 10 Hz sampling)
                     try:
-                        del self.alltabdata[plottabstr]["ProcessorAx"].lines[-1]
+                        del self.alltabdata[plottabnum]["ProcessorAx"].lines[-1]
                     except IndexError:
                         pass
                         
-                    self.alltabdata[plottabstr]["ProcessorAx"].plot(self.alltabdata[plottabstr]["rawdata"]["temperature"],self.alltabdata[plottabstr]["rawdata"]["depth"],color='k')
-                    self.alltabdata[plottabstr]["ProcessorCanvas"].draw()
+                    self.alltabdata[plottabnum]["ProcessorAx"].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='k')
+                    self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
     
                 #coloring new cell based on whether or not it has good data
                 stars = '------'
@@ -725,7 +723,7 @@ def updateUIinfo(self,plottabnum,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
                 tablerat = QTableWidgetItem(str(cratio))
                 tablerat.setBackground(curcolor)
     
-                table = self.alltabdata[plottabstr]["tabwidgets"]["table"]
+                table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
                 crow = table.rowCount()
                 table.insertRow(crow)
                 table.setItem(crow, 0, tabletime)
@@ -745,15 +743,15 @@ def updateUIinfo(self,plottabnum,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
         
 #final update from thread after being aborted- restoring scroll bar, other info
 @pyqtSlot(int)
-def updateUIfinal(self,plottabnum):
+def updateUIfinal(self,tabID):
     try:
-        plottabstr = self.gettabstrfromnum(plottabnum)
-        self.alltabdata[plottabstr]["isprocessing"] = False
+        plottabnum = self.gettabnumfromID(tabID)
+        self.alltabdata[plottabnum]["isprocessing"] = False
         timemodule.sleep(0.25)
-        self.alltabdata[plottabstr]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
 
-        if "audioprogressbar" in self.alltabdata[plottabstr]["tabwidgets"]:
-            self.alltabdata[plottabstr]["tabwidgets"]["audioprogressbar"].deleteLater()
+        if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]:
+            self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].deleteLater()
 
     except Exception:
         self.posterror("Failed to complete final UI update!")
@@ -763,9 +761,9 @@ def updateUIfinal(self,plottabnum):
         
 #posts message in main GUI if thread processor fails for some reason
 @pyqtSlot(int,int)
-def failedWRmessage(self,plottabnum,messagenum):
+def failedWRmessage(self,tabID,messagenum):
     try:
-        plottabstr = self.gettabstrfromnum(plottabnum)
+        plottabnum = self.gettabnumfromID(tabID)
         if messagenum == 1:
             self.posterror("Failed to connect to specified WiNRADIO!")
         elif messagenum == 2:
@@ -795,7 +793,7 @@ def failedWRmessage(self,plottabnum,messagenum):
             
         #reset data source if signal processor failed to start
         if messagenum in [1,2,3,4,5,6,7,9,11,12]:
-            self.alltabdata[plottabstr]["source"] = "none"
+            self.alltabdata[plottabnum]["source"] = "none"
     
     except Exception:
         trace_error()
@@ -805,10 +803,10 @@ def failedWRmessage(self,plottabnum,messagenum):
         
 #updates on screen progress bar if thread is processing audio data
 @pyqtSlot(int,int)
-def updateaudioprogressbar(self,plottabnum,newprogress):
+def updateaudioprogressbar(self,tabID,newprogress):
     try:
-        plottabstr = self.gettabstrfromnum(plottabnum)
-        self.alltabdata[plottabstr]["tabwidgets"]["audioprogressbar"].setValue(newprogress)
+        plottabnum = self.gettabnumfromID(tabID)
+        self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].setValue(newprogress)
     except Exception:
         trace_error()
 
@@ -820,19 +818,19 @@ def updateaudioprogressbar(self,plottabnum,newprogress):
 def processprofile(self): 
     try:
         #pulling and checking file input data
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         
-        if self.alltabdata[curtabstr]["isprocessing"]:
+        if self.alltabdata[opentab]["isprocessing"]:
             self.postwarning("You cannot proceed to the Profile Editor while the tab is actively processing. Please select 'Stop' before continuing!")
             return
         
         #pulling data from inputs
-        probetype = self.alltabdata[curtabstr]["probetype"]
-        latstr = self.alltabdata[curtabstr]["tabwidgets"]["latedit"].text()
-        lonstr = self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].text()
-        identifier = self.alltabdata[curtabstr]["tabwidgets"]["idedit"].text()
-        profdatestr = self.alltabdata[curtabstr]["tabwidgets"]["dateedit"].text()
-        timestr = self.alltabdata[curtabstr]["tabwidgets"]["timeedit"].text()
+        probetype = self.alltabdata[opentab]["probetype"]
+        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+        identifier = self.alltabdata[opentab]["tabwidgets"]["idedit"].text()
+        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
             
         #check and correct inputs
         try:
@@ -841,8 +839,8 @@ def processprofile(self):
             return
         
         #pulling raw t-d profile
-        rawtemperature = self.alltabdata[curtabstr]["rawdata"]["temperature"]
-        rawdepth = self.alltabdata[curtabstr]["rawdata"]["depth"]
+        rawtemperature = self.alltabdata[opentab]["rawdata"]["temperature"]
+        rawdepth = self.alltabdata[opentab]["rawdata"]["depth"]
         
         #removing NaNs
         notnanind = ~np.isnan(rawtemperature*rawdepth)
@@ -850,18 +848,18 @@ def processprofile(self):
         rawdepth = rawdepth[notnanind]
         
         #writing other raw data inputs
-        self.alltabdata[curtabstr]["rawdata"]["lat"] = lat
-        self.alltabdata[curtabstr]["rawdata"]["lon"] = lon
-        self.alltabdata[curtabstr]["rawdata"]["year"] = year
-        self.alltabdata[curtabstr]["rawdata"]["month"] = month
-        self.alltabdata[curtabstr]["rawdata"]["day"] = day
-        self.alltabdata[curtabstr]["rawdata"]["droptime"] = time
-        self.alltabdata[curtabstr]["rawdata"]["hour"] = hour
-        self.alltabdata[curtabstr]["rawdata"]["minute"] = minute
-        self.alltabdata[curtabstr]["rawdata"]["ID"] = identifier
+        self.alltabdata[opentab]["rawdata"]["lat"] = lat
+        self.alltabdata[opentab]["rawdata"]["lon"] = lon
+        self.alltabdata[opentab]["rawdata"]["year"] = year
+        self.alltabdata[opentab]["rawdata"]["month"] = month
+        self.alltabdata[opentab]["rawdata"]["day"] = day
+        self.alltabdata[opentab]["rawdata"]["droptime"] = time
+        self.alltabdata[opentab]["rawdata"]["hour"] = hour
+        self.alltabdata[opentab]["rawdata"]["minute"] = minute
+        self.alltabdata[opentab]["rawdata"]["ID"] = identifier
         
         #saves profile if necessary
-        if not self.alltabdata[curtabstr]["profileSaved"]: #only if it hasn't been saved
+        if not self.alltabdata[opentab]["profileSaved"]: #only if it hasn't been saved
             if self.settingsdict["autosave"]:
                 if not self.savedataincurtab(): #try to save profile, terminate function if failed
                     return
@@ -881,7 +879,7 @@ def processprofile(self):
             return
         
         #delete Processor profile canvas (since it isn't in the tabwidgets sub-dict)
-        self.alltabdata[curtabstr]["ProcessorCanvas"].deleteLater()
+        self.alltabdata[opentab]["ProcessorCanvas"].deleteLater()
         
         
     except Exception:
@@ -890,6 +888,6 @@ def processprofile(self):
         return
     
     #generating QC tab
-    self.continuetoqc(curtabstr, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
+    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
         
     

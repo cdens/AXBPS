@@ -57,36 +57,30 @@ import lib.ocean_climatology_interaction as oci
 def addnewtab(self):
     #creating numeric ID for newly opened tab
     self.totaltabs += 1
-    self.tabnumbers.append(self.totaltabs)
-    newtabnum = self.tabWidget.count()
-    curtabstr = "Tab "+str(self.totaltabs) #pointable string for self.alltabdata dict
-    return newtabnum,curtabstr
+    self.tabIDs.append(self.totaltabs) #tracks unique ID for each tab (for updating from separate threads)
+    self.alltabdata.append({}) #append an empty dict to tab data to be overwritten with info
+    opentab = self.tabWidget.count()
+    return opentab, self.totaltabs
     
     
 
 #gets index of open tab in GUI
 def whatTab(self):
-    ctabnum = self.tabWidget.currentIndex()
-    if ctabnum == -1:
-        return ctabnum
-    else:
-        return self.tabnumbers[ctabnum]
-    
+    return self.tabWidget.currentIndex()
     
 
 #renames tab (only user-visible name, not self.alltabdata dict key)
 def renametab(self):
     try:
-        curtab = self.tabWidget.currentIndex()
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         badcharlist = "[@!#$%^&*()<>?/\|}{~:]"
         strcheck = re.compile(badcharlist)
-        name, ok = QInputDialog.getText(self, 'Rename Current Tab', 'Enter new tab name:',QLineEdit.Normal,str(self.tabWidget.tabText(curtab)))
+        name, ok = QInputDialog.getText(self, 'Rename Current Tab', 'Enter new tab name:',QLineEdit.Normal,str(self.tabWidget.tabText(opentab)))
         if ok:
             if strcheck.search("name") == None:
-                self.tabWidget.setTabText(curtab,name)
-                if not self.alltabdata[curtabstr]["profileSaved"]: #add an asterisk if profile is unsaved
-                    self.add_asterisk()
+                self.tabWidget.setTabText(opentab,name)
+                if not self.alltabdata[opentab]["profileSaved"]: #add an asterisk if profile is unsaved
+                    self.add_asterisk(opentab)
             else:
                 self.postwarning("Tab names cannot include the following: " + badcharlist)
     except Exception:
@@ -97,12 +91,10 @@ def renametab(self):
         
 
 #adds asterisk to tab name when data is unsaved or profile is adjusted
-def add_asterisk(self):
+def add_asterisk(self,curtab):
     try:
-        curtab = self.tabWidget.currentIndex()
-        curtabstr = "Tab " + str(self.whatTab())
         name = self.tabWidget.tabText(curtab)
-        if not self.alltabdata[curtabstr]["profileSaved"] and name[-1] != '*':
+        if not self.alltabdata[curtab]["profileSaved"] and name[-1] != '*':
             self.tabWidget.setTabText(curtab,name+'*')
     except Exception:
         trace_error()
@@ -110,12 +102,10 @@ def add_asterisk(self):
     
 
 #removes asterisk from tab name when data is saved successfully
-def remove_asterisk(self):
+def remove_asterisk(self,curtab):
     try:
-        curtab = self.tabWidget.currentIndex()
-        curtabstr = "Tab " + str(self.whatTab())
         name = self.tabWidget.tabText(curtab)
-        if self.alltabdata[curtabstr]["profileSaved"] and name[-1] == '*':
+        if self.alltabdata[curtab]["profileSaved"] and name[-1] == '*':
             self.tabWidget.setTabText(curtab,name[:-1])
     except Exception:
         trace_error()
@@ -139,9 +129,7 @@ def setnewtabcolor(tab):
 #closes a tab
 def closecurrenttab(self):
     try:
-        
-        curtab = int(self.whatTab())
-        curtabstr = "Tab " + str(curtab)
+        opentab = self.whatTab()
         
         reply = QMessageBox.question(self, 'Message',
             "Are you sure to close the current tab?", QMessageBox.Yes | 
@@ -153,29 +141,29 @@ def closecurrenttab(self):
             indextoclose = self.tabWidget.currentIndex()
             
             #check to make sure there isn't a corresponding processor thread, close if there is
-            if self.alltabdata[curtabstr]["isprocessing"]:
+            if self.alltabdata[opentab]["isprocessing"]:
                 reply = QMessageBox.question(self, 'Message',
                     "Closing this tab will terminate the current profile and discard the data. Continue?", QMessageBox.Yes | 
                     QMessageBox.No, QMessageBox.No)
                 if reply == QMessageBox.No:
                     return
                 else:
-                    self.alltabdata[curtabstr]["processor"].abort()
+                    self.alltabdata[opentab]["processor"].abort()
 
             #closing open figures in tab to prevent memory leak
-            if self.alltabdata[curtabstr]["tabtype"] == "ProfileEditor":
-                plt.close(self.alltabdata[curtabstr]["ProfFig"])
-                plt.close(self.alltabdata[curtabstr]["LocFig"])
+            if self.alltabdata[opentab]["tabtype"] == "ProfileEditor":
+                plt.close(self.alltabdata[opentab]["ProfFig"])
+                plt.close(self.alltabdata[opentab]["LocFig"])
 
-            elif self.alltabdata[curtabstr]["tabtype"] == 'SignalProcessor_incomplete' or self.alltabdata[curtabstr]["tabtype"] == 'SignalProcessor_completed':
-                plt.close(self.alltabdata[curtabstr]["ProcessorFig"])
+            elif self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_incomplete' or self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_completed':
+                plt.close(self.alltabdata[opentab]["ProcessorFig"])
 
             #closing tab
             self.tabWidget.removeTab(indextoclose)
 
             #removing current tab data from the self.alltabdata dict, correcting tabnumbers variable
-            self.alltabdata.pop("Tab "+str(curtab))
-            self.tabnumbers.pop(indextoclose)
+            self.alltabdata.pop(indextoclose)
+            self.tabIDs.pop(indextoclose)
 
     except Exception:
         trace_error()
@@ -212,23 +200,23 @@ def savedataincurtab(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         #pulling all relevant data
-        curtabstr = "Tab " + str(self.whatTab())
+        opentab = self.whatTab()
         
-        if self.alltabdata[curtabstr]["tabtype"] == "PE_p":
+        if self.alltabdata[opentab]["tabtype"] == "PE_p":
             try:
-                rawtemperature = self.alltabdata[curtabstr]["profdata"]["temp_raw"]
-                rawdepth = self.alltabdata[curtabstr]["profdata"]["depth_raw"]
-                climotempfill = self.alltabdata[curtabstr]["profdata"]["climotempfill"]
-                climodepthfill = self.alltabdata[curtabstr]["profdata"]["climodepthfill"]
-                temperature = self.alltabdata[curtabstr]["profdata"]["temp_plot"]
-                depth = self.alltabdata[curtabstr]["profdata"]["depth_plot"]
-                day = self.alltabdata[curtabstr]["profdata"]["day"]
-                month = self.alltabdata[curtabstr]["profdata"]["month"]
-                year = self.alltabdata[curtabstr]["profdata"]["year"]
-                time = self.alltabdata[curtabstr]["profdata"]["time"]
-                lat = self.alltabdata[curtabstr]["profdata"]["lat"]
-                lon = self.alltabdata[curtabstr]["profdata"]["lon"]
-                identifier = self.alltabdata[curtabstr]["profdata"]["ID"]
+                rawtemperature = self.alltabdata[opentab]["profdata"]["temp_raw"]
+                rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
+                climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
+                climodepthfill = self.alltabdata[opentab]["profdata"]["climodepthfill"]
+                temperature = self.alltabdata[opentab]["profdata"]["temp_plot"]
+                depth = self.alltabdata[opentab]["profdata"]["depth_plot"]
+                day = self.alltabdata[opentab]["profdata"]["day"]
+                month = self.alltabdata[opentab]["profdata"]["month"]
+                year = self.alltabdata[opentab]["profdata"]["year"]
+                time = self.alltabdata[opentab]["profdata"]["time"]
+                lat = self.alltabdata[opentab]["profdata"]["lat"]
+                lon = self.alltabdata[opentab]["profdata"]["lon"]
+                identifier = self.alltabdata[opentab]["profdata"]["ID"]
                 num = 99 #placeholder- dont have drop number here currently!!
                 
                 dtg = str(year) + str(month).zfill(2) + str(day).zfill(2) + str(time).zfill(4)
@@ -236,7 +224,7 @@ def savedataincurtab(self):
                 filename = self.check_filename(dtg)
                 
                 if self.settingsdict["overlayclimo"]:
-                    matchclimo = self.alltabdata[curtabstr]["profdata"]["matchclimo"]
+                    matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
                 else:
                     matchclimo = 1
 
@@ -254,7 +242,7 @@ def savedataincurtab(self):
                     trace_error()
                     self.posterror("Failed to save FIN file")
             if self.settingsdict["savejjvv"]:
-                isbtmstrike = self.alltabdata[curtabstr]["tabwidgets"]["isbottomstrike"].isChecked()
+                isbtmstrike = self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].isChecked()
                 try:
                     tfio.writejjvvfile(outdir + slash + filename + '.jjvv', temperature, depth, day, month, year, time, lat, lon, identifier, isbtmstrike)
                 except Exception:
@@ -296,36 +284,36 @@ def savedataincurtab(self):
                     plt.close('fig2')
 
                 
-        elif self.alltabdata[curtabstr]["tabtype"] == "DAS_p":
+        elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
             
-            if self.alltabdata[curtabstr]["isprocessing"]:
+            if self.alltabdata[opentab]["isprocessing"]:
                 self.postwarning('You must stop processing the current tab before saving data!')
 
             else:
 
                 try:
                     #pulling prof data
-                    rawtemperature = self.alltabdata[curtabstr]["rawdata"]["temperature"]
-                    rawdepth = self.alltabdata[curtabstr]["rawdata"]["depth"]
-                    frequency = self.alltabdata[curtabstr]["rawdata"]["frequency"]
-                    timefromstart = self.alltabdata[curtabstr]["rawdata"]["time"]
+                    rawtemperature = self.alltabdata[opentab]["rawdata"]["temperature"]
+                    rawdepth = self.alltabdata[opentab]["rawdata"]["depth"]
+                    frequency = self.alltabdata[opentab]["rawdata"]["frequency"]
+                    timefromstart = self.alltabdata[opentab]["rawdata"]["time"]
 
                     #pulling profile metadata if necessary
                     try:
-                        lat = self.alltabdata[curtabstr]["rawdata"]["lat"]
-                        lon = self.alltabdata[curtabstr]["rawdata"]["lon"]
-                        year = self.alltabdata[curtabstr]["rawdata"]["year"]
-                        month = self.alltabdata[curtabstr]["rawdata"]["month"]
-                        day = self.alltabdata[curtabstr]["rawdata"]["day"]
-                        time = self.alltabdata[curtabstr]["rawdata"]["droptime"]
-                        hour = self.alltabdata[curtabstr]["rawdata"]["hour"]
-                        minute = self.alltabdata[curtabstr]["rawdata"]["minute"]
+                        lat = self.alltabdata[opentab]["rawdata"]["lat"]
+                        lon = self.alltabdata[opentab]["rawdata"]["lon"]
+                        year = self.alltabdata[opentab]["rawdata"]["year"]
+                        month = self.alltabdata[opentab]["rawdata"]["month"]
+                        day = self.alltabdata[opentab]["rawdata"]["day"]
+                        time = self.alltabdata[opentab]["rawdata"]["droptime"]
+                        hour = self.alltabdata[opentab]["rawdata"]["hour"]
+                        minute = self.alltabdata[opentab]["rawdata"]["minute"]
                     except:
                         # pulling data from inputs
-                        latstr = self.alltabdata[curtabstr]["tabwidgets"]["latedit"].text()
-                        lonstr = self.alltabdata[curtabstr]["tabwidgets"]["lonedit"].text()
-                        profdatestr = self.alltabdata[curtabstr]["tabwidgets"]["dateedit"].text()
-                        timestr = self.alltabdata[curtabstr]["tabwidgets"]["timeedit"].text()
+                        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+                        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+                        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+                        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
     
                         
                         #flags for capability of saving data
@@ -374,10 +362,10 @@ def savedataincurtab(self):
                 if self.settingsdict["saveedf"] and edfcapable:
                     try:
                         #creating comment for data source:
-                        cdatasource = self.alltabdata[curtabstr]["tabwidgets"]["datasource"].currentText()
+                        cdatasource = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
                         comments = "//Data source: " + cdatasource
                         if cdatasource.lower() not in ["audio","test"]:
-                            comments += f", VHF Ch. {self.alltabdata[curtabstr]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[curtabstr]['tabwidgets']['vhffreq'].value()} MHz)"
+                            comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
                         tfio.writeedffile(outdir + slash + filename + '.edf',rawtemperature,rawdepth,year,month,day,hour,minute,0,lat,lon, self.settingsdict["tcoeff"], self.settingsdict["zcoeff"],comments) #lat/lon only parsed if self.settingsdict["saveedf"] is True
                     except Exception:
                         trace_error()
@@ -385,7 +373,7 @@ def savedataincurtab(self):
 
                 if self.settingsdict["savewav"] and wavcapable:
                     try:
-                        oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[curtabstr]["tabnum"]) + '.WAV'
+                        oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[opentab]["tabnum"]) + '.WAV'
                         newfile = outdir + slash + filename + '.WAV'
 
                         if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
@@ -398,7 +386,7 @@ def savedataincurtab(self):
 
                 if self.settingsdict["savesig"] and sigcapable:
                     try:
-                        oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[curtabstr]["tabnum"]) + '.txt'
+                        oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
                         newfile = outdir + slash + filename + '.sigdata'
 
                         if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile:
@@ -408,9 +396,9 @@ def savedataincurtab(self):
                     except Exception:
                         trace_error()
         
-        elif self.alltabdata[curtabstr]["tabtype"] == "MissionPlotter":
+        elif self.alltabdata[opentab]["tabtype"] == "MissionPlotter":
             filename = str(self.tabWidget.tabText(self.tabWidget.currentIndex())) #filename is name of tab
-            self.alltabdata[curtabstr]["MissionFig"].savefig(outdir + slash + filename + '.png',format='png')
+            self.alltabdata[opentab]["MissionFig"].savefig(outdir + slash + filename + '.png',format='png')
         
         else:
             self.postwarning('You must process a profile before attempting to save data!')
@@ -422,11 +410,11 @@ def savedataincurtab(self):
         successval = False #notes that process failed
     finally:
         QApplication.restoreOverrideCursor() #restore cursor here
-        self.alltabdata[curtabstr]["profileSaved"] = True #note that profile has been saved
+        self.alltabdata[opentab]["profileSaved"] = True #note that profile has been saved
     
     if successval:
-        self.alltabdata[curtabstr]["profileSaved"] = True
-        self.remove_asterisk()
+        self.alltabdata[opentab]["profileSaved"] = True
+        self.remove_asterisk(opentab)
         
     return successval
     
@@ -496,17 +484,17 @@ def closeEvent(self, event):
             self.settingsthread.close()
 
         #explicitly closing figures to clean up memory (should be redundant here but just in case)
-        for curtabstr in self.alltabdata:
-            if self.alltabdata[curtabstr]["tabtype"] == "ProfileEditor":
-                plt.close(self.alltabdata[curtabstr]["ProfFig"])
-                plt.close(self.alltabdata[curtabstr]["LocFig"])
+        for ctab,_ in enumerate(self.alltabdata):
+            if self.alltabdata[ctab]["tabtype"][:2] == "PE":
+                plt.close(self.alltabdata[ctab]["ProfFig"])
+                plt.close(self.alltabdata[ctab]["LocFig"])
 
-            elif self.alltabdata[curtabstr]["tabtype"] == 'SignalProcessor_incomplete' or self.alltabdata[curtabstr]["tabtype"] == 'SignalProcessor_completed':
-                plt.close(self.alltabdata[curtabstr]["ProcessorFig"])
+            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS':
+                plt.close(self.alltabdata[ctab]["ProcessorFig"])
 
                 #aborting all threads
-                if self.alltabdata[curtabstr]["isprocessing"]:
-                    self.alltabdata[curtabstr]["processor"].abort()
+                if self.alltabdata[ctab]["isprocessing"]:
+                    self.alltabdata[ctab]["processor"].abort()
 
         event.accept()
         # delete all temporary files
