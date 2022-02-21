@@ -164,6 +164,8 @@ def initUI(self):
     self.GPSthread.signals.update.connect(self.updateGPSdata) #function located in this file after settingswindow update
     self.threadpool.start(self.GPSthread)
     
+    
+    self.reason_code_strings = ["Good Profile", "No Signal", "Spotty/Intermittent", "Hung Probe/Early Start", "Isothermal", "Late Start", "Slow Falling", "Bottom Strike", "Climatology Mismatch", "Action Required/Reprocess"]
 
 
     # loading WiNRADIO DLL API

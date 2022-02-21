@@ -31,10 +31,11 @@ import matplotlib.pyplot as plt
 
 import time as timemodule
 import numpy as np
+from datetime import datetime
 
 #autoQC-specific modules
-import lib.fileinteraction as tfio
-import lib.make_profile_plots as tplot
+import lib.fileinteraction as io
+import lib.make_profile_plots as profplot
 import lib.autoqc as qc
 import lib.ocean_climatology_interaction as oci
 
@@ -50,7 +51,7 @@ def makenewproftab(self):
         #tab indexing update
         opentab,tabID = self.addnewtab()
 
-        self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"PE_u", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True} #isprocessing and datasource are only relevant for processor tabs
+        self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"tabtype":"PE_u", "saved":True, "isprocessing":False, "datasource":None, "profileSaved":True, "probetype":'unknown'} #isprocessing and datasource are only relevant for processor tabs
         self.alltabdata[opentab]["tablayout"].setSpacing(10)
         
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
@@ -133,22 +134,6 @@ def selectdatafile(self):
             opentab = self.whatTab()
             self.alltabdata[opentab]["tabwidgets"]["logedit"].setText(fname)
             
-            #populate the menu with the information from the file
-            if fname.lower().endswith('.edf'):
-                print('autopopulating info')
-                _,_,year,month,day,hour,minute,second,lat,lon = tfio.readedffile(fname)
-                lat = str(lat)
-                lon = str(lon)
-                datestr = f'{year}{month}{day}'
-                timestr = f'{hour}{minute}'
-                
-                self.alltabdata[opentab]['tabwidgets']['latedit'].setText(lat)
-                self.alltabdata[opentab]['tabwidgets']['lonedit'].setText(lon)
-                self.alltabdata[opentab]['tabwidgets']['dateedit'].setText(datestr)
-                self.alltabdata[opentab]['tabwidgets']['timeedit'].setText(timestr)
-
-                
-            
             #getting file directory
             if fname != "":
                 splitpath = path.split(fname)
@@ -162,107 +147,141 @@ def selectdatafile(self):
         
 #Pull data, check to make sure it is valid before proceeding
 def checkdatainputs_editorinput(self):
-    try:
-        opentab = self.whatTab()
+    opentab = self.whatTab()
+    
+    success = True
+    errormsg = ''
+    warningmsg = ''
         
-        #pulling data from inputs
-        probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
-        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
-        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
-        identifier = self.alltabdata[opentab]["tabwidgets"]["idedit"].text()
-        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
-        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
-        logfile = self.alltabdata[opentab]["tabwidgets"]["logedit"].toPlainText()
+    #pulling data from inputs
+    probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
+    latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+    lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+    identifier = self.alltabdata[opentab]["tabwidgets"]["idedit"].text()
+    profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+    timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+    logfile = self.alltabdata[opentab]["tabwidgets"]["logedit"].toPlainText()
+    
+    if probetype.upper() == "AXCTD":
+        hasSal = True
+    else:
+        hasSal = False
+    
+    #identify file type
+    ftype = 0
+    if not path.isfile(logfile): #check that logfile exists
+        success = False
+        warningmsg = 'Selected Data File Does Not Exist!'
         
-        #check that logfile exists
-        if not path.isfile(logfile):
-            self.postwarning('Selected Data File Does Not Exist!')
-            return
+    else:
+        #determine file type (1 = LOG, 2 = EDF, 3 = FIN/NVO, 4 = JJVV, 0 = invalid)
+        if logfile[-4:].lower() == '.dta':
+            ftype = 1
+        elif logfile[-4:].lower() == '.edf':
+            ftype = 2
+        elif logfile[-4:].lower() in ['.fin','.nvo','.txt']: #assumes .txt are fin/nvo format
+            ftype = 3
+        elif logfile[-5:].lower() == '.jjvv':
+            ftype = 4
+            
+    if not ftype:
+        success = False
+        warningmsg = 'Invalid Data File Format (must be .dta,.edf,.nvo,.fin, or .jjvv)!'
+        
+    elif hasSal and ftype in [1,4]: #can't process AXCTD data from LOG or JJVV files
+        success = False
+        warningmsg = 'AXCTD profiles cannot be LOG or JJVV format!'
 
-        if logfile[-4:].lower() == '.dta': #checks inputs if log file, otherwise doesnt need them
+        
+    #initializing lat/lon/datetime variables    
+    lon = np.NaN
+    lat = np.NaN
+    dropdatetime = False
+    flat = np.NaN
+    flon = np.NaN
+    fdropdatetime = False
+        
+        
+    #read profile data
+    try:
+        #if LOG.DTA file, read profile data and get datetime/position from user
+        if ftype == 1:
+            rawtemperature,rawdepth = io.readlogfile(logfile)
             
-            #check and correct inputs
-            try:
-                lat,lon,year,month,day,time,_,_,identifier = self.parsestringinputs(latstr,lonstr,profdatestr,timestr,identifier,True,True,True)
-            except:
-                return
+        #EDF/FIN/JJVV includes logic to handle partially missing data fields (e.g. lat/lon)
+        elif ftype == 2:
+            data,fdropdatetime,flat,flon = io.readedffile(logfile)
             
-        else:
-            lon = np.NaN
-            lat = np.NaN
-            month = np.NaN
-            day = np.NaN
-            time= np.NaN
+        elif ftype == 3: #assumes .txt are fin/nvo format
+            data,fdropdatetime,flat,flon,_ = io.readfinfile(logfile,hasSal=hasSal)
+            
+        elif ftype == 4:
             try: #year is important if jjvv file
                 year = int(profdatestr[:4])
             except:
-                year = np.NaN
-                
-        try:
-            #identifying and reading file data
-            if logfile[-4:].lower() == '.dta':
-                rawtemperature,rawdepth = tfio.readlogfile(logfile)
-                
-            #EDF includes logic to handle partially missing data fields (e.g. lat/lon)
-            elif logfile[-4:].lower() == '.edf':
-                rawtemperature,rawdepth,year,month,day,hour,minute,_,lat,lon = tfio.readedffile(logfile)
-                time = hour*100 + minute
-                
-                checkcoords = checkdate = False
-                if (not lat and type(lat) == bool) or (not lon and type(lon) == bool):
-                    checkcoords = True #if either lat or lon are bad, require inputs from text
-                if (not year and type(year) == bool) or (not month and type(month) == bool) or (not day and type(day) == bool) or (not hour and type(hour) == bool) or (not minute and type(minute) == bool):
-                    checkdate = True #if either year, day, month, hour or minute are bad, require inputs from 
-                
-                try:
-                    ilat,ilon,iyear,imonth,iday,itime,_,_,identifier = self.parsestringinputs(latstr,lonstr,profdatestr,timestr,identifier, checkcoords, checkdate, True)
-                except:
-                    return
-                
-                if checkcoords:
-                    lat = ilat
-                    lon = ilon
-                if checkdate:
-                    year = iyear
-                    month = imonth
-                    day = iday
-                    time = itime
-                
-            elif logfile[-4:].lower() in ['.fin','.nvo','.txt']: #assumes .txt are fin/nvo format
-                rawtemperature,rawdepth,day,month,year,time,lat,lon,_ = tfio.readfinfile(logfile)
-                _,_,_,_,_,_,_,_,identifier = self.parsestringinputs(latstr,lonstr,profdatestr,timestr,identifier,False,False,True)
-                
-            elif logfile[-5:].lower() == '.jjvv':
-                rawtemperature,rawdepth,day,month,year,time,lat,lon,identifier = tfio.readjjvvfile(logfile)
-                
+                year = datetime.utcnow().year #defaults to current year if date not input in UI
+            rawtemperature,rawdepth,fdropdatetime,flat,flon,identifier = io.readjjvvfile(logfile)
+            
+        if ftype in [2,3]: #pulling z/T/S(?) from file output for EDF/FIN/NVO files
+            rawtemperature = data["temperature"]
+            rawdepth = data["depth"]
+            if hasSal:
+                rawsalinity = data["salinity"]
+                                
+        #finding and removing NaNs from profile
+        if ftype > 0:
+            if hasSal:
+                notnanind = ~np.isnan(rawtemperature*rawdepth*rawsalinity)
             else:
-                QApplication.restoreOverrideCursor()
-                self.postwarning('Invalid Data File Format (must be .dta,.edf,.nvo,.fin, or .jjvv)!')
-                return
-                                    
-            #removing NaNs
-            notnanind = ~np.isnan(rawtemperature*rawdepth)
-            rawtemperature = rawtemperature[notnanind]
-            rawdepth = rawdepth[notnanind]
+                notnanind = ~np.isnan(rawtemperature*rawdepth)
+                
+            rawdata = {'depth':rawdepth[notnanind], 'temperature':rawtemperature[notnanind]}
+            if hasSal:
+                rawdata['salinity'] = rawsalinity[notnanind]
+                
+            if len(rawdata['depth']) == 0:
+                success = False
+                warningmsg = 'This file does not contain any valid profile data. Please select a different file!'
             
-            if len(rawdepth) == 0:
-                self.postwarning('This file does not contain any valid profile data. Please select a different file!')
-                return
-            
-        except Exception:
-            trace_error()
-            QApplication.restoreOverrideCursor()
-            self.posterror('Failed to read selected data file!')
-            return
     except Exception:
         trace_error()
-        self.posterror("Failed to read profile input data")
+        success = False
+        errormsg = 'Failed to read selected data file!'
+            
+    if ftype and success:
+            
+        try:
+            ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
+        
+            if np.isnan(flat*flon):
+                lat = ilat
+                lon = ilon
+            else:
+                lat = flat
+                lon = flon
+                
+            if not fdropdatetime:
+                dropdatetime = idropdatetime
+            else:
+                dropdatetime = fdropdatetime
+                
+        except:
+            success = False
+            errormsg = "Failed to parse user input!"
+        
+    #if the read failed, stop spinning cursor and post appropriate message to screen
+    if not success:
         QApplication.restoreOverrideCursor()
+        if errormsg:
+            self.posterror(errormsg)
+        elif warningmsg:
+            self.postwarning(errormsg)
         return
+        
         
     #only gets here if all inputs are good- this function switches the tab to profile editor view
     self.defaultprobe = probetype #switch default probe type to whatever was just processed
-    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
+    self.continuetoqc(opentab, rawdata, lat, lon, dropdatetime, identifier, probetype)
     
     
     
@@ -271,11 +290,11 @@ def checkdatainputs_editorinput(self):
 # =============================================================================
 #         PROFILE EDITOR TAB
 # =============================================================================
-def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype):
+def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, probetype):
     try:
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
-        dtg = str(year) + str(month).zfill(2) + str(day).zfill(2) + str(time).zfill(4)
+        dtg = datetime.strftime(dropdatetime,'%Y%m%d%H%M')
         
         #concatenates profile if depths stop increasing
         negind = np.argwhere(np.diff(rawdepth) < 0)
@@ -297,7 +316,7 @@ def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, 
         
         #getting climatology
         try:
-            [climotemps,climopsals,climodepths,climotempfill,climopsalfill,climodepthfill] = oci.getclimatologyprofile(lat,lon,month,self.climodata)
+            [climotemps,climopsals,climodepths,climotempfill,climopsalfill,climodepthfill] = oci.getclimatologyprofile(lat,lon,dropdatetime.month,self.climodata)
         except:
             climopsals = climotemps = climodepths = np.array([np.NaN,np.NaN])
             climopsalfill = climotempfill = climodepthfill = np.array([np.NaN,np.NaN,np.NaN,np.NaN])
@@ -305,15 +324,9 @@ def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, 
         
         self.alltabdata[opentab]["probetype"] = probetype
         self.alltabdata[opentab]["profileSaved"] = False #profile hasn't been saved yet
-        self.alltabdata[opentab]["profdata"] = {"temp_raw": rawtemperature, "depth_raw": rawdepth,
-                                             "lat": lat, "lon": lon, "year": year, "month": month, "day": day,
-                                             "time": time, "DTG": dtg,
-                                             "climotemp": climotemps, "climopsal":climopsals, 
-                                             "climodepth": climodepths,
-                                             "climotempfill": climotempfill,
-                                             "climopsalfill": climopsalfill,
-                                             "climodepthfill": climodepthfill,
-                                             "ID": identifier, "oceandepth": oceandepth}
+        self.alltabdata[opentab]["profdata"] = {"temperature_raw": rawdata['temperature'], "depth_raw": rawdata['depth'],"lat": lat, "lon": lon, "dropdatetime": dropdatetime, "climotemp": climotemps, "climopsal":climopsals, "climodepth": climodepths, "climotempfill": climotempfill, "climopsalfill": climopsalfill, "climodepthfill": climodepthfill, "ID": identifier, "oceandepth": oceandepth}
+        if probetype == 'AXCTD':
+            self.alltabdata[opentab]["profdata"]['salinity_raw'] = rawdata['salinity']
         
         #deleting old buttons and inputs
         for i in self.alltabdata[opentab]["tabwidgets"]:
@@ -405,16 +418,8 @@ def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, 
         self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"] = QCheckBox('Bottom Strike?') #13
         self.alltabdata[opentab]["tabwidgets"]["rcodetitle"] = QLabel('Profile Quality:') #14
         self.alltabdata[opentab]["tabwidgets"]["rcode"] = QComboBox() #15
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Good Profile")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("No Signal")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Spotty/Intermittent")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Hung Probe/Early Start")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Isothermal")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Late Start")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Slow Falling")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Bottom Strike")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Climatology Mismatch")
-        self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem("Action Required/Reprocess")
+        for rcodestr in self.reason_code_strings:
+            self.alltabdata[opentab]["tabwidgets"]["rcode"].addItem(rcodestr)
         
         #profile save button
         self.alltabdata[opentab]["tabwidgets"]["saveprof"] = QPushButton('Save Profile') #11
@@ -456,16 +461,13 @@ def continuetoqc(self, opentab, rawtemperature, rawdepth, lat, lon, day, month, 
         
         if self.runqc(): #only executes following code if autoQC runs sucessfully
             depth = self.alltabdata[opentab]["profdata"]["depth_plot"]
-            temperature = self.alltabdata[opentab]["profdata"]["temp_plot"]
+            temperature = self.alltabdata[opentab]["profdata"]["temperature_plot"]
             matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
 
             # plot data, refresh plots on window
-            self.alltabdata[opentab]["climohandle"] = tplot.makeprofileplot(self.alltabdata[opentab]["ProfAx"],
-                                                                         rawtemperature,
-                                                                         rawdepth, temperature, depth,
-                                                                         climotempfill,
-                                                                         climodepthfill, dtg, matchclimo)
-            tplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
+            self.alltabdata[opentab]["climohandle"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAx"], rawtemperature, rawdepth, temperature, depth, dtg, climodatafill=climotempfill, climodepthfill=climodepthfill, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=matchclimo, axlimtype=1)
+            
+            profplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
             self.alltabdata[opentab]["ProfCanvas"].draw() #update figure canvases
             self.alltabdata[opentab]["LocCanvas"].draw()
             self.alltabdata[opentab]["pt_type"] = 0  # sets that none of the point selector buttons have been pushed
@@ -545,7 +547,7 @@ def runqc(self):
 
         # writing values to alltabs structure: prof temps, and matchclimo
         self.alltabdata[opentab]["profdata"]["depth_plot"] = depth
-        self.alltabdata[opentab]["profdata"]["temp_plot"] = temperature
+        self.alltabdata[opentab]["profdata"]["temperature_plot"] = temperature
         self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
 
         # resetting depth correction QSpinBoxes
@@ -607,7 +609,7 @@ def applychanges(self):
                 depthplot = depthplot[ind]
 
             #replacing t/d profile values
-            self.alltabdata[opentab]["profdata"]["temp_plot"] = tempplot
+            self.alltabdata[opentab]["profdata"]["temperature_plot"] = tempplot
             self.alltabdata[opentab]["profdata"]["depth_plot"] = depthplot
 
             #re-plotting, updating text
@@ -623,7 +625,7 @@ def updateprofeditplots(self):
     opentab = self.whatTab()
 
     try:
-        tempplot = self.alltabdata[opentab]["profdata"]["temp_plot"]
+        tempplot = self.alltabdata[opentab]["profdata"]["temperature_plot"]
         depthplot = self.alltabdata[opentab]["profdata"]["depth_plot"]
         
         # Replace drop info

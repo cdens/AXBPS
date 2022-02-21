@@ -41,8 +41,8 @@ import datetime as dt
 import numpy as np
 import matplotlib.pyplot as plt
 
-import lib.fileinteraction as tfio
-import lib.make_profile_plots as tplot
+import lib.fileinteraction as io
+import lib.make_profile_plots as profplot
 import lib.ocean_climatology_interaction as oci
 
 
@@ -171,266 +171,6 @@ def closecurrenttab(self):
         
         
         
-            
-#save data in open tab        
-def savedataincurtab(self):
-    
-    successval = True #changes to False if error is raised
-    
-    try:
-        #getting directory to save files from QFileDialog
-        try:
-            outdir = str(QFileDialog.getExistingDirectory(self, "Select Directory to Save File(s)",self.defaultfilewritedir,QFileDialog.DontUseNativeDialog))
-        except Exception:
-            trace_error()
-            return False
-                            
-        #checking directory validity
-        if outdir == '':
-            QApplication.restoreOverrideCursor()
-            return False
-        else:
-            self.defaultfilewritedir = outdir
-                            
-    except:
-        self.posterror("Error raised in directory selection")
-        return
-
-    try:
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        
-        #pulling all relevant data
-        opentab = self.whatTab()
-        
-        if self.alltabdata[opentab]["tabtype"] == "PE_p":
-            try:
-                rawtemperature = self.alltabdata[opentab]["profdata"]["temp_raw"]
-                rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
-                climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
-                climodepthfill = self.alltabdata[opentab]["profdata"]["climodepthfill"]
-                temperature = self.alltabdata[opentab]["profdata"]["temp_plot"]
-                depth = self.alltabdata[opentab]["profdata"]["depth_plot"]
-                day = self.alltabdata[opentab]["profdata"]["day"]
-                month = self.alltabdata[opentab]["profdata"]["month"]
-                year = self.alltabdata[opentab]["profdata"]["year"]
-                time = self.alltabdata[opentab]["profdata"]["time"]
-                lat = self.alltabdata[opentab]["profdata"]["lat"]
-                lon = self.alltabdata[opentab]["profdata"]["lon"]
-                identifier = self.alltabdata[opentab]["profdata"]["ID"]
-                num = 99 #placeholder- dont have drop number here currently!!
-                
-                dtg = str(year) + str(month).zfill(2) + str(day).zfill(2) + str(time).zfill(4)
-                curtab = self.tabWidget.currentIndex()
-                filename = self.check_filename(dtg)
-                
-                if self.settingsdict["overlayclimo"]:
-                    matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
-                else:
-                    matchclimo = 1
-
-            except:
-                self.posterror("Failed to retrieve profile information")
-                QApplication.restoreOverrideCursor()
-                return False
-
-            if self.settingsdict["savefin"]:
-                try:
-                    depth1m = np.arange(0,np.floor(depth[-1]))
-                    temperature1m = np.interp(depth1m,depth,temperature)
-                    tfio.writefinfile(outdir + slash + filename + '.fin',temperature1m,depth1m,day,month,year,time,lat,lon,num)
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to save FIN file")
-            if self.settingsdict["savejjvv"]:
-                isbtmstrike = self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].isChecked()
-                try:
-                    tfio.writejjvvfile(outdir + slash + filename + '.jjvv', temperature, depth, day, month, year, time, lat, lon, identifier, isbtmstrike)
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to save JJVV file")
-            if self.settingsdict["savebufr"]:
-                try:
-                    tfio.writebufrfile(outdir + slash + filename + '.bufr',temperature,depth,year,month,day,time,lon,lat,identifier,self.settingsdict["originatingcenter"],False,b'\0')
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to save BUFR file")
-            if self.settingsdict["saveprof"]:
-                try:
-                    fig1 = plt.figure()
-                    fig1.clear()
-                    ax1 = fig1.add_axes([0.1,0.1,0.85,0.85])
-                    climohandle = tplot.makeprofileplot(ax1,rawtemperature,rawdepth,temperature,depth,climotempfill,climodepthfill,dtg,matchclimo)
-                    if self.settingsdict["overlayclimo"] == 0:
-                        climohandle.set_visible(False)
-                    fig1.savefig(outdir + slash + filename + '_prof.png',format='png')
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to save profile image")
-                finally:
-                    plt.close('fig1')
-
-            if self.settingsdict["saveloc"]:
-                try:
-                    fig2 = plt.figure()
-                    fig2.clear()
-                    ax2 = fig2.add_axes([0.1,0.1,0.85,0.85])
-                    _,exportlat,exportlon,exportrelief = oci.getoceandepth(lat,lon,6,self.bathymetrydata)
-                    tplot.makelocationplot(fig2,ax2,lat,lon,dtg,exportlon,exportlat,exportrelief,6)
-                    fig2.savefig(outdir + slash + filename + '_loc.png',format='png')
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to save location image")
-                finally:
-                    plt.close('fig2')
-
-                
-        elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
-            
-            if self.alltabdata[opentab]["isprocessing"]:
-                self.postwarning('You must stop processing the current tab before saving data!')
-
-            else:
-
-                try:
-                    #pulling prof data
-                    rawtemperature = self.alltabdata[opentab]["rawdata"]["temperature"]
-                    rawdepth = self.alltabdata[opentab]["rawdata"]["depth"]
-                    frequency = self.alltabdata[opentab]["rawdata"]["frequency"]
-                    timefromstart = self.alltabdata[opentab]["rawdata"]["time"]
-
-                    #pulling profile metadata if necessary
-                    try:
-                        lat = self.alltabdata[opentab]["rawdata"]["lat"]
-                        lon = self.alltabdata[opentab]["rawdata"]["lon"]
-                        year = self.alltabdata[opentab]["rawdata"]["year"]
-                        month = self.alltabdata[opentab]["rawdata"]["month"]
-                        day = self.alltabdata[opentab]["rawdata"]["day"]
-                        time = self.alltabdata[opentab]["rawdata"]["droptime"]
-                        hour = self.alltabdata[opentab]["rawdata"]["hour"]
-                        minute = self.alltabdata[opentab]["rawdata"]["minute"]
-                    except:
-                        # pulling data from inputs
-                        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
-                        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
-                        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
-                        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
-    
-                        
-                        #flags for capability of saving data
-                        edfcapable = True
-                        logcapable = True
-                        wavcapable = True
-                        sigcapable = True
-                        
-                        #check validity of data
-                        #try edf data
-                        try:
-                            lat, lon, year, month, day, time, hour, minute, _ = self.parsestringinputs(latstr, lonstr,profdatestr,timestr, 'omit', True, True, False)
-                        except:
-                            edfcapable = False
-                            self.postwarning('Cannot save edf file!')
-                        #try other data
-                        try:
-                            _, _, year, month, day, time, hour, minute, _ = self.parsestringinputs(latstr, lonstr,profdatestr,timestr, 'omit', False, True, False)
-                        except:
-                            logcapable = False, 
-                            wavcapable = False
-                            sigcapable = False
-                            self.postwarning("Failed to save raw data files!")
-                            QApplication.restoreOverrideCursor()
-                    
-                except Exception:
-                    trace_error()
-                    self.posterror("Failed to pull raw profile data")
-                    QApplication.restoreOverrideCursor()
-                    return False
-
-                #date and time strings for LOG file
-                initdatestr = str(year) + '/' + str(month).zfill(2) + '/' + str(day).zfill(2)
-                inittimestr = str(hour).zfill(2) + ':' + str(minute).zfill(2) + ':00'
-                
-                filename = self.check_filename(str(year) + str(month).zfill(2) + str(day).zfill(2) + str(time).zfill(4))
-
-
-                
-                if self.settingsdict["savelog"] and logcapable:
-                    try:
-                        tfio.writelogfile(outdir + slash + filename + '.DTA',initdatestr,inittimestr,timefromstart,rawdepth,frequency,rawtemperature)
-                    except Exception:
-                        trace_error()
-                        self.posterror("Failed to save LOG file")
-                if self.settingsdict["saveedf"] and edfcapable:
-                    try:
-                        #creating comment for data source:
-                        cdatasource = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
-                        comments = "//Data source: " + cdatasource
-                        if cdatasource.lower() not in ["audio","test"]:
-                            comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
-                        tfio.writeedffile(outdir + slash + filename + '.edf',rawtemperature,rawdepth,year,month,day,hour,minute,0,lat,lon, self.settingsdict["tcoeff"], self.settingsdict["zcoeff"],comments) #lat/lon only parsed if self.settingsdict["saveedf"] is True
-                    except Exception:
-                        trace_error()
-                        self.posterror("Failed to save EDF file")
-
-                if self.settingsdict["savewav"] and wavcapable:
-                    try:
-                        oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[opentab]["tabnum"]) + '.WAV'
-                        newfile = outdir + slash + filename + '.WAV'
-
-                        if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
-                            remove(newfile)
-
-                        shcopy(oldfile,newfile)
-                    except Exception:
-                        trace_error()
-                        self.posterror("Failed to save WAV file")
-
-                if self.settingsdict["savesig"] and sigcapable:
-                    try:
-                        oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
-                        newfile = outdir + slash + filename + '.sigdata'
-
-                        if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile:
-                            remove(newfile)
-
-                        shcopy(oldfile, newfile)
-                    except Exception:
-                        trace_error()
-        
-        elif self.alltabdata[opentab]["tabtype"] == "MissionPlotter":
-            filename = str(self.tabWidget.tabText(self.tabWidget.currentIndex())) #filename is name of tab
-            self.alltabdata[opentab]["MissionFig"].savefig(outdir + slash + filename + '.png',format='png')
-        
-        else:
-            self.postwarning('You must process a profile before attempting to save data!')
-            
-    except Exception:
-        QApplication.restoreOverrideCursor() #restore cursor here as extra measure
-        trace_error() #if something else in the file save code broke
-        self.posterror("Failed to save files")
-        successval = False #notes that process failed
-    finally:
-        QApplication.restoreOverrideCursor() #restore cursor here
-        self.alltabdata[opentab]["profileSaved"] = True #note that profile has been saved
-    
-    if successval:
-        self.alltabdata[opentab]["profileSaved"] = True
-        self.remove_asterisk(opentab)
-        
-    return successval
-    
-
-    
-#check filename for existing file (avoid overwriting)
-def check_filename(self,originalfilename):
-    new_file_num = 0
-    filename = originalfilename
-    while path.exists(filename):
-        new_file_num += 1
-        filename = f"{originalfilename}_{new_file_num}"
-    
-    return filename
-
-        
 #warning message
 @staticmethod
 def postwarning(warningtext):
@@ -508,13 +248,32 @@ def closeEvent(self, event):
     else:
         event.ignore() 
 
+                
+        
+        
+        
+        
+        
+#class to customize nagivation toolbar in profile editor tab
+class CustomToolbar(NavigationToolbar):
+    def __init__(self,canvas_,parent_):
+        self.toolitems = (
+            ('Home', 'Reset Original View', 'home', 'home'),
+            ('Back', 'Go To Previous View', 'back', 'back'),
+            ('Forward', 'Return to Next View', 'forward', 'forward'),
+            (None, None, None, None),
+            ('Pan', 'Click and Drag to Pan', 'move', 'pan'),
+            ('Zoom', 'Select Region to Zoon', 'zoom_to_rect', 'zoom'),)
+        NavigationToolbar.__init__(self,canvas_,parent_)
+        
+        
         
         
 
 # =============================================================================
 #    PARSE STRING INPUTS/CHECK VALIDITY WHEN TRANSITIONING TO PROFILE EDITOR
 # =============================================================================
-def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoords,checktime, checkid):
+def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoords,checktime,checkid):
     try:
         #parsing and checking data
         if checkcoords:
@@ -575,7 +334,6 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 self.postwarning('Invalid (non-numeric) Date Entered!')
                 return
             try:
-                time = int(timestr)
                 hour = int(timestr[:2])
                 minute = int(timestr[2:4])
             except:
@@ -613,10 +371,12 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 self.postwarning(f"Invalid Day Entered (must be between 1 and {maxdays} for {monthnames[month-1]})")
                 return
             
+            #getting datetime for drop
+            dropdatetime = dt.datetime(year,month,day,hour,minute,0)
 
             #making sure the profile is within 12 hours and not in the future, warning if otherwise
             curtime = timemodule.gmtime()
-            deltat = dt.datetime(curtime[0],curtime[1],curtime[2],curtime[3],curtime[4],curtime[5]) - dt.datetime(year,month,day,hour,minute,0)
+            deltat = dt.datetime(curtime[0],curtime[1],curtime[2],curtime[3],curtime[4],curtime[5]) - dropdatetime
             option = ''
             if self.settingsdict["dtgwarn"]:
                 if deltat.days < 0:
@@ -626,41 +386,370 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 if option == 'cancel':
                     return
         else:
-            year = np.NaN
-            month = np.NaN
-            day = np.NaN
-            time = np.NaN
-            hour = np.NaN
-            minute = np.NaN
+            dropdatetime = False
 
         #check length of identifier
         if checkid and len(identifier) != 5:
             option = self.postwarning_option("Identifier is not 5 characters! Continue anyways?")
             if option == 'cancel':
                 return
-
-        return lat,lon,year,month,day,time,hour,minute,identifier
+                
+        return lat,lon,dropdatetime,identifier
+        
     except Exception:
         trace_error()
-        self.posterror("Unspecified error in reading profile information!")
-        return
+        self.posterror("Unspecified error in parsing profile information!")
+        return False,False,False,False
             
+        
+            
+        
+    
+    
+    
+
+# =============================================================================
+#                       SAVING FILES FOR DATA IN OPEN TAB
+# =============================================================================            
+        
+            
+#save data in open tab        
+def savedataincurtab(self):
+    
+    opentab = self.whatTab()
+    successval = True #changes to False if error is raised
+    
+    #pulling probe type to determine what data to access
+    #this will be 'unknown' if the tab hasn't been processed but another check will prevent the function from trying to save a profile from an unprocessed tab
+    probetype = self.alltabdata[opentab]["probetype"]
+    
+    #getting directory to save files from QFileDialog
+    try:
+        outdir = str(QFileDialog.getExistingDirectory(self, "Select Directory to Save File(s)",self.defaultfilewritedir,QFileDialog.DontUseNativeDialog))
+        
+        if outdir == '': #checking directory validity
+            QApplication.restoreOverrideCursor()
+            return False
+        else:
+            self.defaultfilewritedir = outdir
+    except Exception:
+        trace_error()
+        self.posterror("Error raised in directory selection")
+        return False
+
+        
+    #saving files depending on tab type, switching cursor to loading option
+    try:
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        
+        if self.alltabdata[opentab]["tabtype"] == "PE_p":
+            self.savePEfiles(opentab,outdir,probetype)
+        elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
+            if self.alltabdata[opentab]["isprocessing"]:
+                self.postwarning('You must stop processing the current tab before saving data!')
+            else:
+                self.saveDASfiles(opentab,outdir,probetype)
+        else:
+            self.postwarning('You must process a profile before attempting to save data!')
+            
+    except Exception:
+        QApplication.restoreOverrideCursor() #restore cursor here as extra measure
+        trace_error() #if something else in the file save code broke
+        self.posterror("Failed to save files")
+        successval = False #notes that process failed
+    finally:
+        QApplication.restoreOverrideCursor() #restore cursor here
+        self.alltabdata[opentab]["profileSaved"] = True #note that profile has been saved
+    
+    if successval: #removing asterisk from tab title since file was saved
+        self.alltabdata[opentab]["profileSaved"] = True
+        self.remove_asterisk(opentab)
+        
+    return successval
+    
+
+    
+    
+#check filename for existing files with same header (avoid overwriting)
+def check_filename(self,originalfilenameheader):
+    new_file_num = 0
+    pathname, originalfilename = path.split(originalfilenameheader) #split into file header and file path
+    filename = originalfilename
+    fileheadersindir = [cf.split('.')[0] for cf in listdir(pathname)] #returns file headers (not inc. extension)
+    while any([filename == cf for cf in fileheadersindir]):
+        new_file_num += 1
+        filename = f"{originalfilenameheader}_{new_file_num}"
+    
+    return pathname + self.slash + filename
+    
+    
+    
+    
+    
+    
+#save files from DAS in specified tab
+def saveDASfiles(self,opentab,outdir,probetype):
+    
+    if probetype.upper() == 'AXCTD':
+        hasSal = True
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"]}
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["Salinity"]}
+        zcoeff = self.settingsdict["zcoeff_axctd"]
+        tcoeff = self.settingsdict["tcoeff_axctd"]
+        ccoeff = self.settingsdict["ccoeff_axctd"]
+        edf_comments = f"""Probe Type       :  AXCTD
+    Terminal Depth   :  850 m
+    Depth Coeff. 1   :  {zcoeff[0]}
+    Depth Coeff. 2   :  {zcoeff[1]}
+    Depth Coeff. 3   :  {zcoeff[2]}
+    Depth Coeff. 4   :  {zcoeff[3]}
+    Pressure Pt Correction:  N/A
+    Temp. Coeff. 1   :  {tcoeff[0]}
+    Temp. Coeff. 2   :  {tcoeff[1]}
+    Temp. Coeff. 3   :  {tcoeff[2]}
+    Temp. Coeff. 4   :  {tcoeff[3]}
+    Cond. Coeff. 1   :  {ccoeff[0]}
+    Cond. Coeff. 2   :  {ccoeff[1]}
+    Cond. Coeff. 3   :  {ccoeff[2]}
+    Cond. Coeff. 4   :  {ccoeff[3]}"""
+    
+    else:
+        hasSal = False
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature':self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None}
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frequency (Hz):': self.alltabdata[opentab]["rawdata"]["frequency"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"]}
+        zcoeff = self.settingsdict["zcoeff_axbt"]
+        tcoeff = self.settingsdict["tcoeff_axbt"]
+        edf_comments = f"""Probe Type       :  AXBT
+    Terminal Depth   :  850 m
+    Depth Coeff. 1   :  {zcoeff[0]}
+    Depth Coeff. 2   :  {zcoeff[1]}
+    Depth Coeff. 3   :  {zcoeff[2]}
+    Depth Coeff. 4   :  {zcoeff[3]}
+    Pressure Pt Correction:  N/A
+    Temp. Coeff. 1   :  {tcoeff[0]}
+    Temp. Coeff. 2   :  {tcoeff[1]}
+    Temp. Coeff. 3   :  {tcoeff[2]}
+    Temp. Coeff. 4   :  {tcoeff[3]}"""
+
+
+    # pulling data from inputs
+    latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+    lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+    profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+    timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+    
+    #parse inputs to valid data (ignore identifier)
+    lat, lon, dropdatetime, _ = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, 'no-ID', True, True, False)
+    
+    #creating file header to save, taking care not to overwrite files and note if good position/time exists
+    if np.isnan(lat*lon) or not dropdatetime:
+        goodmetadata = False
+        csavedtg = datetime.strftime(datetime.utcnow(),'%Y%m%d%H%M')
+        filename = self.check_filename(outdir + self.slash + f"output_savedAt_{csavedtg}")
+        self.postwarning("Bad date/time or position: cannot save NVO or EDF files if requested!")
+    else:
+        goodmetadata = True
+        filename = self.check_filename(outdir + self.slash + datetime.strftime(dropdatetime,'%Y%m%d%H%M'))
+        
+    
+    if self.settingsdict["savenvo"] and goodmetadata:
+        try:
+            io.writefinfile(filename+'.nvo', dropdatetime, lat, lon, 99, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save NVO file")
+            
+    if self.settingsdict["saveedf"] and goodmetadata:
+        try:
+            #creating comment for data source and VHF channel/frequency (if applicable) used
+            cdatasource = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
+            edf_comments += "\n//Data source: " + cdatasource
+            if cdatasource.lower() not in ["audio","test"]:
+                edf_comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
+                
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=False)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save EDF file")
+
+    if self.settingsdict["savewav"]:
+        try:
+            oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[opentab]["tabnum"]) + '.WAV'
+            newfile = filename + '.WAV'
+            
+            copyfile = True
+            if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
+                option = self.postwarning_option(f"{newfile} already exists- overwrite?")
+                if option == 'okay':
+                    remove(newfile)
+                else:
+                    copyfile = False
+            elif not path.exists(oldfile):
+                copyfile = False
+                self.postwarning(f'Unable to save WAV file: {oldfile} not found')
+            if copyfile:
+                shcopy(oldfile,newfile)
+            
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save WAV file")
+
+    if self.settingsdict["savesig"]:
+        try:
+            oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
+            newfile = filename + '.sigdata'
+
+            copyfile = True
+            if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
+                option = self.postwarning_option(f"{newfile} already exists- overwrite?")
+                if option == 'okay':
+                    remove(newfile)
+                else:
+                    copyfile = False
+            elif not path.exists(oldfile):
+                copyfile = False
+                self.postwarning(f'Unable to save signal data file: {oldfile} not found')
+            if copyfile:
+                shcopy(oldfile,newfile)
+
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save signal data file")
         
         
         
         
-#class to customize nagivation toolbar in profile editor tab
-class CustomToolbar(NavigationToolbar):
-    def __init__(self,canvas_,parent_):
-        self.toolitems = (
-            ('Home', 'Reset Original View', 'home', 'home'),
-            ('Back', 'Go To Previous View', 'back', 'back'),
-            ('Forward', 'Return to Next View', 'forward', 'forward'),
-            (None, None, None, None),
-            ('Pan', 'Click and Drag to Pan', 'move', 'pan'),
-            ('Zoom', 'Select Region to Zoon', 'zoom_to_rect', 'zoom'),)
-        NavigationToolbar.__init__(self,canvas_,parent_)
+#save files in profile editor tab
+def savePEfiles(self,opentab,outdir,probetype):
+    
+    if probetype.upper() == 'AXCTD':
+        hasSal = True
+    else:
+        hasSal = False
+    
+    #profile metadata
+    dropdatetime = self.alltabdata[opentab]["profdata"]["dropdatetime"]
+    lat = self.alltabdata[opentab]["profdata"]["lat"]
+    lon = self.alltabdata[opentab]["profdata"]["lon"]
+    identifier = self.alltabdata[opentab]["profdata"]["ID"]
+    
+    #temperature/depth data
+    rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
+    rawtemperature = self.alltabdata[opentab]["profdata"]["temperature_raw"]
+    climodepthfill = self.alltabdata[opentab]["profdata"]["climodepthfill"]
+    climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
+    depthT = self.alltabdata[opentab]["profdata"]["depthT_plot"]
+    temperature = self.alltabdata[opentab]["profdata"]["temperature_plot"]
+    depth1m = np.arange(0,np.floor(depthT[-1]))
+    temperature1m = np.interp(depth1m,depthT,temperature)
+    
+    #pulling salinity data if AXCTD
+    if hasSal:
+        rawsalinity = self.alltabdata[opentab]["profdata"]["salinity_raw"]
+        climopsalfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
+        depthS = self.alltabdata[opentab]["profdata"]["depthS_plot"]
+        salinity = self.alltabdata[opentab]["profdata"]["salinity_plot"]
+        salinity1m = np.interp(depth1m,depth,salinity)
+        edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m, 'Salinity (PSU)':salinity1m}
+    else:
+        salinity = None
+        salinity1m = None
+        edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m}
+        
+    ocean_depth = self.alltabdata[opentab]["profdata"]['oceandepth']
+    isbtmstrike = self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].isChecked()
+    if isbtmstrike:
+        btmstrikestr = 'yes'
+    else:
+        btmstrikestr = 'no'
+    if self.alltabdata[opentab]["profdata"]["matchclimo"]:
+        match_climo_string = 'yes'
+    else:
+        match_climo_string = 'no'
+    rcnum = self.data["tabwidgets"]["rcode"].currentIndex()
+    edf_comments = f"""Probe Type       :  {probetype}
+// Ocean depth at drop position: {ocean_depth:6.1f} m
+// Bottom strike? {btmstrikestr} 
+// Climatology match? {match_climo_string}
+// QC Code: {rcnum} ({self.reason_code_strings[rcnum]})
+// Data interpolated to 1-meter interval"""
+    
+    dtg = datetime.strftime(dropdatetime,'%Y%m%d%H%M')
+    filename = self.check_filename(outdir + self.slash + dtg)
+    
+    if self.settingsdict["savefin"]:
+        try:
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=True)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save EDF file")
+    
+    if self.settingsdict["savefin"]:
+        try:
+            writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save FIN file")
             
+    if self.settingsdict["savejjvv"]:
+        try:
+            io.writejjvvfile(filename+'.jjvv',temperature, depthT, dropdatetime, lat, lon, identifier, isbtmstrike)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save JJVV file")
             
+    if self.settingsdict["savebufr"]:
+        try:
+            io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m, salinity=salinity1m)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save BUFR file")
             
+    if self.settingsdict["saveprof"]:
+        try:
+            #initializing both figures first so they will exist/can be closed if plotting code throws an error
+            figT = plt.figure() 
+            figS = plt.figure()
+            
+            if self.settingsdict["overlayclimo"]:
+                matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
+            else:
+                matchclimo = 1
+                
+            figT.clear()
+            axT = figT.add_axes([0.1,0.1,0.85,0.85])
+            climohandleT = profplot.makeprofileplot(axT, rawtemperature, rawdepth, temperature, depthT, dtg, climodatafill=climotempfill, climodepthfill=climodepthfill, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=matchclimo, axlimtype=0)
+            if self.settingsdict["overlayclimo"] == 0:
+                climohandleT.set_visible(False)
+            figT.savefig(filename+'_prof_temp.png',format='png')
+            
+            if hasSal:
+                figS.clear()
+                axS = figS.add_axes([0.1,0.1,0.85,0.85])
+                climohandleS = profplot.makeprofileplot(axS, rawsalinity, rawdepth, salinity, depthS, dtg, climodatafill=climopsalfill, climodepthfill=climodepthfill, datacolor='g', datalabel = 'Salinity (PSU)', matchclimo=matchclimo, axlimtype=0)
+                if self.settingsdict["overlayclimo"] == 0:
+                    climohandleS.set_visible(False)
+                figS.savefig(filename+'_prof_psal.png',format='png')
+                
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save profile image")
+        finally:
+            plt.close('figT')
+            plt.close('figS')
+
+    if self.settingsdict["saveloc"]:
+        try:
+            figL = plt.figure()
+            figL.clear()
+            axL = figL.add_axes([0.1,0.1,0.85,0.85])
+            _,exportlat,exportlon,exportrelief = oci.getoceandepth(lat,lon,6,self.bathymetrydata)
+            profplot.makelocationplot(figL, axL, lat, lon, dtg, exportlon, exportlat, exportrelief, 6)
+            fig2.savefig(filename + '_loc.png',format='png')
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save location image")
+        finally:
+            plt.close('figL')
+                    
             

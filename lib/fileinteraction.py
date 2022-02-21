@@ -26,6 +26,7 @@ from pykml.factory import KML_ElementMaker as kml
 import lxml
 
 
+
 #read raw temperature/depth profile from LOGXX.DTA file
 def readlogfile(logfile):
 
@@ -54,86 +55,6 @@ def readlogfile(logfile):
     
     return [temperature,depth]
     
-
-    
-
-#read raw temperature/depth profile with all other data from LOGXX.DTA file
-def readlogfile_alldata(logfile):
-
-    with open(logfile,'r') as f_in:
-        time = []
-        depth = []
-        frequency = []
-        temperature = []
-
-        #read in header lines
-        for i in range(6):
-            f_in.readline()
-
-        #read data lines
-        for line in f_in:
-            line = line.strip().split() #get rid of \n character, split by spaces
-
-            try:
-                curfreq = np.double(line[2])
-            except:
-                curfreq = np.NaN
-
-            if ~np.isnan(curfreq) and curfreq != 0: #if it is a valid frequency, save the datapoint
-                depth.append(np.double(line[1]))
-                temperature.append(np.double(line[3]))
-            else:
-                depth.append(np.NaN)
-                temperature.append(np.NaN)
-
-            time.append(np.double(line[0]))
-            frequency.append(np.double(line[2]))
-    
-    #convert to numpy arrays
-    time = np.asarray(time)
-    depth = np.asarray(depth)
-    frequency = np.asarray(frequency)
-    temperature = np.asarray(temperature)
-    
-    return [temperature,depth,time,frequency]
-    
-    
-    
-    
-def writelogfile(logfile,initdatestr,inittimestr,timefromstart,depth,frequency,tempc):
-    with open(logfile,'w') as f_out:
-
-        #write header
-        f_out.write('     Probe Type = AXBT\n')
-        f_out.write('       Date = ' + initdatestr + '\n')
-        f_out.write('       Time = ' + inittimestr + '\n\n')
-        f_out.write('    Time     Depth    Frequency    (C)       (F) \n\n')
-
-        #temperature (degF) conversion
-        tempf = tempc*1.8+32
-
-        #writing data
-        for t,d,f,tc,tf in zip(timefromstart,depth,frequency,tempc,tempf):
-
-            #formatting strings
-            tstr = str(round(t,1)).zfill(4)
-            fstr = str(round(f,3)).zfill(5)
-            if np.isnan(d):
-                dstr = '-10.0'
-            else:
-                dstr = str(round(d,1)).zfill(4)
-            if np.isnan(tc):
-                tcstr = '******'
-            else:
-                tcstr = str(round(tc,2)).zfill(4)
-            if np.isnan(tf):
-                tfstr = '******'
-            else:
-                tfstr = str(round(tf,2)).zfill(4)
-
-            line = tstr.rjust(7) + dstr.rjust(10) + fstr.rjust(11) + tcstr.rjust(10) + tfstr.rjust(10) + '\n'
-            f_out.write(line)
-    
             
 
     
@@ -143,11 +64,10 @@ def readedffile(edffile):
     
     lon = lat = day = month = year = hour = minute = second = False #variables will be returned as 0 if unsuccessfully parsed
     
-    depthcolumn = 0
-    tempcolumn = 1
+    data = {'depth':None,'temperature':None,'salinity',None} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
     
-    rawtemperature = []
-    rawdepth = []
+    fields = ['depth','temperature','salinity']
+    fieldcolumns = [0,1,-1]
     
     with open(edffile,'rb') as f_in:
         
@@ -163,14 +83,12 @@ def readedffile(edffile):
                 if ":" in line: #input parameter- parse appropriately
                     line = line.strip().split(':')
                     
-                    
                     if "time" in line[0].lower(): #assumes time is in "HH", "HH:MM", or "HH:MM:SS" format
                         hour = int(line[1].strip())
                         minute = int(line[2].strip())
                         second = int(line[3].strip())
                         
-                        
-                    elif "date" in line[0].lower():
+                    elif "date" in line[0].lower(): #TODO: fix date and time reading
                         line = line[1].strip() #should be eight digits long
                         if "/" in line and len(line) <= 8: #mm/dd/yy format
                             line = line.split('/')
@@ -255,43 +173,61 @@ def readedffile(edffile):
                                 lon = float(line[1]) + float(line[2])/60 + float(line[3])/3600
                                 
                                 
-                    elif "field" in line[0].lower(): #specifying which column contains temperature and depth
-                        if "temperature" in line[1].lower():
-                            tempcolumn = int(line[0].strip()[5]) - 1
-                        elif "depth" in line[1].lower():
-                            depthcolumn = int(line[0].strip()[5]) - 1
+                    elif "field" in line[0].lower(): #specifying which column contains temperature, depth, salinity (optional)
+                        matched = False
+                        curlinefield = line[1].lower()
+                        curfieldcolumn = int(line[0].strip()[-1]) - 1
+                        for i,field in enumerate(fields):
+                            if field in curlinefield:
+                                fieldcolumns[i] = curfieldcolumn
+                                matched = True
+                        if not matched:
+                            fields.append(curlinefield)
+                            fieldcolumns.append(curfieldcolumn)
+                            data[curlinefield] = []
                         
                                 
-                #space-delimited temperature-depth obs or comments- attempt to parse as profile data, error will raise/function will move to next line if not
+                #space or tab delimited data (if number of datapoints matches fields and line doesnt start with //)
                 else: 
-                    line = line.strip().split() 
-                    cdepth = float(line[depthcolumn])
-                    ctemp = float(line[tempcolumn])
-                    if cdepth >= 0 and ctemp >= -10 and ctemp <= 50:
-                        rawdepth.append(cdepth)
-                        rawtemperature.append(ctemp)
+                    curdata = line.strip().split()
+                    if len(curdata) == len(fields) and line[:2] != '//':
+                    for i,val in enumerate(curdata): #enumerating over all values for current depth
+                        data[fields[i]].append(val)
                     
             except (ValueError, IndexError, AttributeError):
                 pass
-            
-    #converting to numpy arrays
-    rawtemperature = np.asarray(rawtemperature)
-    rawdepth = np.asarray(rawdepth)
     
-    return rawtemperature,rawdepth,year,month,day,hour,minute,second,lat,lon
+    #determining datetime
+    try:
+        dropdatetime = datetime(year,month,day,hour,minute,second)
+    except:
+        dropdatetime = False #return false for datetime if inputs are invalid
+        
+    #checking if each field can be converted from string to float and doing so as possible
+    for field in data.keys():
+        try:
+            curdata_float = [float(val) for val in data[field]] #if this doesn't raise an error, the float conversion worked
+            data[field] = curdata_float
+        except ValueError: #raised if data can't be converted to float
+            pass
+    
+    return data,dropdatetime,lat,lon
 
     
     
     
-def writeedffile(edffile,temperature,depth,year,month,day,hour,minute,second,lat,lon,tcoeff,zcoeff,comments):
+
+def writeedffile(edffile,dropdatetime,lat,lon,data,comments,QC=False):
+    
+    
     with open(edffile,'w') as f_out:
     
         #writing header, date and time, drop # (bad value)
-        f_out.write("// This is an AXBT EXPORT DATA FILE  (EDF)\n//\n")
-        f_out.write(f"Date of Launch:  {month:02d}/{day:02d}/{year-2000}\n")
-        f_out.write(f"Time of Launch:  {hour:02d}:{minute:02d}:{second:02d}\n")
+        f_out.write("// This is an Air-Expendable Probe EXPORT DATA FILE  (EDF)\n//\n")
+        f_out.write(f"Date of Launch:  {datetime.strftime(dropdatetime,'%m/%d/%y')}\n")
+        f_out.write(f"Time of Launch:  {datetime.strftime(dropdatetime,'%H:%M:%S')}\n")
         
-        #latitude and longitude
+        #latitude and longitude in degrees + decimal minutes
         if lat >= 0:
             nsh = 'N'
         else:
@@ -306,46 +242,39 @@ def writeedffile(edffile,temperature,depth,year,month,day,hour,minute,second,lat
         londeg = int(np.floor(lon))
         latmin = (lat - latdeg)*60
         lonmin = (lon - londeg)*60
-        f_out.write(f"Latitude      :  {latdeg:02d}:{latmin:06.3f}{nsh}\n")
-        f_out.write(f"Longitude     :  {londeg:03d}:{lonmin:06.3f}{ewh}\n")
-
-        f_out.write(f"""//
-// Drop Settings Information:
-Probe Type       :  AXBT
-Terminal Depth   :  800 m
-Depth Coeff. 1   :  {zcoeff[0]}
-Depth Coeff. 2   :  {zcoeff[1]}
-Depth Coeff. 3   :  {zcoeff[2]}
-Depth Coeff. 4   :  {zcoeff[3]}
-Pressure Pt Correction:  N/A
-Temp. Coeff. 1   :  {tcoeff[0]}
-Temp. Coeff. 2   :  {tcoeff[1]}
-Temp. Coeff. 3   :  {tcoeff[2]}
-Temp. Coeff. 4   :  {tcoeff[3]}
-Display Units    :  Metric
-Field0           :  Temperature (C)
-Field1           :  Depth (m)
-//
+        f_out.write(f"Latitude      :  {latdeg:02d} {latmin:06.3f}{nsh}\n")
+        f_out.write(f"Longitude     :  {londeg:03d} {lonmin:06.3f}{ewh}\n")        
+        
+        if QC:
+            qcstr = " "
+        else:
+            qcstr = """
 // This profile has not been quality-controlled.
-""" + comments + """
 //
-Depth (m)  - Temperature (°C)\n""")
-
-        #removing NaNs from T-D profile
-        ind = []
-        for t,d in zip(temperature,depth):
-            ind.append(not np.isnan(t) and not np.isnan(d))
-        depth = depth[ind]
-        temperature = temperature[ind]
-
-        #adding temperature-depth data now
-        for d,t in zip(depth,temperature):
-            f_out.write(f"{round(d,1):05.1f}\t{round(t,2):05.2f}\n")
+"""
+        
+        #building drop metadata comments section
+        drop_settings_info = f"""//
+// Drop Settings Information:
+""" + comments + """
+""" + "\n".join([f"Field{i}  :  {ckey}" for i,ckey in enumerate(data.keys())]) + """
+//""" + qcstr + """
+""" + "\t".join([ckey for ckey in data.keys()]) + "\n"
+        
+        f_out.write(drop_settings_info)
+        
+        fields = list(data.keys())
+        npts = len(data[fields[0]])
+        
+        #writing data
+        for i in range(npts):
+            cline = "\t".join(str(data[field][i]) for field in fields)
+            f_out.write(cline + "\n")
 
     
     
     
-#read data from JJVV file
+#read data from JJVV file (AXBT only)
 def readjjvvfile(jjvvfile):
     with open(jjvvfile,'r') as f_in:
 
@@ -360,7 +289,9 @@ def readjjvvfile(jjvvfile):
         day = int(datestr[:2])
         month = int(datestr[2:4])
         yeardigit = int(datestr[4])
-        time = int(line[2][:4])
+        # time = int(line[2][:4])
+        hour = int(line[2][:2])
+        minute = int(line[2][2:4])
         
         #determining year (drop must have been within last 10 years)
         curyear = datetime.utcnow().year
@@ -368,6 +299,11 @@ def readjjvvfile(jjvvfile):
         if yeardigit + decade > curyear:
             decade -= 1
         year = decade + yeardigit
+        
+        try:
+            dropdatetime = datetime(year,month,day,hour,minute,0)
+        except:
+            dropdatetime = False #return false for datetime if inputs are invalid
 
         #latitude and longitude
         latstr = line[3]
@@ -416,13 +352,13 @@ def readjjvvfile(jjvvfile):
     depth = np.asarray(depth)
     temperature = np.asarray(temperature)
     
-    return [temperature,depth,day,month,year,time,lat,lon,identifier]
+    return [temperature,depth,dropdatetime,lat,lon,identifier]
 
 
 
 
-#write data to JJVV file
-def writejjvvfile(jjvvfile,temperature,depth,day,month,year,time,lat,lon,identifier,isbtmstrike):
+#write data to JJVV file (AXBT only)
+def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike):
     
     #open file for writing
     with open(jjvvfile,'w') as f_out:
@@ -436,8 +372,11 @@ def writejjvvfile(jjvvfile,temperature,depth,day,month,year,time,lat,lon,identif
             quad = '7'
         else:
             quad = '5'
+            
+        #correcting year to ones digit only
+        yeardigit = cdtg.replace(year=cdtg.year - int(np.floor(cdtg.year/10)*10))
 
-        f_out.write(f"JJVV {day:02d}{month:02d}{str(year)[3]} {time:04d}/ {quad}{int(abs(lat)*1000):05d} {int(abs(lon)*1000):06d} 88888\n")
+        f_out.write(f"JJVV {datetime.strftime(cdtg,'%d%m')}{str(yeardigit)} {datetime.strftime(cdtg,'%H%M')}/ {quad}{int(abs(lat)*1000):05d} {int(abs(lon)*1000):06d} 88888\n")
 
         #create a list with all of the entries for the file
         filestrings = []
@@ -491,7 +430,7 @@ def writejjvvfile(jjvvfile,temperature,depth,day,month,year,time,lat,lon,identif
 
 
 #read data from FIN file
-def readfinfile(finfile):
+def readfinfile(finfile, hasSal=False):
     
     with open(finfile,'r') as f_in:
 
@@ -502,43 +441,57 @@ def readfinfile(finfile):
         year = int(line[0])
         dayofyear = int(line[1])
         curdate = date.fromordinal(date.toordinal(date(year-1,12,31)) + dayofyear)
-        day = curdate.day
-        month = curdate.month
-        time = int(line[2])
+        dropdatetime = datetime.fromisoformat(curdate.isoformat())
+        dropdatetime += timedelta(hours=int(line[2][:2]),minutes=int(line[2][2:4]))
         lat = np.double(line[3])
         lon = np.double(line[4])
         num = int(line[5])
 
         #setting up lists
         temperature = []
+        salinity = []
         depth = []
 
-        #reading temperature depth profiles
+        #reading data
+        all_data = []
         for line in f_in:
-
-            line = line.strip().split()
-
-            i = 0
-            while i < len(line)/2:
-                depth.append(np.double(line[2*i+1]))
-                temperature.append(np.double(line[2*i]))
-                i = i + 1
-
-    #converting data to arrays
-    depth = np.asarray(depth)
-    temperature = np.asarray(temperature)
+            all_data.extend([np.double(item) for item in line.strip().split()])
+        
+            
+        #parsing into profiles
+        if hasSal:
+            for i in range(0,len(data),3):
+                startind = i*3
+                temperature.append(data[startind])
+                depth.append(data[startind+1])
+                salinity.append(data[startind+2])
+                
+        else:
+            for i in range(0,len(data),2):
+                startind = i*2
+                temperature.append(data[startind])
+                depth.append(data[startind+1])
+            
+            
+    #converting data to arrays and returning
+    data = {"depth":np.asarray(depth), "temperature":np.asarray(temperature), "salinity":np.asarray(salinity)}
     
-    return [temperature,depth,day,month,year,time,lat,lon,num]
+    return [data,dropdatetime,lat,lon,num]
 
 
 
 
 #write data to FIN file
-def writefinfile(finfile,temperature,depth,day,month,year,time,lat,lon,num):
+def writefinfile(finfile,cdtg,lat,lon,num,depth,temperature,salinity=None):
     
+    hasSal = False
+    if salinity is not None:
+        hasSal = True
+    
+        
     with open(finfile,'w') as f_out:
     
-        dayofyear = date.toordinal(date(year,month,day)) - date.toordinal(date(year-1,12,31))
+        dayofyear = date.toordinal(date(cdtg.year,cdtg.month,cdtg.day)) - date.toordinal(date(cdtg.year-1,12,31))
 
         #formatting latitude string
         if lat >= 0:
@@ -555,29 +508,45 @@ def writefinfile(finfile,temperature,depth,day,month,year,time,lat,lon,num):
             lon = abs(lon)
 
         #writing header data
-        f_out.write(f"{year}   {dayofyear:03d}   {time:04d}   {latsign}{lat:06.3f}   {lonsign}{lon:07.3f}   {num:02d}   6   {len(depth)}   0   0   \n")
+        f_out.write(f"{cdtg.year}   {dayofyear:03d}   {datetime.strftime(cdtg,'%H%M')}   {latsign}{lat:06.3f}   {lonsign}{lon:07.3f}   {num:02d}   6   {len(depth)}   0   0   \n")
+        
+        #creating list of data points
+        Npts = len(depth)
+        outdata = []
+        if hasSal:
+            obsperline = 3
+            nobtypes = 3
+            for (t,d,s) in zip(temperature,depth,salinity):
+                outdata.extend([f"{t: 8.3f}",f"{d: 8.1f}",f"{s: 8.3f}"])
+        else:
+            nobtypes = 2
+            obsperline = 5
+            for (t,d) in zip(temperature,depth):
+                outdata.extend([f"{t: 8.3f}",f"{d: 8.1f}"])
+                
+        pointsperline = nobtypes*obsperline
 
         #writing profile data
         i = 0
-        while i < len(depth):
-
-            if i+5 < len(depth):
-                line = f"{temperature[i]: 8.3f}{depth[i]: 8.1f}{temperature[i+1]: 8.3f}{depth[i+1]: 8.1f}{temperature[i+2]: 8.3f}{depth[i+2]: 8.1f}{temperature[i+3]: 8.3f}{depth[i+3]: 8.1f}{temperature[i+4]: 8.3f}{depth[i+4]: 8.1f}\n"
-
+        while i < Npts:
+            if i+ptsperline < Npts:
+                pointstopull = ptsperline
             else:
-                line = ''
-                while i < len(depth):
-                    line += f"{temperature[i]: 8.3f}{depth[i]: 8.1f}"
-                    i += 1
-                line = line + '\n'
-
+                pointstopull = Npts - i
+                
+            line = "".join(outdata[i:i+pointstopull]) + "\n"
             f_out.write(line)
-            i = i + 5
-
-
+            i += pointstopull
+            
 
             
-def writebufrfile(bufrfile, temperature, depth, year, month, day, time, lon, lat,identifier, originatingcenter, hasoptionalsection, optionalinfo):
+            
+            
+            
+
+
+#cdtg is formatted as datetime.datetime object
+def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth, temperature, salinity=None, U=None, V=None, optionalinfo=None):
 
     #convert time into hours and minutes
     hour = int(np.floor(time / 100))
@@ -596,30 +565,56 @@ def writebufrfile(bufrfile, temperature, depth, year, month, day, time, lon, lat
     mastertable = 0  # For standard WMO FM 94-IX BUFR table
     originatingsubcenter = 0
     updatesequencenum = 0  # first iteration
-    if hasoptionalsection:
-        hasoptionalsectionnum = int('10000000', 2)
-    else:
-        hasoptionalsectionnum = int('00000000', 2)
+    
     datacategory = 31  # oceanographic data (Table A)
     datasubcategory = 3 #bathy (JJVV) message
     versionofmaster = 32
     versionoflocal = 0
     yearofcentury = int(year - 100 * np.floor(year / 100))  # year of the current century
 
+    
     # section 2 info
-    if hasoptionalsection:
+    if optionalinfo:
+        hasoptionalinfo = True
+        hasoptionalsectionnum = int('10000000', 2)
         sxn2len = len(optionalinfo) + 4
     else:
         sxn2len = 0
-
+        hasoptionalinfo = False
+        hasoptionalsectionnum = int('00000000', 2)
+        
+        
+    if salinity is not None: #TODO: add ability to write currents as well
+        hasSal = True
+    else:
+        hasSal = False
+        
+        
     # Section 3 info
-    sxn3len = 25  # 3 length + 1 reserved + 2 numsubsets + 1 flag + 2 FXY = 9 octets
+    sxn3len = 25  # 3 length + 1 reserved + 2 numsubsets + 1 flag + 9*2 FXY = 25 octets
+    if hasSal:
+        sxn3len = 27 #add 2 octets for salinity FXY code
     numdatasubsets = 1
     
     # whether data is observed, compressed (bits 1/2), bits 3-8 reserved (=0)
     s3oct7 = int('10000000', 2)
     
-    fxy_all = [int('0000000100001011', 2),int('1100000100001011', 2),int('1100000100001100', 2),int('1100000100010111', 2),int('0000001000100000', 2),int('0100001000000000', 2),int('0001111100000010', 2),int('0000011100111110', 2),int('0001011000101010', 2),] #WITH DELAYED (8-bit) REPLICATION
+    #replication factor explanation:
+    #F=1 for replication, X=number of descriptors (2 for d/T, 3 for d/T/S), Y=#times replicated (1)
+    
+    fxy_all = [int('0000000100001011',2), #0/01/011: identifier (72b, 9 bytes ascii)
+    int('1100000100001011',2), #3/01/011: year/month/day (12b/4b/6b = 22b total)
+    int('1100000100001100',2), #3/01/012: hour/minute (5b/6b = 11b total)
+    int('1100000100010111',2), #3/01/023: lat/lon coarse accuracy (15b lat/16b lon = 31b total)
+    int('0000001000100000',2), #0/02/032: digitization indicator (2b, 00)
+    int('0100001000000000',2), #1/02/000: replication of 2 descriptors
+    int('0001111100000010',2), #0/31/002: extended delayed decriptor replication factor (16b, # obs)
+    int('0000011100111110',2), #0/07/062: depth (17b, m*10)
+    int('0001011000101011',2),] #0/22/043: temperature (15b, degK*100)    
+    
+    if hasSal: #TODO: change replicator and append salinity 
+        fxy_all[5] = int('0100001100000000',2) #change replicator (index 5) to delayed rep of 3 descriptors, code 1/03/000
+        fxy_all.append(int('0001011000111110',2)) #0/22/062: salinity (14b, 100*PPT (=PSU))
 
     # Section 4 info (data)
     identifier = identifier[:9] #concatenates identifier if necessary
@@ -632,13 +627,13 @@ def writebufrfile(bufrfile, temperature, depth, year, month, day, time, lon, lat
     bufrarray = ''
 
     # year/month/day (3,01,011)
-    bufrarray = bufrarray + format(year, '012b')  # year (0,04,001)
-    bufrarray = bufrarray + format(month, '04b')  # month (0,04,002)
-    bufrarray = bufrarray + format(day, '06b')  # day (0,04,003)
+    bufrarray = bufrarray + format(cdtg.year, '012b')  # year (0,04,001)
+    bufrarray = bufrarray + format(cdtg.month, '04b')  # month (0,04,002)
+    bufrarray = bufrarray + format(cdtg.day, '06b')  # day (0,04,003)
 
     # hour/minute (3,01,012)
-    bufrarray = bufrarray + format(hour, '05b')  # hour (0,04,004)
-    bufrarray = bufrarray + format(minute, '06b')  # min (0,04,005)
+    bufrarray = bufrarray + format(cdtg.hour, '05b')  # hour (0,04,004)
+    bufrarray = bufrarray + format(cdtg.minute, '06b')  # min (0,04,005)
 
     # lat/lon (3,01,023)
     bufrarray = bufrarray + format(int(np.round((lat * 100)) + 9000), '015b')  # lat (0,05,002)
@@ -648,12 +643,23 @@ def writebufrfile(bufrfile, temperature, depth, year, month, day, time, lon, lat
     bufrarray = bufrarray + '00'  # indicator for digitization (0,02,032): 'values at selected depths' = 0
     bufrarray = bufrarray + format(len(temperature),'16b')  # delayed descripter replication factor(0,31,001) = length
     
-    #converting temperature and depth and writing
-    for t,d in zip(temperature,depth):
-        d_in = int(np.round(d*10)) # depth (0,07,062)
-        bufrarray = bufrarray + format(d_in,'017b')
-        t_in = int(np.round(10 * (t + 273.15)))  # temperature (0,22,042)
-        bufrarray = bufrarray + format(t_in,'012b')
+    #converting temperature, salinity (as req'd.), and depth and writing
+    if hasSal:
+        for t,d,s in zip(temperature,depth,salinity):
+            d_in = int(np.round(d*10)) # depth (0,07,062)
+            bufrarray = bufrarray + format(d_in,'017b')
+            t_in = int(np.round(100 * (t + 273.15)))  # temperature (0,22,043)
+            bufrarray = bufrarray + format(t_in,'015b')
+            s_in = int(np.round(100 * s))  # salinity (0,22,062)
+            bufrarray = bufrarray + format(s_in,'014b')
+        
+        
+    else:
+        for t,d in zip(temperature,depth):
+            d_in = int(np.round(d*10)) # depth (0,07,062)
+            bufrarray = bufrarray + format(d_in,'017b')
+            t_in = int(np.round(100 * (t + 273.15)))  # temperature (0,22,042)
+            bufrarray = bufrarray + format(t_in,'015b')
 
     #padding zeroes to get even octet number, determining total length
     bufrrem = len(bufrarray)%8
@@ -727,27 +733,3 @@ def writebufrfile(bufrfile, temperature, depth, year, month, day, time, lon, lat
         bufr.write(b'7777')
 
         
-        
-def writekmlfile(kmlfile, lon, lat, year, month, day, time):
-    #create the name and coordinate strings of the placemark that will be used
-    pointname = f'{year}{month}{day}{time}.kml'
-    coordstring = f'{lon} {lat}'
-
-    #create a placemark
-    plm = kml.Placemark(kml.Name(pointname), kml.Point(kml.coordinates(coordstring)))
-
-    #get the string of the placemark
-    plm_string = lxml.etree.tostring(plm, pretty_print = True)
-
-    #write the file
-    with open(kmlfile, 'wb') as file:
-        file.write(plm_string)
-
-        
-        
-def readkmlfile(kmlfile):
-    with open(kmlfile, 'rb') as file:
-        data = parser.parse(file)
-
-    #return the kml file object
-    return data

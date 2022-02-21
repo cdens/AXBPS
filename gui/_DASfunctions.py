@@ -52,7 +52,7 @@ def makenewprocessortab(self):
 
         #also creates proffig and locfig so they will both be ready to go when the tab transitions from signal processor to profile editor
         self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"ProcessorFig":plt.figure(),"profileSaved":True,
-                  "tabtype":"DAS_u","isprocessing":False, "source":"none"}
+                  "tabtype":"DAS_u","isprocessing":False, "source":"none", "probetype":'unknown'}
 
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
@@ -518,7 +518,7 @@ def runprocessor(self, opentab, datasource, newsource):
     #initializing thread, connecting signals/slots
     self.alltabdata[opentab]["source"] = newsource #assign current source as processor if previously unassigned (no restarting in this tab beyond this point)
     vhffreq = self.alltabdata[opentab]["tabwidgets"]["vhffreq"].value()
-    self.alltabdata[opentab]["processor"] = vsp.ThreadProcessor(self.wrdll, datasource, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.settingsdict["fftwindow"], self.settingsdict["minfftratio"],self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"],self.settingsdict["triggersiglev"], self.settingsdict["tcoeff"], self.settingsdict["zcoeff"], self.settingsdict["flims"], self.slash, self.tempdir)
+    self.alltabdata[opentab]["processor"] = vsp.ThreadProcessor(self.wrdll, datasource, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.settingsdict["fftwindow"], self.settingsdict["minfftratio"],self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"],self.settingsdict["triggersiglev"], self.settingsdict["tcoeff_axbt"], self.settingsdict["zcoeff_axbt"], self.settingsdict["flims"], self.slash, self.tempdir)
     
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
@@ -834,7 +834,7 @@ def processprofile(self):
             
         #check and correct inputs
         try:
-            lat,lon,year,month,day,time,hour,minute,identifier = self.parsestringinputs(latstr,lonstr,profdatestr,timestr,identifier,True,True,True)
+            lat,lon,dropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
         except:
             return
         
@@ -850,12 +850,7 @@ def processprofile(self):
         #writing other raw data inputs
         self.alltabdata[opentab]["rawdata"]["lat"] = lat
         self.alltabdata[opentab]["rawdata"]["lon"] = lon
-        self.alltabdata[opentab]["rawdata"]["year"] = year
-        self.alltabdata[opentab]["rawdata"]["month"] = month
-        self.alltabdata[opentab]["rawdata"]["day"] = day
-        self.alltabdata[opentab]["rawdata"]["droptime"] = time
-        self.alltabdata[opentab]["rawdata"]["hour"] = hour
-        self.alltabdata[opentab]["rawdata"]["minute"] = minute
+        self.alltabdata[opentab]["rawdata"]["dropdatetime"] = dropdatetime
         self.alltabdata[opentab]["rawdata"]["ID"] = identifier
         
         #saves profile if necessary
@@ -888,6 +883,6 @@ def processprofile(self):
         return
     
     #generating QC tab
-    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, day, month, year, time, identifier, probetype)
+    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, dropdatetime, identifier, probetype)
         
     

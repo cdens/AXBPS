@@ -27,7 +27,7 @@ class RunProgram(QMainWindow):
     from ._DASfunctions import (makenewprocessortab, datasourcerefresh, datasourcechange, changefrequencytomatchchannel, changechanneltomatchfrequency, changechannelandfrequency, updatefftsettings, startprocessor, prepprocessor, runprocessor, stopprocessor, gettabnumfromID, triggerUI, updateUIinfo, updateUIfinal, failedWRmessage, updateaudioprogressbar, AudioWindow, AudioWindowSignals, audioWindowClosed, processprofile)
     from ._PEfunctions import (makenewproftab, selectdatafile, checkdatainputs_editorinput, continuetoqc, runqc, applychanges, updateprofeditplots, generateprofiledescription, addpoint, removepoint, removerange, on_press_spike, on_release, toggleclimooverlay, CustomToolbar)
     from ._GUIfunctions import (initUI, loaddata, buildmenu, configureGuiFont, changeGuiFont, openpreferencesthread, updatesettings, settingsclosed, updateGPSdata, updateGPSsettings)
-    from ._globalfunctions import (addnewtab, whatTab, renametab, add_asterisk, remove_asterisk, setnewtabcolor, closecurrenttab, savedataincurtab, check_filename, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs)
+    from ._globalfunctions import (addnewtab, whatTab, renametab, add_asterisk, remove_asterisk, setnewtabcolor, closecurrenttab, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs, savedataincurtab, check_filename, saveDASfiles, savePEfiles)
     
     
     # INITIALIZE WINDOW, INTERFACE

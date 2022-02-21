@@ -21,40 +21,67 @@ import lib.geoplotfunctions as gplt
 import numpy as np
 from matplotlib.colors import ListedColormap
 
-
-
-def makeprofileplot(ax,rawtemperature,rawdepth,temperature,depth,climotempfill,climodepthfill,dtg,matchclimo):
+#dtg: string drop ID (should be date in YYYYMMDDHHMM format)
+#rawdata/rawdepth = raw profile
+#data/depth = QC'ed profile
+#climodatafill/climodepthfill = shape of climatology with uncertainty to fill on plot
+#datacolor/datalabel = color of QC profile and x axis label (raw prof color is black)
+#matchclimo: if False: display climo mismatch text in bottom corner
+#axlimtype: 0 -> custom limits based on data, 1 -> default temperature, 2 -> default salinity
+def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None, climodepthfill=None, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=True, axlimtype=0):
     
-    #plotting climatology, raw/QC profiles
-    climohandle = ax.fill(climotempfill,climodepthfill,color='b',alpha=0.3,label='Climo') #fill climo, save handle
-    climohandle = climohandle[0]
-    ax.plot(rawtemperature,rawdepth,'k',linewidth=2,label='Raw') #plot raw profile
-    ax.plot(temperature,depth,'r',linewidth=2,label='QC') #plot QC profile
+    #plotting climatology
+    if climodatafill is not None:
+        climohandle = ax.fill(climodatafill, climodepthfill, color='b', alpha=0.3, label='Climo') #fill climo, save handle
+        climohandle = climohandle[0]
+    else:
+        climohandle = None
+        
+    #plotting raw/QC profiles
+    ax.plot(rawdata,rawdepth,'k',linewidth=2,label='Raw') #plot raw profile
+    ax.plot(data,depth,datacolor,linewidth=2,label='QC') #plot QC profile
     
-    #adding climo mismatch warning if necessary
-    if matchclimo == 0:
-        try: 
-            maxT = np.max(temperature)
-        except (NameError, ValueError, TypeError):
-            maxT = np.max(rawtemperature)
-            
-        if maxT <= 10:
-            xloc = maxT + 10
-        else:
-            xloc = maxT - 10
-        ax.text(xloc,900,'Climatology Mismatch!',color = 'r') #noting climo mismatch if necessary
-
+    
     #plot labels/ranges
-    ax.set_xlabel('Temperature ($^\circ$C)')
+    ax.set_xlabel(datalabel)
     ax.set_ylabel('Depth (m)')
     ax.set_title('Drop: ' + dtg,fontweight="bold")
     ax.legend()
     ax.grid()
-    ax.set_xlim([-3,32])
-    ax.set_ylim([-5,1000])
-    ax.set_yticks([0,100,200,400,600,800,1000])
-    ax.set_yticklabels([0,100,200,400,600,800,1000])
+    
+    #setting up limits
+    y_max = 1000
+    ytickvals = [0,100,200,400,600,800,1000]
+    if axlimtype == 0:
+        xmin = np.min(data)
+        xmax = np.max(data)
+        dx = xmax-xmin
+        if dx > 20: #dx threshold
+            xcut = 5
+        elif dx > 5:
+            xcut = 1
+        elif dx > 1:
+            xcut = 0.5
+        else:
+            xcut = 0.1
+        x_range = [np.floor(xmin/xcut)*xcut, np.ceil(xmax/xcut)*xcut]
+    elif axlimtype == 1:
+        x_range = [-3, 32]
+    elif axlimtype == 2:
+        x_range = [32,40]
+        
+    ax.set_xlim(x_range)
+    ax.set_ylim([-5,y_max])
+    ax.set_yticks(ytickvals)
+    ax.set_yticklabels(ytickvals)
     ax.invert_yaxis()
+    
+    #adding climo mismatch warning if necessary
+    if matchclimo == 0:
+        dx = x_range[1] - x_range[0]
+        xloc = x_range[1] - 0.15*dx
+        yloc = 900
+        ax.text(xloc,yloc,'Climatology Mismatch!',color='r') #noting climo mismatch if necessary
     
     return climohandle
     
