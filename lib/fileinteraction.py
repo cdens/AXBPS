@@ -548,10 +548,6 @@ def writefinfile(finfile,cdtg,lat,lon,num,depth,temperature,salinity=None):
 #cdtg is formatted as datetime.datetime object
 def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth, temperature, salinity=None, U=None, V=None, optionalinfo=None):
 
-    #convert time into hours and minutes
-    hour = int(np.floor(time / 100))
-    minute = int(time - hour * 100)
-
     binarytype = 'big'  # big-endian
     reserved = 0
     version = 4  # BUFR version number (3 or 4 supported)
@@ -699,11 +695,11 @@ def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth
         if version == 3:
             bufr.write(yearofcentury.to_bytes(1, byteorder=binarytype, signed=False))
         elif version == 4:
-            bufr.write(year.to_bytes(2, byteorder=binarytype, signed=False))
-        bufr.write(month.to_bytes(1, byteorder=binarytype, signed=False))
-        bufr.write(day.to_bytes(1, byteorder=binarytype, signed=False))
-        bufr.write(hour.to_bytes(1, byteorder=binarytype, signed=False))
-        bufr.write(minute.to_bytes(1, byteorder=binarytype, signed=False))
+            bufr.write(cdtg.year.to_bytes(2, byteorder=binarytype, signed=False))
+        bufr.write(cdtg.month.to_bytes(1, byteorder=binarytype, signed=False))
+        bufr.write(cdtg.day.to_bytes(1, byteorder=binarytype, signed=False))
+        bufr.write(cdtg.hour.to_bytes(1, byteorder=binarytype, signed=False))
+        bufr.write(cdtg.minute.to_bytes(1, byteorder=binarytype, signed=False))
         bufr.write(int(0).to_bytes(1, byteorder=binarytype, signed=False)) #seconds for v4, oct18 = 0 (reserved) for v3
 
         # Section 2 (optional)

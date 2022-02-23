@@ -35,7 +35,8 @@ import datetime as dt
 import numpy as np
 import wave
 
-import lib.VHFsignalprocessor as vsp
+import lib.DAS.DAS_AXBT as das_axbt
+from lib.DAS.common_DAS_functions import channelandfrequencylookup, list_receivers
 import lib.GPS_COM_interaction as gps
 
 from ._globalfunctions import (addnewtab, whatTab, renametab, setnewtabcolor, closecurrenttab, savedataincurtab, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs)
@@ -51,8 +52,7 @@ def makenewprocessortab(self):
         opentab,tabID = self.addnewtab()
 
         #also creates proffig and locfig so they will both be ready to go when the tab transitions from signal processor to profile editor
-        self.alltabdata[opentab] = {"tab":QWidget(),"tablayout":QGridLayout(),"ProcessorFig":plt.figure(),"profileSaved":True,
-                  "tabtype":"DAS_u","isprocessing":False, "source":"none", "probetype":'unknown'}
+        self.alltabdata[opentab] = {"tab":QWidget(), "tablayout":QGridLayout(), "ProcessorFig":plt.figure(), "profileSaved":True, "tabtype":"DAS_u", "isprocessing":False, "datasource":"INIT", "sourcetype":"NONE", "probetype":'unknown'}
 
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
@@ -94,26 +94,29 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tabwidgets"] = {}
                 
         #Getting necessary data
-        if self.wrdll != 0:
-            winradiooptions = vsp.listwinradios(self.wrdll)
+        if self.dll != 0:
+            receiver_options, rtypes = list_receivers(self.dll)
         else:
-            winradiooptions = []
+            receiver_options = rtypes = []
+            
+        self.alltabdata[opentab]["datasouce_options"] = ['Test','Audio']
+        self.alltabdata[opentab]["sourcetypes"] = ['TT','AA']
+        for op,rtype in (receiver_options,rtypes):
+            self.alltabdata[opentab]["datasouce_options"].append(op)
+            self.alltabdata[opentab]["sourcetypes"].append(rtype)
 
         #making widgets
         self.alltabdata[opentab]["tabwidgets"]["datasourcetitle"] = QLabel('Data Source:') #1
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"] = QPushButton('Refresh')  # 2
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"].clicked.connect(self.datasourcerefresh)
         self.alltabdata[opentab]["tabwidgets"]["datasource"] = QComboBox() #3
-        self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Test')
-        self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Audio')
-        for wr in winradiooptions:
-            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(wr) #ADD COLOR OPTION
+        for op in self.all_receiver_options: #add all options (test, audio, receivers)
+            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(op) 
         
         #default receiver selection if 1+ receivers are connected and not actively processing
-        self.alltabdata[opentab]["datasource"] = "Initializing" #filler value for loop, overwritten after active receivers identified
-        if len(winradiooptions) > 0:
-            isnotbusy = [True]*len(winradiooptions)
-            for iii,serialnum in enumerate(winradiooptions):
+        if len(receiver_options) > 0:
+            isnotbusy = [True]*len(receiver_options)
+            for iii,serialnum in enumerate(receiver_options):
                 for ctab in self.alltabdata:
                     if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
                         isnotbusy[iii] = False
@@ -235,11 +238,11 @@ def datasourcerefresh(self):
             self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Test')
             self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Audio')
             # Getting necessary data
-            if self.wrdll != 0:
-                winradiooptions = vsp.listwinradios(self.wrdll)
+            if self.dll != 0:
+                receiver_options = list_receivers(self.dll)
             else:
-                winradiooptions = []
-            for wr in winradiooptions:
+                receiver_options = []
+            for wr in receiver_options:
                 self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(wr)  # ADD COLOR OPTION
             self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
             self.alltabdata[opentab]["datasource"] = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
@@ -293,7 +296,7 @@ def changefrequencytomatchchannel(self,newchannel):
             self.changechannelunlocked = False 
             
             opentab = self.whatTab()
-            newfrequency,newchannel = vsp.channelandfrequencylookup(newchannel,'findfrequency')
+            newfrequency,newchannel = channelandfrequencylookup(newchannel,'findfrequency')
             self.changechannelandfrequency(newchannel,newfrequency,opentab)
             self.changechannelunlocked = True 
         
@@ -313,13 +316,13 @@ def changechanneltomatchfrequency(self,newfrequency):
             #special step to skip invalid frequencies!
             if newfrequency == 161.5 or newfrequency == 161.875:
                 oldchannel = self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].value()
-                oldfrequency,_ = vsp.channelandfrequencylookup(oldchannel,'findfrequency')
+                oldfrequency,_ = channelandfrequencylookup(oldchannel,'findfrequency')
                 if oldfrequency >= 161.6:
                     newfrequency = 161.125
                 else:
                     newfrequency = 162.25
                     
-            newchannel,newfrequency = vsp.channelandfrequencylookup(newfrequency,'findchannel')
+            newchannel,newfrequency = channelandfrequencylookup(newfrequency,'findchannel')
             self.changechannelandfrequency(newchannel,newfrequency,opentab)
             self.changechannelunlocked = True 
         
@@ -354,10 +357,18 @@ def changechannelandfrequency(self,newchannel,newfrequency,opentab):
 #update FFT thresholds/window setting
 def updatefftsettings(self):
     try:
+        
+        #pulling settings
+        newsettings = {}
+        settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff", "zcoeff", "flims"]
+        for csetting in settingstopull:
+            newsettings[csetting] = self.settingsdict[csetting]
+        
         #updates fft settings for any active tabs
         for ctab in self.alltabdata:
             if self.alltabdata[ctab]["isprocessing"]: 
-                self.alltabdata[ctab]["processor"].changethresholds(self.settingsdict["fftwindow"], self.settingsdict["minfftratio"], self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"], self.settingsdict["triggersiglev"], self.settingsdict["tcoeff"], self.settingsdict["zcoeff"], self.settingsdict["flims"])
+                self.alltabdata[ctab]["processor"].changethresholds(newsettings)
+                
     except Exception:
         trace_error()
         self.posterror("Error updating FFT settings!")
@@ -392,27 +403,12 @@ def prepprocessor(self, opentab):
         self.postwarning("The maximum number of simultaneous processing threads has been exceeded. This processor will automatically begin collecting data when STOP is selected on another tab.")
         return False,"No","No"
         
-    #checks to make sure that this tab hasn't been used to process from a different source (e.g. user is attempting to switch from "Test" to "Audio" or a receiver), raise error if so
-    if datasource == 'Audio':
-        newsource = "audio"
-    elif datasource == "Test":
-        newsource = "test"
-    else:
-        newsource = "rf"
-        
-    oldsource = self.alltabdata[opentab]["source"]
-    if oldsource == "none":
-        pass #wait to change source until method has made it past possible catching points (so user can restart in same tab)
-        
-    elif oldsource == "audio": #once you have stopped an audio processing tab, ARES won't let you restart it
-        self.postwarning(f"You cannot restart an audio processing instance after stopping. Please open a new tab to process additional audio files.")
-        return False,"No","No"
-        
-    elif oldsource != newsource: #if "Start" has been selected previously and a source type (test, audio, or rf) was assigned
-        self.postwarning(f"You cannot switch between Test, Audio, and RF data sources after starting processing. Please open a new tab to process a profile from a different source and reset this profile's source to {oldsource} to continue processing.")
-        return False,"No","No"
-
-    if datasource == 'Audio': #gets audio file to process
+    #source type to be passed to processor thread (audio vs. test vs. receiver type)
+    sourceind = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndex()
+    sourcetype = self.alltabdata[opentab]["sourcetypes"][sourceind]
+    
+    
+    if sourcetype == 'AA': #gets audio file to process
         try:
             # getting filename
             fname, ok = QFileDialog.getOpenFileName(self, 'Open file',self.defaultfilereaddir,"Source Data Files (*.WAV *.Wav *.wav *PCM *Pcm *pcm *MP3 *Mp3 *mp3)","",self.fileoptions)
@@ -452,7 +448,7 @@ def prepprocessor(self, opentab):
             self.posterror("Failed to execute audio processor!")
             trace_error()
 
-    elif datasource != "Test":
+    elif sourcetype != "TT":
         
         #checks to make sure current receiver isn't busy
         for ctab in self.alltabdata:
@@ -461,12 +457,12 @@ def prepprocessor(self, opentab):
                 return False,"No"
     
     #success            
-    return True, datasource, newsource
+    return True, datasource, sourcetype
     
     
     
     
-def runprocessor(self, opentab, datasource, newsource):
+def runprocessor(self, opentab, datasource, sourcetype):
                 
     #gets current tab number
     tabID = self.alltabdata[opentab]["tabnum"]
@@ -491,7 +487,7 @@ def runprocessor(self, opentab, datasource, newsource):
         self.alltabdata[opentab]["rawdata"]["starttime"] = starttime
         
         #autopopulating selected fields
-        if datasource[:5] != 'Audio': #but not if reprocessing from audio file
+        if sourcetype != 'AA': #but not if reprocessing from audio file
             autopopulate = True
     
     #add gps coordinates if a good gps fix is available
@@ -503,11 +499,10 @@ def runprocessor(self, opentab, datasource, newsource):
         starttime = self.alltabdata[opentab]["rawdata"]["starttime"]
         
     #this should never happen (if there is no DLL loaded there shouldn't be any receivers detected), but just in case
-    if self.wrdll == 0 and datasource != 'Test' and datasource[:5] != 'Audio':
-        self.postwarning("The WiNRADIO driver was not successfully loaded! Please restart the program in order to initiate a processing tab with a connected WiNRADIO")
+    if self.dll == 0 and sourcetype not in ['AA','TT']:
+        self.postwarning("No receiver drivers were successfully loaded! Please restart the program in order to initiate a processing tab with a connected receiver")
         return
-    elif datasource[:5] == 'Audio': #build audio progress bar
-        # building progress bar
+    elif sourcetype == 'AA': #build audio progress bar
         self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"] = QProgressBar()
         self.alltabdata[opentab]["tablayout"].addWidget(
             self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"], 8, 2, 1, 7)
@@ -516,9 +511,28 @@ def runprocessor(self, opentab, datasource, newsource):
         
         
     #initializing thread, connecting signals/slots
-    self.alltabdata[opentab]["source"] = newsource #assign current source as processor if previously unassigned (no restarting in this tab beyond this point)
+    self.alltabdata[opentab]["sourcetype"] = sourcetype #assign current source as processor if previously unassigned (no restarting in this tab beyond this point)
     vhffreq = self.alltabdata[opentab]["tabwidgets"]["vhffreq"].value()
-    self.alltabdata[opentab]["processor"] = vsp.ThreadProcessor(self.wrdll, datasource, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.settingsdict["fftwindow"], self.settingsdict["minfftratio"],self.settingsdict["minsiglev"], self.settingsdict["triggerfftratio"],self.settingsdict["triggersiglev"], self.settingsdict["tcoeff_axbt"], self.settingsdict["zcoeff_axbt"], self.settingsdict["flims"], self.slash, self.tempdir)
+    
+    #adjusting name of datasource to send to thread:
+    #'AAxxxxxfull/path/to/file' for audio, where xxxxx is the channel number and the full path to the audio file is given (this is set by the AudioWindow class)
+    #'TT' for test
+    #'WRNNNNNN' for radio receiver, where NNNNNN is the serial/ID for the reciever, and the first two characters are the receiver type (WR = WiNRADIO G39WSB sonobuoy receiver)
+    if sourcetype == 'TT':
+        datasource_toThread = 'TT'
+    elif sourcetype == 'AA':
+        datasource_toThread = datasource #set by the AudioWindow
+    else:
+        datasource_toThread = sourcetype + datasource #append receiver ID (2 characters) and serial number
+    
+    
+    settings = {} #pulling settings
+    settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff", "zcoeff", "flims"]
+    for csetting in settingstopull:
+        settings[csetting] = self.settingsdict[csetting]
+    
+    #initializing processor, connecting signals/slots to GUI thread
+    self.alltabdata[opentab]["processor"] = axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
     
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
@@ -526,7 +540,7 @@ def runprocessor(self, opentab, datasource, newsource):
     self.alltabdata[opentab]["processor"].signals.terminated.connect(self.updateUIfinal)
 
     #connecting audio file-specific signal (to update progress bar on GUI)
-    if datasource[:5] == 'Audio':
+    if datasource[:2] == 'AA':
         self.alltabdata[opentab]["processor"].signals.updateprogress.connect(self.updateaudioprogressbar)
     
     #starting thread
@@ -612,9 +626,9 @@ class AudioWindow(QWidget):
     def selectChannel(self):
         self.selectedChannel = self.spinbox.value()
         
-        #format is Audio<channel#><filename> e.g. Audio0002/My/File.WAV
+        #format is Audio<channel#><filename> e.g. AA00002/My/File.WAV
         #allowing for 5-digit channels since WAV file channel is a 16-bit integer, can go to 65,536
-        self.datasource = f"Audio{self.selectedChannel:05d}{self.fname}" 
+        self.datasource = f"AA{self.selectedChannel:05d}{self.fname}" 
         
         #emit signal
         self.signals.closed.emit(True, self.opentab, self.datasource)
@@ -657,8 +671,9 @@ def gettabnumfromID(self,tabID):
             
             
 #slot to notify main GUI that the thread has been triggered with AXBT data
-@pyqtSlot(int,float)
-def triggerUI(self,tabID,firstpointtime):
+#event is only used for AXCTDs where there are multiple triggers (e.g. 400 Hz pulses, 7.5 kHz pulse)
+@pyqtSlot(int,int,float)
+def triggerUI(self,tabID,event,firstpointtime):
     try:
         plottabnum = self.gettabnumfromID(tabID)
         self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = firstpointtime
@@ -670,12 +685,23 @@ def triggerUI(self,tabID,firstpointtime):
         
         
 #slot to pass AXBT data from thread to main GUI
-@pyqtSlot(int,float,float,float,float,float,float,int)
-def updateUIinfo(self,tabID,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
-    try:
+@pyqtSlot(int,list)
+def updateUIinfo(self,tabID,data):
+    try:        
+        
         plottabnum = self.gettabnumfromID(tabID)
         
+        
         if self.alltabdata[plottabnum]["isprocessing"]:
+            
+            #pulling data from list
+            ctemp = data[0]
+            cdepth = data[1]
+            cfreq = data[2]
+            cact = data[3]
+            cratio = data[4]
+            ctime = data[5]
+            i = data[6]
             
             #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
             lastdepth = -1
@@ -702,7 +728,7 @@ def updateUIinfo(self,tabID,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
     
                 #coloring new cell based on whether or not it has good data
                 stars = '------'
-                if np.isnan(ctemp):
+                if np.isnan(cdepth):
                     ctemp = stars
                     cdepth = stars
                     curcolor = QColor(200, 200, 200) #light gray
@@ -710,28 +736,16 @@ def updateUIinfo(self,tabID,ctemp,cdepth,cfreq,cact,cratio,ctime,i):
                     curcolor = QColor(204, 255, 220) #light green
     
                 #updating table
-                tabletime = QTableWidgetItem(str(ctime))
-                tabletime.setBackground(curcolor)
-                tabledepth = QTableWidgetItem(str(cdepth))
-                tabledepth.setBackground(curcolor)
-                tablefreq = QTableWidgetItem(str(cfreq))
-                tablefreq.setBackground(curcolor)
-                tabletemp = QTableWidgetItem(str(ctemp))
-                tabletemp.setBackground(curcolor)
-                tableact = QTableWidgetItem(str(cact))
-                tableact.setBackground(curcolor)
-                tablerat = QTableWidgetItem(str(cratio))
-                tablerat.setBackground(curcolor)
-    
                 table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
                 crow = table.rowCount()
                 table.insertRow(crow)
-                table.setItem(crow, 0, tabletime)
-                table.setItem(crow, 1, tablefreq)
-                table.setItem(crow, 2, tableact)
-                table.setItem(crow, 3, tablerat)
-                table.setItem(crow, 4, tabledepth)
-                table.setItem(crow, 5, tabletemp)
+                
+                table_data = [ctime, cdepth, cfreq, ctemp, cact, cratio]
+                for cind,cdata in enumerate(table_data):
+                    curtableobject = QTableWidgetItem(str(cdata))
+                    curtableobject.setBackground(curcolor)
+                    table.setItem(crow, cind, curtableobject)
+                    
                 table.scrollToBottom()
                 #        if crow > 20: #uncomment to remove old rows
                 #            table.removeRow(0)
@@ -779,11 +793,11 @@ def failedWRmessage(self,tabID,messagenum):
         elif messagenum == 7:
             self.posterror("Failed to configure the WiNRADIO audio stream!")
         elif messagenum == 8:
-            self.posterror("Contact lost with WiNRADIO receiver! Please ensure device is connected and powered on!")
+            self.posterror("Contact lost with receiver! Please ensure device is connected and powered on!")
         elif messagenum == 9:
             self.posterror("Selected audio file is too large! Please trim the audio file before processing")
         elif messagenum == 10:
-            self.posterror("Unspecified processing error raised during SignalProcessor.Run()")
+            self.posterror("Unspecified processing error raised during DAS processing")
         elif messagenum == 11:
             self.posterror("Unable to read audio file")
         elif messagenum == 12:
@@ -793,7 +807,7 @@ def failedWRmessage(self,tabID,messagenum):
             
         #reset data source if signal processor failed to start
         if messagenum in [1,2,3,4,5,6,7,9,11,12]:
-            self.alltabdata[plottabnum]["source"] = "none"
+            self.alltabdata[plottabnum]["sourcetype"] = "NONE"
     
     except Exception:
         trace_error()

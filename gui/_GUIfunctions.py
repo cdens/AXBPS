@@ -40,7 +40,7 @@ import scipy.io as sio
 from cartopy.io import shapereader
 
 import lib.GPS_COM_interaction as gps
-import gui.settingswindow as swin
+import gui._settingswindow as swin
 
 
 from ._globalfunctions import (addnewtab, whatTab, renametab, setnewtabcolor, closecurrenttab, savedataincurtab, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs)
@@ -169,23 +169,21 @@ def initUI(self):
 
 
     # loading WiNRADIO DLL API
+    self.dll = {}
     if cursys() == 'Windows':
         try:
             if calcsize("P")*8 == 32: #32-bit
-                self.wrdll = windll.LoadLibrary("data/WRG39WSBAPI_32.dll") #32-bit
+                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_32.dll") #32-bit
             elif calcsize("P")*8 == 64: #64-bit
-                self.wrdll = windll.LoadLibrary("data/WRG39WSBAPI_64.dll") #64-bit
+                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_64.dll") #64-bit
             else:
                 self.postwarning("WiNRADIO driver not loaded (unrecognized system architecture: "+str(calcsize("P")*8)+")!")
-                self.wrdll = 0
         except:
             self.postwarning("Failed to load WiNRADIO driver!")
-            self.wrdll = 0
             trace_error()
             
     else:
         self.postwarning("WiNRADIO communications only supported with Windows! Processing and editing from audio/ASCII files is still available.")
-        self.wrdll = 0
         
 
 

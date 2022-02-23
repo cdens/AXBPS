@@ -17,7 +17,7 @@
 #    along with AXBPS.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
-import lib.geoplotfunctions as gplt
+import lib.PE.geoplotfunctions as gplt
 import numpy as np
 from matplotlib.colors import ListedColormap
 
