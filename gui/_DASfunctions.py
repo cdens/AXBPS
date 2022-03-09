@@ -81,9 +81,9 @@ def makenewprocessortab(self):
 
 
         #prep window to plot data
-        self.alltabdata[opentab]["ProcessorAx"].set_xlabel('Temperature ($^\circ$C)')
-        self.alltabdata[opentab]["ProcessorAx"].set_ylabel('Depth (m)')
-        self.alltabdata[opentab]["ProcessorAx"].set_title('Data Received',fontweight="bold")
+        self.alltabdata[opentab]["ProcessorAx"].set_xlabel('Temperature ($^\circ$C)', fontsize=12)
+        self.alltabdata[opentab]["ProcessorAx"].set_ylabel('Depth (m)', fontsize=12)
+        self.alltabdata[opentab]["ProcessorAx"].set_title('Data Received',fontweight="bold", fontsize=14)
         self.alltabdata[opentab]["ProcessorAx"].grid()
         self.alltabdata[opentab]["ProcessorAx"].set_xlim([-2,32])
         self.alltabdata[opentab]["ProcessorAx"].set_ylim([5,1000])
@@ -365,7 +365,7 @@ def updatefftsettings(self):
             newsettings[csetting] = self.settingsdict[csetting]
         
         #updates fft settings for any active tabs
-        for ctab in self.alltabdata:
+        for ctab in range(len(self.alltabdata)): #dont want to iterate over tabs, need to edit alltabdata list
             if self.alltabdata[ctab]["isprocessing"]: 
                 self.alltabdata[ctab]["processor"].changethresholds(newsettings)
                 

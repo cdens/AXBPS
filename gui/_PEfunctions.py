@@ -201,12 +201,16 @@ def checkdatainputs_editorinput(self):
     flon = np.NaN
     fdropdatetime = False
         
-        
+    checkcoords = checktime = False
+    
+    
     #read profile data
     try:
         #if LOG.DTA file, read profile data and get datetime/position from user
         if ftype == 1:
             rawtemperature,rawdepth = io.readlogfile(logfile)
+            checkcoords = True
+            checktime = True
             
         #EDF/FIN/JJVV includes logic to handle partially missing data fields (e.g. lat/lon)
         elif ftype == 2:
@@ -251,7 +255,7 @@ def checkdatainputs_editorinput(self):
     if ftype and success:
             
         try:
-            isgood,ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
+            isgood,ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, checkcoords, checktime, True)
             
             if np.isnan(flat*flon):
                 lat = ilat

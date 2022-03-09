@@ -314,8 +314,8 @@ def configureGuiFont(self):
     self.labelfont.setPointSize(self.settingsdict["fontsize"])        
     
     #list of widgets to be updated for each type:
-    daswidgets = ["datasourcetitle", "refreshdataoptions", "datasource","channeltitle", "freqtitle","vhfchannel", "vhffreq", "startprocessing", "stopprocessing","processprofile", "saveprofile", "datetitle","dateedit", "timetitle","timeedit", "lattitle", "latedit", "lontitle","lonedit", "idtitle","idedit", "table", "tableheader"] #signal processor (data acquisition system)
-    peinputwidgets = ["title", "lattitle", "latedit", "lontitle", "lonedit", "datetitle", "dateedit", "timetitle", "timeedit", "idtitle", "idedit", "logtitle", "logedit", "logbutton", "submitbutton"]
+    daswidgets = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing","processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle","lonedit", "idtitle","idedit", "table", "tableheader"] #signal processor (data acquisition system)
+    peinputwidgets = ["title", "probetitle", "probetype", "lattitle", "latedit", "lontitle", "lonedit", "datetitle", "dateedit", "timetitle", "timeedit", "idtitle", "idedit", "logtitle", "logedit", "logbutton", "submitbutton"]
     pewidgets = ["toggleclimooverlay", "addpoint", "removepoint", "removerange", "sfccorrectiontitle", "sfccorrection", "maxdepthtitle", "maxdepth", "depthdelaytitle", "depthdelay", "runqc", "proftxt", "isbottomstrike", "rcodetitle", "rcode"]
     self.tabWidget.setFont(self.labelfont)
     
@@ -337,8 +337,6 @@ def configureGuiFont(self):
         for widget in curwidgets:
             self.alltabdata[ctab]["tabwidgets"][widget].setFont(self.labelfont)
             
-    #save new font to settings file
-    swin.writesettings(self.settingsfile, self.settingsdict)
             
             
 def changeGuiFont(self): 
@@ -350,6 +348,9 @@ def changeGuiFont(self):
                 
         self.settingsdict["fontsize"] = self.fontoptions[curind]
         self.configureGuiFont()
+        
+        #save new font to settings file
+        swin.writesettings(self.settingsfile, self.settingsdict)
     
     except Exception:
         trace_error()

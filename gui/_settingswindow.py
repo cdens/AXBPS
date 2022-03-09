@@ -56,10 +56,10 @@ def setdefaultsettings():
     settingsdict["autolocation"] = True #auto determine location with GPS
     settingsdict["autoid"] = True #autopopulate platform ID
     settingsdict["platformid"] = 'NNNNN'
-    settingsdict["savenvo_raw"] = True
-    settingsdict["saveedf_raw"] = False
+    settingsdict["savenvo_raw"] = False
+    settingsdict["saveedf_raw"] = True
     settingsdict["savewav_raw"] = True
-    settingsdict["savesig_raw"] = True
+    settingsdict["savesig_raw"] = False
     settingsdict["dtgwarn"] = True  # warn user if entered dtg is more than 12 hours old or after current system time (in future)
     settingsdict["renametabstodtg"] = True  # auto rename tab to dtg when loading profile editor
     settingsdict["autosave"] = False  # automatically save raw data before opening profile editor (otherwise brings up prompt asking if want to save)
@@ -117,6 +117,7 @@ class SettingNotRecognized(Exception):
 def readsettings(filename):
     try:
         settingsdict = {}
+        isgood = True
         
         with open(filename) as file: #read settings from file
             for cline in file.readlines(): #read each line
@@ -140,14 +141,31 @@ def readsettings(filename):
                     raise SettingNotRecognized(csetting, cvalue)
                 
                 settingsdict[csetting] = cdata #adding current setting to dict storing all settings
-            
-            
+                
     #if settings file doesn't exist or is invalid, rewrites file with default settings
     except:
-        settingsdict = setdefaultsettings()
-        writesettings(filename, settingsdict)
+        isgood = False
         trace_error() #report issue
-
+        
+    
+    #verifying that all settings are present and have the correct type, overwriting bad settings with default values
+    setting_fields = [strsettings,listsettings,floatsettings,intsettings,boolsettings]
+    setting_types = [str,list,float,int,bool]
+    defaultsettingsdict = setdefaultsettings()
+    for (cfieldlist,ctype) in zip(setting_fields,setting_types):
+        for cfield in cfieldlist:
+            needsreplaced = False
+            if not cfield in settingsdict.keys():
+                needsreplaced = True
+            elif type(settingsdict[cfield]) != ctype:
+                needsreplaced = True
+            if needsreplaced:
+                isgood = False
+                settingsdict[cfield] = defaultsettingsdict[cfield]
+    
+    if not isgood: #update settings file if it had to be corrected
+        writesettings(filename, settingsdict)
+        
     return settingsdict
 
     
@@ -211,7 +229,7 @@ class RunSettings(QMainWindow):
             #building window/tabs
             self.buildcentertable()
             self.makeprocessorsettingstab()  # processor settings
-            self.maketzconvertsettingstab() #temperature/depth conversion eqn settings
+            self.makeaxbtconvertsettingstab() #temperature/depth conversion eqn settings
             self.makeprofileeditorsettingstab() #profile editor tab
             self.makegpssettingstab() #add GPS settings
 
@@ -459,11 +477,12 @@ class RunSettings(QMainWindow):
 
             self.processortabwidgets["dtgwarn"] = QCheckBox('Warn if DTG is not within past 12 hours') #12
             self.processortabwidgets["dtgwarn"].setChecked(self.settingsdict["dtgwarn"])
-            self.processortabwidgets["renametab"] = QCheckBox('Auto-rename tab to DTG on transition to profile editing mode') #13
+            self.processortabwidgets["renametab"] = QCheckBox('Auto-rename tab to DTG on transition to profile editor') #13
             self.processortabwidgets["renametab"].setChecked(self.settingsdict["renametabstodtg"])
-            self.processortabwidgets["autosave"] = QCheckBox('Autosave raw data files when transitioning to profile editor mode') #14
+            self.processortabwidgets["autosave"] = QCheckBox('Autosave raw data files when transitioning to profile editor') #14
             self.processortabwidgets["autosave"].setChecked(self.settingsdict["autosave"])
-
+            
+            self.processortabwidgets["axbtsiglabel"] = QLabel("AXBT Signal Settings")
             self.processortabwidgets["fftwindowlabel"] = QLabel(self.label_fftwindow +str(self.settingsdict["fftwindow"]).ljust(4,'0')) #15
             self.processortabwidgets["fftwindow"] = QSlider(Qt.Horizontal) #16
             self.processortabwidgets["fftwindow"].setValue(int(self.settingsdict["fftwindow"] * 100))
@@ -507,15 +526,14 @@ class RunSettings(QMainWindow):
             # should be 24 entries
             widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel",
                            "IDedit", "filesavetypes", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw",
-                           "dtgwarn", "renametab", "autosave", "fftwindowlabel", "fftwindow",
+                           "dtgwarn", "renametab", "autosave", "axbtsiglabel", "fftwindowlabel", "fftwindow",
                            "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel",
                            "triggersiglev","triggerratiolabel","triggerratio"]
 
-            wcols = [1, 1, 1, 1, 1, 2, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
-            wrows = [1, 2, 3, 4, 5, 5, 1, 2, 3, 4, 5, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-            wrext = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            wcols   = [1, 1, 1, 1, 1, 2, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5]
+            wrows   = [1, 2, 3, 4, 5, 5, 1, 2, 3, 4, 5, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1]
+            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
@@ -529,7 +547,7 @@ class RunSettings(QMainWindow):
             self.processortablayout.setColumnStretch(4, 3)
             for i in range(0,12):
                 self.processortablayout.setRowStretch(i, 1)
-            self.processortablayout.setRowStretch(11, 4)
+            self.processortablayout.setRowStretch(13, 4)
 
             # applying the current layout for the tab
             self.processortab.setLayout(self.processortablayout)
@@ -545,7 +563,7 @@ class RunSettings(QMainWindow):
     # =============================================================================
     #     TEMPERATURE-DEPTH CONVERSION EQNS + LIMITATIONS HERE
     # =============================================================================
-    def maketzconvertsettingstab(self):
+    def makeaxbtconvertsettingstab(self):
         try:
 
             self.tzconverttab = QWidget()
@@ -554,7 +572,7 @@ class RunSettings(QMainWindow):
 
             self.tzconverttablayout.setSpacing(10)
 
-            self.tabWidget.addTab(self.tzconverttab,'Temperature/Depth Conversion')
+            self.tabWidget.addTab(self.tzconverttab,'AXBT Conversions')
             self.tabWidget.setCurrentIndex(0)
 
             # and add new buttons and other widgets
@@ -912,6 +930,7 @@ class RunSettings(QMainWindow):
             self.profeditortabwidgets["saveloc_qc"] = QCheckBox('Location PNG')  # 10
             self.profeditortabwidgets["saveloc_qc"].setChecked(self.settingsdict["saveloc_qc"])
 
+            self.profeditortabwidgets["othertitle"] = QLabel('Additional Options:')  #fix count
             self.profeditortabwidgets["useoceanbottom"] = QCheckBox(
                 'ID bottom strikes with NOAA bathymetry')  # 11
             self.profeditortabwidgets["useoceanbottom"].setChecked(self.settingsdict["useoceanbottom"])
@@ -962,12 +981,12 @@ class RunSettings(QMainWindow):
             self.profeditortabwidgets["originatingcentername"].setText("Center "+str(self.settingsdict["originatingcenter"]).zfill(3)+": "+curcentername)
 
             # should be 18 entries
-            widgetorder = ["climotitle", "useclimobottom", "comparetoclimo", "overlayclimo", "filesavetypes", "savefin_qc", "saveedf_qc", "savejjvv_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", "profreslabel", "profres","smoothlevlabel", "smoothlev", "maxstdevlabel", "maxstdev", "originatingcentername","originatingcenter"]
+            widgetorder = ["climotitle", "useclimobottom", "comparetoclimo", "overlayclimo", "filesavetypes", "savefin_qc", "saveedf_qc", "savejjvv_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "othertitle", "useoceanbottom", "checkforgaps", "profreslabel", "profres","smoothlevlabel", "smoothlev", "maxstdevlabel", "maxstdev", "originatingcentername","originatingcenter"]
 
-            wcols   = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 5,   1,  1]
-            wrows   = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
-            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1,  1]
-            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,   4,  4]
+            wcols   = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5,   1,  1]
+            wrows   = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
+            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1,  1]
+            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1,   4,  4]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):

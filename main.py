@@ -31,7 +31,7 @@ if cursys() == 'Windows':
     from PyQt5.QtGui import QPixmap
     from PyQt5.QtCore import QCoreApplication, Qt
     
-    #fixing QtWebEngine from plugin issue
+    #fixing QtWebEngine plugin issue
     QCoreApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
     
     #making splash screen
@@ -58,7 +58,9 @@ else:
     #creates main program instance
     app = QApplication([])
     ex = gui.RunProgram()
-    
+
 
 #executes main program (identical regardless of splash screen)
 exit(app.exec_())
+
+

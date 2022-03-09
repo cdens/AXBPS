@@ -55,6 +55,9 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
     if axlimtype == 0:
         xmin = np.min(data)
         xmax = np.max(data)
+        if climodatafill is not None:
+            xmin = np.min([xmin,np.min(climodatafill)])
+            xmax = np.min([xmax,np.max(climodatafill)])
         dx = xmax-xmin
         if dx > 20: #dx threshold
             xcut = 5
@@ -79,7 +82,7 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
     #adding climo mismatch warning if necessary
     if matchclimo == 0:
         dx = x_range[1] - x_range[0]
-        xloc = x_range[1] - 0.15*dx
+        xloc = x_range[1] - 0.4*dx
         yloc = 900
         ax.text(xloc,yloc,'Climatology Mismatch!',color='r') #noting climo mismatch if necessary
     

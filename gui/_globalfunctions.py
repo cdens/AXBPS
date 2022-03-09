@@ -225,11 +225,11 @@ def closeEvent(self, event):
 
         #explicitly closing figures to clean up memory (should be redundant here but just in case)
         for ctab,_ in enumerate(self.alltabdata):
-            if self.alltabdata[ctab]["tabtype"][:2] == "PE":
+            if self.alltabdata[ctab]["tabtype"] == "PE_p": #processed only
                 plt.close(self.alltabdata[ctab]["ProfFig"])
                 plt.close(self.alltabdata[ctab]["LocFig"])
 
-            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS':
+            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS': #processed or unprocessed
                 plt.close(self.alltabdata[ctab]["ProcessorFig"])
 
                 #aborting all threads
@@ -396,10 +396,13 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                         
 
         #check length of identifier
-        if checkid and len(identifier) != 5:
-            option = self.postwarning_option("Identifier is not 5 characters! Continue anyways?")
+        identifier = identifier.strip() #get rid of tabs/newlines/whitespace
+        if checkid and len(identifier) == 0:
+            option = self.postwarning_option("Identifier not provided- continue anyways")
             if option == 'cancel':
                 isgood = False
+            else:
+                identifier = 'noIDx' #default 5 character ID for JJVV
         
     except Exception:
         trace_error()
@@ -443,7 +446,6 @@ def savedataincurtab(self):
         trace_error()
         self.posterror("Error raised in directory selection")
         return False
-
         
     #saving files depending on tab type, switching cursor to loading option
     try:
@@ -478,14 +480,14 @@ def savedataincurtab(self):
     
     
 #check filename for existing files with same header (avoid overwriting)
-def check_filename(self,originalfilenameheader):
+def check_filename(self,original_file_header):
     new_file_num = 0
-    pathname, originalfilename = path.split(originalfilenameheader) #split into file header and file path
-    filename = originalfilename
+    pathname, original_file_name = path.split(original_file_header) #split into file header and file path
+    filename = original_file_name
     fileheadersindir = [cf.split('.')[0] for cf in listdir(pathname)] #returns file headers (not inc. extension)
     while any([filename == cf for cf in fileheadersindir]):
         new_file_num += 1
-        filename = f"{originalfilenameheader}_{new_file_num}"
+        filename = f"{original_file_name}_{new_file_num}"
     
     return pathname + self.slash + filename
     
@@ -606,10 +608,6 @@ def saveDASfiles(self,opentab,outdir,probetype):
             oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
             newfile = filename + '.sigdata'
             
-            print(oldfile)
-            print(newfile)
-            print(self.tempdir)
-            
             copyfile = True
             if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
                 option = self.postwarning_option(f"{newfile} already exists- overwrite?")
@@ -697,7 +695,7 @@ def savePEfiles(self,opentab,outdir,probetype):
     
     if self.settingsdict["savefin_qc"]:
         try:
-            writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
+            io.writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save FIN file")
@@ -756,7 +754,7 @@ def savePEfiles(self,opentab,outdir,probetype):
             axL = figL.add_axes([0.1,0.1,0.85,0.85])
             _,exportlat,exportlon,exportrelief = oci.getoceandepth(lat,lon,6,self.bathymetrydata)
             profplot.makelocationplot(figL, axL, lat, lon, dtg, exportlon, exportlat, exportrelief, 6)
-            fig2.savefig(filename + '_loc.png',format='png')
+            figL.savefig(filename + '_loc.png',format='png')
         except Exception:
             trace_error()
             self.posterror("Failed to save location image")

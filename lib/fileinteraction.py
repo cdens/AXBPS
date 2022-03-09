@@ -18,7 +18,7 @@
 # =============================================================================
 
 import numpy as np
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import chardet
 
 from pykml import parser
@@ -64,7 +64,7 @@ def readedffile(edffile):
     
     lon = lat = day = month = year = hour = minute = second = False #variables will be returned as 0 if unsuccessfully parsed
     
-    data = {'depth':None,'temperature':None,'salinity':None} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
+    data = {'depth':[],'temperature':[],'salinity':[]} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
     
     fields = ['depth','temperature','salinity']
     fieldcolumns = [0,1,-1]
@@ -188,11 +188,12 @@ def readedffile(edffile):
                         
                                 
                 #space or tab delimited data (if number of datapoints matches fields and line doesnt start with //)
-                else: 
+                elif line[:2] != '//': 
                     curdata = line.strip().split()
-                    if len(curdata) == len(fields) and line[:2] != '//':
-                        for i,val in enumerate(curdata): #enumerating over all values for current depth
-                            data[fields[i]].append(val)
+                    #if salinity is included, #of columns should match number of fields, if not, # columns should be # fields minus 1 (no salinity data)
+                    if (fieldcolumns[2] >= 0 and len(curdata) == len(fields)) or (fieldcolumns[2] == -1 and len(curdata) == len(fields)-1):
+                        for i,cfield in enumerate(fields):
+                            data[cfield].append(curdata[fieldcolumns[i]])
                     
             except (ValueError, IndexError, AttributeError):
                 pass
@@ -208,8 +209,13 @@ def readedffile(edffile):
         try:
             curdata_float = [float(val) for val in data[field]] #if this doesn't raise an error, the float conversion worked
             data[field] = curdata_float
-        except ValueError: #raised if data can't be converted to float
+            print(f"{field=}, data={data[field][:10]}")
+        except (ValueError, TypeError): #raised if data can't be converted to float
             pass
+    
+    for cfield in ['depth','temperature','salinity']:  
+        data[cfield] = np.asarray(data[cfield])   
+    print(data)
     
     return data,dropdatetime,lat,lon
 
@@ -257,18 +263,32 @@ def writeedffile(edffile,dropdatetime,lat,lon,data,comments,QC=False):
         drop_settings_info = f"""//
 // Drop Settings Information:
 """ + comments + """
-""" + "\n".join([f"Field{i}  :  {ckey}" for i,ckey in enumerate(data.keys())]) + """
+""" + "\n".join([f"Field{i+1}  :  {ckey}" for i,ckey in enumerate(data.keys())]) + """
 //""" + qcstr + """
 """ + "\t".join([ckey for ckey in data.keys()]) + "\n"
         
         f_out.write(drop_settings_info)
         
         fields = list(data.keys())
+        
+        #determining what string format to use for each field
+        field_formats = []
+        for cfield in fields:
+            cfieldlow = cfield.lower()
+            if 'temperature' in cfieldlow or 'conductivity' in cfieldlow or 'salinity' in cfieldlow:
+                field_formats.append('7.2f') #__XX.XX
+            elif 'current' in cfieldlow:
+                field_formats.append('6.2f') #__X.Xx
+            elif 'depth' in cfieldlow or 'time' in cfieldlow or 'frequency' in cfieldlow:
+                field_formats.append('9.2f') #__XXXX.XX
+            else:
+                field_formats.append('') #unspecified format
+                
         npts = len(data[fields[0]])
         
         #writing data
         for i in range(npts):
-            cline = "\t".join(str(data[field][i]) for field in fields)
+            cline = "\t".join([f"{data[cfield][i]:{cformat}}" for cfield,cformat in zip(fields,field_formats)]) #tab-delimited
             f_out.write(cline + "\n")
 
     
@@ -373,8 +393,8 @@ def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike
         else:
             quad = '5'
             
-        #correcting year to ones digit only
-        yeardigit = cdtg.replace(year=cdtg.year - int(np.floor(cdtg.year/10)*10))
+        #getting ones digit from year
+        yeardigit = cdtg.year - int(np.floor(cdtg.year/10)*10)
 
         f_out.write(f"JJVV {datetime.strftime(cdtg,'%d%m')}{str(yeardigit)} {datetime.strftime(cdtg,'%H%M')}/ {quad}{int(abs(lat)*1000):05d} {int(abs(lon)*1000):06d} 88888\n")
 
@@ -460,22 +480,19 @@ def readfinfile(finfile, hasSal=False):
             
         #parsing into profiles
         if hasSal:
-            for i in range(0,len(data),3):
-                startind = i*3
-                temperature.append(data[startind])
-                depth.append(data[startind+1])
-                salinity.append(data[startind+2])
+            for i in range(0,len(all_data),3):
+                temperature.append(all_data[i])
+                depth.append(all_data[i+1])
+                salinity.append(all_data[i+2])
                 
         else:
-            for i in range(0,len(data),2):
-                startind = i*2
-                temperature.append(data[startind])
-                depth.append(data[startind+1])
+            for i in range(0,len(all_data),2):
+                temperature.append(all_data[i])
+                depth.append(all_data[i+1])
             
             
     #converting data to arrays and returning
     data = {"depth":np.asarray(depth), "temperature":np.asarray(temperature), "salinity":np.asarray(salinity)}
-    
     return [data,dropdatetime,lat,lon,num]
 
 
@@ -530,7 +547,7 @@ def writefinfile(finfile,cdtg,lat,lon,num,depth,temperature,salinity=None):
         i = 0
         while i < Npts:
             if i+pointsperline < Npts:
-                pointstopull = ptsperline
+                pointstopull = pointsperline
             else:
                 pointstopull = Npts - i
                 
@@ -566,7 +583,7 @@ def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth
     datasubcategory = 3 #bathy (JJVV) message
     versionofmaster = 32
     versionoflocal = 0
-    yearofcentury = int(year - 100 * np.floor(year / 100))  # year of the current century
+    yearofcentury = int(cdtg.year - 100 * np.floor(cdtg.year / 100))  # year of the current century
 
     
     # section 2 info
@@ -703,7 +720,7 @@ def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth
         bufr.write(int(0).to_bytes(1, byteorder=binarytype, signed=False)) #seconds for v4, oct18 = 0 (reserved) for v3
 
         # Section 2 (optional)
-        if hasoptionalsection:
+        if hasoptionalinfo:
             bufr.write(sxn2len.to_bytes(3, byteorder=binarytype, signed=False))
             bufr.write(reserved.to_bytes(1, byteorder=binarytype, signed=False))
             bufr.write(optionalinfo)
