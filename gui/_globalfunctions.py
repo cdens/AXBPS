@@ -42,8 +42,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import lib.fileinteraction as io
-import lib.make_profile_plots as profplot
-import lib.ocean_climatology_interaction as oci
+import lib.PE.make_profile_plots as profplot
+import lib.PE.ocean_climatology_interaction as oci
 
 
 
@@ -274,6 +274,12 @@ class CustomToolbar(NavigationToolbar):
 #    PARSE STRING INPUTS/CHECK VALIDITY WHEN TRANSITIONING TO PROFILE EDITOR
 # =============================================================================
 def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoords,checktime,checkid):
+    isgood = True
+    lon = np.NaN
+    lat = np.NaN
+    dropdatetime = dt.datetime(1,1,1)
+    identifier = 'none'
+    
     try:
         #parsing and checking data
         if checkcoords:
@@ -289,7 +295,7 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                     lat = float(latstr[0])
             except:
                 self.postwarning('Invalid Latitude Entered!')
-                return
+                isgood = False
 
             try:
                 #checking longitude validity
@@ -303,28 +309,27 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                     lon = float(lonstr[0])
             except:
                 self.postwarning('Invalid Longitude Entered!')
-                return
+                isgood = False
 
             if lon < -180 or lon > 180:
                 self.postwarning('Longitude must be between -180 and 180')
+                isgood = False
             elif lat < -90 or lat > 90:
                 self.postwarning('Latitude must be between -90 and 90')
+                isgood = False
 
             lon = round(lon,3)
             lat = round(lat,3)
 
-        else:
-            lon = np.NaN
-            lat = np.NaN
 
 
         if checktime: #checking time
             if len(timestr) != 4:
                 self.postwarning('Invalid Time Format (must be HHMM)!')
-                return
+                isgood = False
             elif len(profdatestr) != 8:
                 self.postwarning('Invalid Date Format (must be YYYYMMDD)!')
-                return
+                isgood = False
 
             try: #checking date
                 year = int(profdatestr[:4])
@@ -332,29 +337,29 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 day = int(profdatestr[6:])
             except:
                 self.postwarning('Invalid (non-numeric) Date Entered!')
-                return
+                isgood = False
             try:
                 hour = int(timestr[:2])
                 minute = int(timestr[2:4])
             except:
                 self.postwarning('Invalid (non-numeric) Time Entered!')
-                return
+                isgood = False
 
             if year < 1938 or year > 3000: #year the bathythermograph was invented and the year by which it was probably made obsolete
                 self.postwarning('Invalid Year Entered (< 1938 AD or > 3000 AD)!')
-                return
+                isgood = False
             elif month <= 0 or month > 12:
                 self.postwarning("Invalid Month Entered (must be between 1 and 12)")
-                return
+                isgood = False
             elif hour > 23 or hour < 0:
                 self.postwarning('Invalid Time Entered (hour must be between 0 and 23')
-                return
+                isgood = False
             elif minute >= 60 or minute < 0:
                 self.postwarning('Invalid Time Entered (minute must be between 0 and 59')
-                return
+                isgood = False
             
             #figuring out number of days in month   
-            monthnames = ['January','February','March','April','May','June','July','August','September','October','November','December'] 
+            monthnames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] 
             if month in [1,3,5,7,8,10,12]:
                 maxdays = 31
             elif month in [4,6,9,11]:
@@ -364,43 +369,45 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
             elif month == 2:
                 maxdays = 28
             else:
+                maxdays = 31
+                isgood = False
                 self.postwarning('Invalid month entered!')
                 
             #checking to make sure days are in valid range
-            if day <= 0 or day > maxdays:
+            if isgood and (day <= 0 or day > maxdays):
                 self.postwarning(f"Invalid Day Entered (must be between 1 and {maxdays} for {monthnames[month-1]})")
-                return
+                isgood = False
             
             #getting datetime for drop
-            dropdatetime = dt.datetime(year,month,day,hour,minute,0)
+            if isgood:
+                dropdatetime = dt.datetime(year,month,day,hour,minute,0)
 
-            #making sure the profile is within 12 hours and not in the future, warning if otherwise
-            curtime = timemodule.gmtime()
-            deltat = dt.datetime(curtime[0],curtime[1],curtime[2],curtime[3],curtime[4],curtime[5]) - dropdatetime
-            option = ''
-            if self.settingsdict["dtgwarn"]:
-                if deltat.days < 0:
-                    option = self.postwarning_option("Drop time appears to be after the current time. Continue anyways?")
-                elif deltat.days > 1 or (deltat.days == 0 and deltat.seconds > 12*3600):
-                    option = self.postwarning_option("Drop time appears to be more than 12 hours ago. Continue anyways?")
-                if option == 'cancel':
-                    return
-        else:
-            dropdatetime = False
+                #making sure the profile is within 12 hours and not in the future, warning if otherwise
+                curtime = timemodule.gmtime()
+                deltat = dt.datetime(curtime[0],curtime[1],curtime[2],curtime[3],curtime[4],curtime[5]) - dropdatetime
+                option = ''
+                if self.settingsdict["dtgwarn"]:
+                    if deltat.days < 0:
+                        option = self.postwarning_option("Drop time appears to be after the current time. Continue anyways?")
+                    elif deltat.days > 1 or (deltat.days == 0 and deltat.seconds > 12*3600):
+                        option = self.postwarning_option("Drop time appears to be more than 12 hours ago. Continue anyways?")
+                    if option == 'cancel':
+                        isgood = False
+                        
 
         #check length of identifier
         if checkid and len(identifier) != 5:
             option = self.postwarning_option("Identifier is not 5 characters! Continue anyways?")
             if option == 'cancel':
-                return
-                
-        return lat,lon,dropdatetime,identifier
+                isgood = False
         
     except Exception:
         trace_error()
         self.posterror("Unspecified error in parsing profile information!")
-        return False,False,False,False
-            
+        isgood = False
+    
+    finally:
+        return isgood, lat, lon, dropdatetime, identifier
         
             
         
@@ -539,27 +546,27 @@ def saveDASfiles(self,opentab,outdir,probetype):
     timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
     
     #parse inputs to valid data (ignore identifier)
-    lat, lon, dropdatetime, _ = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, 'no-ID', True, True, False)
-    
+    isgood, lat, lon, dropdatetime, _ = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, 'no-ID', True, True, False)
+        
     #creating file header to save, taking care not to overwrite files and note if good position/time exists
-    if np.isnan(lat*lon) or not dropdatetime:
+    if not isgood:
         goodmetadata = False
-        csavedtg = datetime.strftime(datetime.utcnow(),'%Y%m%d%H%M')
+        csavedtg = dt.datetime.strftime(dt.datetime.utcnow(),'%Y%m%d%H%M')
         filename = self.check_filename(outdir + self.slash + f"output_savedAt_{csavedtg}")
         self.postwarning("Bad date/time or position: cannot save NVO or EDF files if requested!")
     else:
         goodmetadata = True
-        filename = self.check_filename(outdir + self.slash + datetime.strftime(dropdatetime,'%Y%m%d%H%M'))
+        filename = self.check_filename(outdir + self.slash + dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M'))
         
     
-    if self.settingsdict["savenvo"] and goodmetadata:
+    if self.settingsdict["savenvo_raw"] and goodmetadata:
         try:
             io.writefinfile(filename+'.nvo', dropdatetime, lat, lon, 99, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
         except Exception:
             trace_error()
             self.posterror("Failed to save NVO file")
             
-    if self.settingsdict["saveedf"] and goodmetadata:
+    if self.settingsdict["saveedf_raw"] and goodmetadata:
         try:
             #creating comment for data source and VHF channel/frequency (if applicable) used
             cdatasource = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
@@ -572,7 +579,7 @@ def saveDASfiles(self,opentab,outdir,probetype):
             trace_error()
             self.posterror("Failed to save EDF file")
 
-    if self.settingsdict["savewav"]:
+    if self.settingsdict["savewav_raw"]:
         try:
             oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[opentab]["tabnum"]) + '.WAV'
             newfile = filename + '.WAV'
@@ -594,11 +601,15 @@ def saveDASfiles(self,opentab,outdir,probetype):
             trace_error()
             self.posterror("Failed to save WAV file")
 
-    if self.settingsdict["savesig"]:
+    if self.settingsdict["savesig_raw"]:
         try:
             oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
             newfile = filename + '.sigdata'
-
+            
+            print(oldfile)
+            print(newfile)
+            print(self.tempdir)
+            
             copyfile = True
             if path.exists(oldfile) and path.exists(newfile) and oldfile != newfile: #if file already exists
                 option = self.postwarning_option(f"{newfile} already exists- overwrite?")
@@ -666,7 +677,7 @@ def savePEfiles(self,opentab,outdir,probetype):
         match_climo_string = 'yes'
     else:
         match_climo_string = 'no'
-    rcnum = self.data["tabwidgets"]["rcode"].currentIndex()
+    rcnum = self.alltabdata[opentab]["tabwidgets"]["rcode"].currentIndex()
     edf_comments = f"""Probe Type       :  {probetype}
 // Ocean depth at drop position: {ocean_depth:6.1f} m
 // Bottom strike? {btmstrikestr} 
@@ -674,38 +685,38 @@ def savePEfiles(self,opentab,outdir,probetype):
 // QC Code: {rcnum} ({self.reason_code_strings[rcnum]})
 // Data interpolated to 1-meter interval"""
     
-    dtg = datetime.strftime(dropdatetime,'%Y%m%d%H%M')
+    dtg = dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M')
     filename = self.check_filename(outdir + self.slash + dtg)
     
-    if self.settingsdict["savefin"]:
+    if self.settingsdict["saveedf_qc"]:
         try:
             io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=True)
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
     
-    if self.settingsdict["savefin"]:
+    if self.settingsdict["savefin_qc"]:
         try:
             writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save FIN file")
             
-    if self.settingsdict["savejjvv"]:
+    if self.settingsdict["savejjvv_qc"]:
         try:
             io.writejjvvfile(filename+'.jjvv',temperature, depthT, dropdatetime, lat, lon, identifier, isbtmstrike)
         except Exception:
             trace_error()
             self.posterror("Failed to save JJVV file")
             
-    if self.settingsdict["savebufr"]:
+    if self.settingsdict["savebufr_qc"]:
         try:
             io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save BUFR file")
             
-    if self.settingsdict["saveprof"]:
+    if self.settingsdict["saveprof_qc"]:
         try:
             #initializing both figures first so they will exist/can be closed if plotting code throws an error
             figT = plt.figure() 
@@ -738,7 +749,7 @@ def savePEfiles(self,opentab,outdir,probetype):
             plt.close('figT')
             plt.close('figS')
 
-    if self.settingsdict["saveloc"]:
+    if self.settingsdict["saveloc_qc"]:
         try:
             figL = plt.figure()
             figL.clear()

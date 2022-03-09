@@ -36,7 +36,7 @@ import lib.DAS.common_DAS_functions as cdf
 class AXBTProcessor(QRunnable):
     
     #importing methods common to all AXBT/AXCTD processing threads
-    from ._processor_functions import (intialize_common_vars, wait_to_run, kill, killaudiorecording, abort, changecurrentfrequency, changethresholds, update_settings)
+    from ._processor_functions import (initialize_common_vars, wait_to_run, kill, killaudiorecording, abort, changecurrentfrequency, changethresholds, update_settings)
     #kill: terminates the thread and emits an error message if necessary
     #killaudiorecording: stops appending PCM data to the audio file (if the file is too large)
     #abort: pyqtslot for the GUI (user STOP button) to terminate the process
@@ -46,10 +46,10 @@ class AXBTProcessor(QRunnable):
     
 
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
-    #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
+    #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff_axbt, zcoeff_axbt, flims_axbt
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, istriggered, firstpointtime, 
         settings, slash, tempdir, *args,**kwargs):
-        super(ThreadProcessor, self).__init__()
+        super(AXBTProcessor, self).__init__()
 
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)
         self.threadstatus = 0
@@ -64,7 +64,7 @@ class AXBTProcessor(QRunnable):
         self.freqs = []
         
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(self,tempdir,slash,tabID,dll)
+        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource)
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()
@@ -176,8 +176,8 @@ class AXBTProcessor(QRunnable):
                         
                 #logic to determine whether or not point is valid
                 if self.istriggered and Sp >= self.settings["minsiglev"] and Rp >= self.settings["minfftratio"]:
-                    cdepth = cdf.dataconvert(ctime - self.firstpointtime, self.settings["zcoeff"])
-                    ctemp = cdf.dataconvert(fp, self.settings["tcoeff"])
+                    cdepth = cdf.dataconvert(ctime - self.firstpointtime, self.settings["zcoeff_axbt"])
+                    ctemp = cdf.dataconvert(fp, self.settings["tcoeff_axbt"])
                 
                 else:
                     fp = 0
@@ -219,12 +219,12 @@ class AXBTProcessor(QRunnable):
     
         #building corresponding frequency array
         if len(self.freqs) != N: #rebuild if different length of data included
-            T = N/self.fs
+            T = N/self.f_s
             df = 1 / T
             self.freqs = np.array([df * n if n < N / 2 else df * (n - N) for n in range(N)])
     
         #constraining peak frequency options to frequencies in specified band
-        ind = np.all((np.greater_equal(self.freqs, self.settings["flims"][0]), np.less_equal(self.freqs,self.settings["flims"][1])), axis=0)
+        ind = np.all((np.greater_equal(self.freqs, self.settings["flims_axbt"][0]), np.less_equal(self.freqs,self.settings["flims_axbt"][1])), axis=0)
         self.freqs = self.freqs[ind]
         
         #frequency of max signal within band (AXBT-transmitted frequency)

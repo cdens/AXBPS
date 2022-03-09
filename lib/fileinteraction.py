@@ -64,7 +64,7 @@ def readedffile(edffile):
     
     lon = lat = day = month = year = hour = minute = second = False #variables will be returned as 0 if unsuccessfully parsed
     
-    data = {'depth':None,'temperature':None,'salinity',None} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
+    data = {'depth':None,'temperature':None,'salinity':None} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
     
     fields = ['depth','temperature','salinity']
     fieldcolumns = [0,1,-1]
@@ -191,8 +191,8 @@ def readedffile(edffile):
                 else: 
                     curdata = line.strip().split()
                     if len(curdata) == len(fields) and line[:2] != '//':
-                    for i,val in enumerate(curdata): #enumerating over all values for current depth
-                        data[fields[i]].append(val)
+                        for i,val in enumerate(curdata): #enumerating over all values for current depth
+                            data[fields[i]].append(val)
                     
             except (ValueError, IndexError, AttributeError):
                 pass
@@ -529,7 +529,7 @@ def writefinfile(finfile,cdtg,lat,lon,num,depth,temperature,salinity=None):
         #writing profile data
         i = 0
         while i < Npts:
-            if i+ptsperline < Npts:
+            if i+pointsperline < Npts:
                 pointstopull = ptsperline
             else:
                 pointstopull = Npts - i

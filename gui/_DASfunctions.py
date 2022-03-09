@@ -99,10 +99,10 @@ def makenewprocessortab(self):
         else:
             receiver_options = rtypes = []
             
-        self.alltabdata[opentab]["datasouce_options"] = ['Test','Audio']
+        self.alltabdata[opentab]["datasource_options"] = ['Test','Audio']
         self.alltabdata[opentab]["sourcetypes"] = ['TT','AA']
-        for op,rtype in (receiver_options,rtypes):
-            self.alltabdata[opentab]["datasouce_options"].append(op)
+        for op,rtype in zip(receiver_options,rtypes):
+            self.alltabdata[opentab]["datasource_options"].append(op)
             self.alltabdata[opentab]["sourcetypes"].append(rtype)
 
         #making widgets
@@ -110,7 +110,7 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"] = QPushButton('Refresh')  # 2
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"].clicked.connect(self.datasourcerefresh)
         self.alltabdata[opentab]["tabwidgets"]["datasource"] = QComboBox() #3
-        for op in self.all_receiver_options: #add all options (test, audio, receivers)
+        for op in self.alltabdata[opentab]["datasource_options"]: #add all options (test, audio, receivers)
             self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(op) 
         
         #default receiver selection if 1+ receivers are connected and not actively processing
@@ -360,7 +360,7 @@ def updatefftsettings(self):
         
         #pulling settings
         newsettings = {}
-        settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff", "zcoeff", "flims"]
+        settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
         for csetting in settingstopull:
             newsettings[csetting] = self.settingsdict[csetting]
         
@@ -472,7 +472,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
     self.defaultprobe = probetype #default probe to display for DAS and PE tabs
     self.alltabdata[opentab]["probetype"] = probetype
     
-    #disabling datasouce and probetype dropdown boxes
+    #disabling datasource and probetype dropdown boxes
     self.alltabdata[opentab]["tabwidgets"]["datasource"].setEnabled(False)
     self.alltabdata[opentab]["tabwidgets"]["probetype"].setEnabled(False)
     
@@ -527,12 +527,12 @@ def runprocessor(self, opentab, datasource, sourcetype):
     
     
     settings = {} #pulling settings
-    settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff", "zcoeff", "flims"]
+    settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
     for csetting in settingstopull:
         settings[csetting] = self.settingsdict[csetting]
     
     #initializing processor, connecting signals/slots to GUI thread
-    self.alltabdata[opentab]["processor"] = axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
+    self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
     
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
@@ -654,7 +654,7 @@ class AudioWindowSignals(QObject):
 @pyqtSlot(int, int, str)
 def audioWindowClosed(self, wasGood, opentab, datasource):
     if wasGood:
-        self.runprocessor(opentab, datasource, "audio")
+        self.runprocessor(opentab, datasource, "AA")
     
     
 
@@ -848,8 +848,11 @@ def processprofile(self):
             
         #check and correct inputs
         try:
-            lat,lon,dropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
+            isgood,lat,lon,dropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
         except:
+            return
+            
+        if not isgood:
             return
         
         #pulling raw t-d profile
@@ -897,6 +900,7 @@ def processprofile(self):
         return
     
     #generating QC tab
-    self.continuetoqc(opentab, rawtemperature, rawdepth, lat, lon, dropdatetime, identifier, probetype)
+    rawdata = {'temperature':rawtemperature, 'depth':rawdepth}
+    self.continuetoqc(opentab, rawdata, lat, lon, dropdatetime, identifier, probetype)
         
     

@@ -35,9 +35,9 @@ from datetime import datetime
 
 #autoQC-specific modules
 import lib.fileinteraction as io
-import lib.make_profile_plots as profplot
-import lib.autoqc as qc
-import lib.ocean_climatology_interaction as oci
+import lib.PE.make_profile_plots as profplot
+import lib.PE.autoqc as qc
+import lib.PE.ocean_climatology_interaction as oci
 
 from ._globalfunctions import (addnewtab, whatTab, renametab, setnewtabcolor, closecurrenttab, savedataincurtab, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs, CustomToolbar)
 
@@ -251,8 +251,8 @@ def checkdatainputs_editorinput(self):
     if ftype and success:
             
         try:
-            ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
-        
+            isgood,ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, True, True, True)
+            
             if np.isnan(flat*flon):
                 lat = ilat
                 lon = ilon
@@ -297,11 +297,14 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         dtg = datetime.strftime(dropdatetime,'%Y%m%d%H%M')
         
         #concatenates profile if depths stop increasing
-        negind = np.argwhere(np.diff(rawdepth) < 0)
+        negind = np.argwhere(np.diff(rawdata['depth']) < 0)
         if len(negind) > 0: #if depths do decrease at some point, truncate the profile there
             cutoff = negind[0][0] + 1
-            rawtemperature = rawtemperature[:cutoff]
-            rawdepth = rawdepth[:cutoff]
+            rawdata['temperature'] = rawdata['temperature'][:cutoff]
+            rawdata['depth'] = rawdata['depth'][:cutoff]
+            
+        rawdepth = rawdata['depth']
+        rawtemperature = rawdata['temperature']
 
         # pull ocean depth from ETOPO1 Grid-Registered Ice Sheet based global relief dataset
         # Data source: NOAA-NGDC: https://www.ngdc.noaa.gov/mgg/global/global.html
@@ -460,7 +463,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         self.alltabdata[opentab]["hasbeenprocessed"] = False
         
         if self.runqc(): #only executes following code if autoQC runs sucessfully
-            depth = self.alltabdata[opentab]["profdata"]["depth_plot"]
+            depth = self.alltabdata[opentab]["profdata"]["depthT_plot"]
             temperature = self.alltabdata[opentab]["profdata"]["temperature_plot"]
             matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
 
@@ -498,7 +501,7 @@ def runqc(self):
         opentab = self.whatTab()
 
         # getting necessary data for QC from dictionary
-        rawtemperature = self.alltabdata[opentab]["profdata"]["temp_raw"]
+        rawtemperature = self.alltabdata[opentab]["profdata"]["temperature_raw"]
         rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
         climotemps = self.alltabdata[opentab]["profdata"]["climotemp"]
         climodepths = self.alltabdata[opentab]["profdata"]["climodepth"]
@@ -546,7 +549,7 @@ def runqc(self):
         depth = depth[isbelowmaxdepth]
 
         # writing values to alltabs structure: prof temps, and matchclimo
-        self.alltabdata[opentab]["profdata"]["depth_plot"] = depth
+        self.alltabdata[opentab]["profdata"]["depthT_plot"] = depth
         self.alltabdata[opentab]["profdata"]["temperature_plot"] = temperature
         self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
 
@@ -610,7 +613,7 @@ def applychanges(self):
 
             #replacing t/d profile values
             self.alltabdata[opentab]["profdata"]["temperature_plot"] = tempplot
-            self.alltabdata[opentab]["profdata"]["depth_plot"] = depthplot
+            self.alltabdata[opentab]["profdata"]["depthT_plot"] = depthplot
 
             #re-plotting, updating text
             self.updateprofeditplots()
@@ -626,7 +629,7 @@ def updateprofeditplots(self):
 
     try:
         tempplot = self.alltabdata[opentab]["profdata"]["temperature_plot"]
-        depthplot = self.alltabdata[opentab]["profdata"]["depth_plot"]
+        depthplot = self.alltabdata[opentab]["profdata"]["depthT_plot"]
         
         # Replace drop info
         proftxt = self.generateprofiledescription(opentab,len(tempplot))
@@ -749,7 +752,7 @@ def on_release(self,event):
         
         #ADD A POINT
         if self.alltabdata[opentab]["pt_type"] == 1:
-            rawt = self.alltabdata[opentab]["profdata"]["temp_raw"]
+            rawt = self.alltabdata[opentab]["profdata"]["temperature_raw"]
             rawd = self.alltabdata[opentab]["profdata"]["depth_raw"]
             pt = np.argmin(abs(rawt-xx)**2 + abs(rawd-yy)**2)
             addtemp = rawt[pt]

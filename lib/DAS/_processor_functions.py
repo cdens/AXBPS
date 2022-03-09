@@ -41,7 +41,7 @@ from traceback import print_exc as trace_error
 
 from shutil import copy as shcopy
 
-import common_DAS_functions as cdf
+import lib.DAS.common_DAS_functions as cdf
 
 
 
@@ -52,7 +52,7 @@ import common_DAS_functions as cdf
 # =============================================================================        
         
         
-def initialize_common_vars(self,tempdir,slash,tabID,dll):
+def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource):
     
      
     self.dll = dll # saves DLL/API library
@@ -101,18 +101,17 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll):
     
     
     if self.isfromtest or self.isfromaudio: #either way, data comes from test file
-        self.audiostream, self.f_s, self.threadstatus = cdf.read_audio_file(self.audiofile, chselect, maxsavedframes)
+        self.audiostream, self.f_s, self.threadstatus = cdf.read_audio_file(self.audiofile, self.chselect, self.maxsavedframes)
         shcopy(self.audiofile, self.wavfilename) #copying audio file if datasource = Test or Audio
         
     else: #thread is to be connected to a radio receiver
     
         #pull receiver serial number, activate current receiver/establish contact
         self.serial = datasource[2:]
-        self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,serial)
+        self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,self.serial)
         
         # initialize audio stream data variables
-        if self.sourcetype == 'WR': #call this after activate_receiver so if sourcetype doesn't match a known receiver ID an error will have already been raised
-            self.f_s = 64000  # default value
+        self.fs = cdf.get_fs(self.dll, self.sourcetype) #f_s depends on type of receiver connected
         self.audiostream = [0] * 2 * self.f_s #initializes the buffer with 2 seconds of zeros
 
         #setup WAV file to write (if audio or test, source file is copied instead)
@@ -205,8 +204,13 @@ def changethresholds(self, settings): #update data thresholds for FFT
     self.update_settings(settings)  
     
     
-def update_settings(self,settings)
+def update_settings(self,settings):
     for key in settings.keys():
         self.settings[key] = settings[key]
     if "fftwindow" in settings.keys(): #limit FFT window setting to 1 second
-    self.settings['fftwindow'] = np.min([self.settings['fftwindow'], 1])
+        self.settings['fftwindow'] = np.min([self.settings['fftwindow'], 1])
+    
+    
+    
+    
+    

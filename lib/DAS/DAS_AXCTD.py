@@ -48,7 +48,7 @@ class AXCTDProcessor(QRunnable):
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, triggerstatus, firstpointtime, 
         settings, slash, tempdir, *args,**kwargs):
-        super(ThreadProcessor, self).__init__()
+        super(AXCTDProcessor, self).__init__()
 
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)
         self.threadstatus = 0
@@ -60,7 +60,7 @@ class AXCTDProcessor(QRunnable):
         #TODO: ADD TIMES for 400 Hz pulse/7500 Hz pulse
         
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(self,tempdir,slash,tabID,dll)
+        self.initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource)
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()

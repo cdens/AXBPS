@@ -167,14 +167,21 @@ def list_receivers(dll):
     receivers = []
     rtypes = []
     
-    #add winradio receivers
-    wr_receivers = wr.list_radios(dll['WR'])
-    receivers.extend()
-    rtypes.append('WR' for _ in wr_receivers)
+    #add winradio receivers if DLL loaded (windows environment)
+    if 'WR' in dll.keys():
+        wr_receivers = wr.list_radios(dll['WR'])
+        receivers.extend()
+        rtypes.append('WR' for _ in wr_receivers)
     
     return receivers,rtypes
     
     
+def get_fs(dll,rtype):
+    if rtype == 'WR': 
+        f_s = 64000  #WiNRADIO sampling frequency is always 64 kHz
+    else:
+        raise ReceiverTypeNotRecognized(rtype)
+    return f_s
     
 def activate_receiver(dll,rtype,serial):
     if rtype == 'WR':

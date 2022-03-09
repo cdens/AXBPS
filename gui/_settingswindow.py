@@ -32,12 +32,160 @@ from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QObject
 from PyQt5.QtGui import QIcon, QColor, QPalette, QBrush, QLinearGradient, QFont
 
 import lib.GPS_COM_interaction as gps
-import lib.VHFsignalprocessor as vsp #for temperature conversion for flims
+import lib.DAS.common_DAS_functions as cdf #for temperature conversion for flims_axbt
 
 from platform import system as cursys
 if cursys() == 'Windows':
     from ctypes import windll
+    
+    
+    
 
+# =============================================================================
+#   INITIALIZE/READ/WRITE AXBPS SETTINGS
+# =============================================================================
+    
+
+#Default settings for program
+def setdefaultsettings():
+    
+    settingsdict = {}
+    
+    # processor preferences
+    settingsdict["autodtg"] = True  # auto determine profile date/time as system date/time on clicking "START"
+    settingsdict["autolocation"] = True #auto determine location with GPS
+    settingsdict["autoid"] = True #autopopulate platform ID
+    settingsdict["platformid"] = 'NNNNN'
+    settingsdict["savenvo_raw"] = True
+    settingsdict["saveedf_raw"] = False
+    settingsdict["savewav_raw"] = True
+    settingsdict["savesig_raw"] = True
+    settingsdict["dtgwarn"] = True  # warn user if entered dtg is more than 12 hours old or after current system time (in future)
+    settingsdict["renametabstodtg"] = True  # auto rename tab to dtg when loading profile editor
+    settingsdict["autosave"] = False  # automatically save raw data before opening profile editor (otherwise brings up prompt asking if want to save)
+    settingsdict["fftwindow"] = 0.3  # window to run FFT (in seconds)
+    settingsdict["minfftratio"] = 0.42  # minimum signal to noise ratio to ID data
+    settingsdict["minsiglev"] = 58.  # minimum total signal level to receive data
+
+    settingsdict["triggerfftratio"] = 0.8  # minimum signal to noise ratio to ID data
+    settingsdict["triggersiglev"] = 70.  # minimum total signal level to receive data
+    
+    settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
+    settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
+    settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
+
+    #profeditorpreferences
+    settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
+    settingsdict["overlayclimo"] = True  # overlay the climatology on the plot
+    settingsdict["comparetoclimo"] = True  # check for climatology mismatch and display result on plot
+    settingsdict["savefin_qc"] = True  # file types to save
+    settingsdict["saveedf_qc"] = True
+    settingsdict["savejjvv_qc"] = True
+    settingsdict["savebufr_qc"] = True
+    settingsdict["saveprof_qc"] = True
+    settingsdict["saveloc_qc"] = True
+    settingsdict["useoceanbottom"] = True  # use NTOPO1 bathymetry data to ID bottom strikes
+    settingsdict["checkforgaps"] = True  # look for/correct gaps in profile due to false starts from VHF interference
+    settingsdict["smoothlev"] = 8.  # Smoothing Window size (m)
+    settingsdict["profres"] = 1. #profile minimum vertical resolution (m)
+    settingsdict["maxstdev"] = 1.5 #profile standard deviation coefficient for despiker (autoQC)
+    settingsdict["originatingcenter"] = 62 #BUFR table code for NAVO
+
+    settingsdict["comport"] = 'n' #default com port is none
+    settingsdict["gpsbaud"] = 4800 #baud rate for GPS- default to 4800
+    
+    settingsdict["fontsize"] = 14 #font size for general UI
+    
+
+    return settingsdict
+
+
+#lists of settings broken down by data type (for settings file reading/writing)
+strsettings = ["platformid", "comport"] #settings saved as strings
+listsettings = ["tcoeff_axbt", "zcoeff_axbt", "flims_axbt"] #saved as lists of coefficients/parameters (each element is a float)
+floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "smoothlev", "profres", "maxstdev"] #saved as floats
+intsettings = ["originatingcenter", "gpsbaud", "fontsize"] #saved as ints
+boolsettings = ["autodtg", "autolocation", "autoid", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
+
+
+class SettingNotRecognized(Exception):
+    def __init__(self, csetting, cvalue):
+        self.message = f"AXBPS setting {csetting} (requested value = {cvalue}) not found"
+        super().__init__(self.message)
+
+#Read settings from txt file
+def readsettings(filename):
+    try:
+        settingsdict = {}
+        
+        with open(filename) as file: #read settings from file
+            for cline in file.readlines(): #read each line
+                line = cline.strip().split(':') #pulling setting name and value for each line
+                csetting = line[0]
+                cvalue = line[1]
+                
+                if csetting in strsettings:
+                    cdata = cvalue.strip() #string, remove white space leading/trailing
+                elif csetting in listsettings: #multiple values per setting, forward slash delimited
+                    cdata = []
+                    for val in cvalue.split('/'): 
+                        cdata.append(float(val))
+                elif csetting in floatsettings:
+                    cdata = float(cvalue) #float
+                elif csetting in intsettings: #integer
+                    cdata = int(cvalue) 
+                elif csetting in boolsettings: #boolean
+                    cdata = bool(int(cvalue))
+                else:
+                    raise SettingNotRecognized(csetting, cvalue)
+                
+                settingsdict[csetting] = cdata #adding current setting to dict storing all settings
+            
+            
+    #if settings file doesn't exist or is invalid, rewrites file with default settings
+    except:
+        settingsdict = setdefaultsettings()
+        writesettings(filename, settingsdict)
+        trace_error() #report issue
+
+    return settingsdict
+
+    
+    
+#Write settings from txt file
+def writesettings(filename,settingsdict):
+    
+    #overwrites file by deleting if it exists
+    if path.exists(filename):
+        remove(filename)
+
+    #writes settings to file
+    with open(filename,'w') as file:
+        
+        try:
+            for csetting in strsettings: #string settings
+                file.write(f'{csetting}: {settingsdict[csetting]}\n')
+            for csetting in listsettings: #list settings
+                file.write(f'{csetting}: {"/".join([str(cd) for cd in settingsdict[csetting]])}\n')
+            for csetting in floatsettings: #float settings
+                file.write(f'{csetting}: {float(settingsdict[csetting])}\n')
+            for csetting in intsettings: #int settings
+                file.write(f'{csetting}: {int(settingsdict[csetting])}\n')
+            for csetting in boolsettings: #bool settings
+                file.write(f'{csetting}: {int(settingsdict[csetting])}\n') #stores bool settings as 1 or 0
+                
+        except KeyError:
+            trace_error()
+            return False
+    
+    return True
+            
+            
+
+# =============================================================================
+#   SETTINGS WINDOW PROGRAM
+# =============================================================================  
+    
 
 
 #   DEFINE CLASS FOR SETTINGS (TO BE CALLED IN THREAD)
@@ -76,14 +224,14 @@ class RunSettings(QMainWindow):
     def initUI(self):
 
         # setting title/icon, background color
-        self.setWindowTitle('AXBT Realtime Editing System Settings')
-        self.setWindowIcon(QIcon('qclib/dropicon.png'))
+        self.setWindowTitle('AXBPS Settings')
+        self.setWindowIcon(QIcon('lib/dropicon.png'))
         p = self.palette()
         p.setColor(self.backgroundRole(), QColor(255, 255, 255))
         self.setPalette(p)
 
-        myappid = 'ARES_v1.0'  # arbitrary string
         if cursys() == 'Windows':
+            myappid = 'AXBPS_v' + vstr  # arbitrary string
             windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         # changing font size
@@ -152,10 +300,10 @@ class RunSettings(QMainWindow):
         self.processortabwidgets["autolocation"].setChecked(self.settingsdict["autolocation"])
         self.processortabwidgets["autoID"].setChecked(self.settingsdict["autoid"])
 
-        self.processortabwidgets["savelog"].setChecked(self.settingsdict["savelog"])
-        self.processortabwidgets["saveedf"].setChecked(self.settingsdict["saveedf"])
-        self.processortabwidgets["savewav"].setChecked(self.settingsdict["savewav"])
-        self.processortabwidgets["savesig"].setChecked(self.settingsdict["savesig"])
+        self.processortabwidgets["savenvo_raw"].setChecked(self.settingsdict["savenvo_raw"])
+        self.processortabwidgets["saveedf_raw"].setChecked(self.settingsdict["saveedf_raw"])
+        self.processortabwidgets["savewav_raw"].setChecked(self.settingsdict["savewav_raw"])
+        self.processortabwidgets["savesig_raw"].setChecked(self.settingsdict["savesig_raw"])
 
         self.processortabwidgets["dtgwarn"].setChecked(self.settingsdict["dtgwarn"])
         self.processortabwidgets["renametab"].setChecked(self.settingsdict["renametabstodtg"])
@@ -178,34 +326,35 @@ class RunSettings(QMainWindow):
             self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"] * 100)))  # 19
         self.processortabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
         
-        tc = self.settingsdict["tcoeff"]
+        tc = self.settingsdict["tcoeff_axbt"]
         self.tzconverttabwidgets["F2Tb0"].setText(str(tc[0]))
         self.tzconverttabwidgets["F2Tb1"].setText(str(tc[1]))
         self.tzconverttabwidgets["F2Tb2"].setText(str(tc[2]))
         self.tzconverttabwidgets["F2Tb3"].setText(str(tc[3]))
         self.updateF2Teqn()
         
-        zc = self.settingsdict["zcoeff"]
+        zc = self.settingsdict["zcoeff_axbt"]
         self.tzconverttabwidgets["t2zb0"].setText(str(zc[0]))
         self.tzconverttabwidgets["t2zb1"].setText(str(zc[1]))
         self.tzconverttabwidgets["t2zb2"].setText(str(zc[2]))
         self.tzconverttabwidgets["t2zb3"].setText(str(zc[3]))
         self.updatet2zeqn()
         
-        flims = self.settingsdict["flims"]
-        self.tzconverttabwidgets["flow"].setValue(flims[0])
-        self.tzconverttabwidgets["fhigh"].setValue(flims[1])
-        self.updateflims()
+        flims_axbt = self.settingsdict["flims_axbt"]
+        self.tzconverttabwidgets["flow"].setValue(flims_axbt[0])
+        self.tzconverttabwidgets["fhigh"].setValue(flims_axbt[1])
+        self.updateflims_axbt()
 
         self.profeditortabwidgets["useclimobottom"].setChecked(self.settingsdict["useclimobottom"])
         self.profeditortabwidgets["comparetoclimo"].setChecked(self.settingsdict["comparetoclimo"])
         self.profeditortabwidgets["overlayclimo"].setChecked(self.settingsdict["overlayclimo"])
 
-        self.profeditortabwidgets["savefin"].setChecked(self.settingsdict["savefin"])
-        self.profeditortabwidgets["savejjvv"].setChecked(self.settingsdict["savejjvv"])
-        self.profeditortabwidgets["savebufr"].setChecked(self.settingsdict["savebufr"])
-        self.profeditortabwidgets["saveprof"].setChecked(self.settingsdict["saveprof"])
-        self.profeditortabwidgets["saveloc"].setChecked(self.settingsdict["saveloc"])
+        self.profeditortabwidgets["savefin_qc"].setChecked(self.settingsdict["savefin_qc"])
+        self.profeditortabwidgets["saveedf_qc"].setChecked(self.settingsdict["saveedf_qc"])
+        self.profeditortabwidgets["savejjvv_qc"].setChecked(self.settingsdict["savejjvv_qc"])
+        self.profeditortabwidgets["savebufr_qc"].setChecked(self.settingsdict["savebufr_qc"])
+        self.profeditortabwidgets["saveprof_qc"].setChecked(self.settingsdict["saveprof_qc"])
+        self.profeditortabwidgets["saveloc_qc"].setChecked(self.settingsdict["saveloc_qc"])
 
         self.profeditortabwidgets["useoceanbottom"].setChecked(self.settingsdict["useoceanbottom"])
         self.profeditortabwidgets["checkforgaps"].setChecked(self.settingsdict["checkforgaps"])
@@ -225,10 +374,10 @@ class RunSettings(QMainWindow):
         self.settingsdict["autolocation"] = self.processortabwidgets["autolocation"].isChecked()
         self.settingsdict["autoid"] = self.processortabwidgets["autoID"].isChecked()
 
-        self.settingsdict["savelog"] = self.processortabwidgets["savelog"].isChecked()
-        self.settingsdict["saveedf"] = self.processortabwidgets["saveedf"].isChecked()
-        self.settingsdict["savewav"] = self.processortabwidgets["savewav"].isChecked()
-        self.settingsdict["savesig"] = self.processortabwidgets["savesig"].isChecked()
+        self.settingsdict["savenvo_raw"] = self.processortabwidgets["savenvo_raw"].isChecked()
+        self.settingsdict["saveedf_raw"] = self.processortabwidgets["saveedf_raw"].isChecked()
+        self.settingsdict["savewav_raw"] = self.processortabwidgets["savewav_raw"].isChecked()
+        self.settingsdict["savesig_raw"] = self.processortabwidgets["savesig_raw"].isChecked()
 
         self.settingsdict["dtgwarn"] = self.processortabwidgets["dtgwarn"].isChecked()
         self.settingsdict["renametabstodtg"] = self.processortabwidgets["renametab"].isChecked()
@@ -249,11 +398,12 @@ class RunSettings(QMainWindow):
         self.settingsdict["comparetoclimo"] =  self.profeditortabwidgets["comparetoclimo"].isChecked()
         self.settingsdict["overlayclimo"] = self.profeditortabwidgets["overlayclimo"].isChecked()
 
-        self.settingsdict["savefin"] = self.profeditortabwidgets["savefin"].isChecked()
-        self.settingsdict["savejjvv"] = self.profeditortabwidgets["savejjvv"].isChecked()
-        self.settingsdict["savebufr"] = self.profeditortabwidgets["savebufr"].isChecked()
-        self.settingsdict["saveprof"] = self.profeditortabwidgets["saveprof"].isChecked()
-        self.settingsdict["saveloc"] = self.profeditortabwidgets["saveloc"].isChecked()
+        self.settingsdict["savefin_qc"] = self.profeditortabwidgets["savefin_qc"].isChecked()
+        self.settingsdict["saveedf_qc"] = self.profeditortabwidgets["saveedf_qc"].isChecked()
+        self.settingsdict["savejjvv_qc"] = self.profeditortabwidgets["savejjvv_qc"].isChecked()
+        self.settingsdict["savebufr_qc"] = self.profeditortabwidgets["savebufr_qc"].isChecked()
+        self.settingsdict["saveprof_qc"] = self.profeditortabwidgets["saveprof_qc"].isChecked()
+        self.settingsdict["saveloc_qc"] = self.profeditortabwidgets["saveloc_qc"].isChecked()
 
         self.settingsdict["useoceanbottom"] = self.profeditortabwidgets["useoceanbottom"].isChecked()
         self.settingsdict["checkforgaps"] = self.profeditortabwidgets["checkforgaps"].isChecked()
@@ -298,14 +448,14 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["IDedit"] = QLineEdit(self.settingsdict["platformid"]) #6
 
             self.processortabwidgets["filesavetypes"] = QLabel('Filetypes to save:       ') #7
-            self.processortabwidgets["savelog"] = QCheckBox('LOG File') #8
-            self.processortabwidgets["savelog"].setChecked(self.settingsdict["savelog"])
-            self.processortabwidgets["saveedf"] = QCheckBox('EDF File') #9
-            self.processortabwidgets["saveedf"].setChecked(self.settingsdict["saveedf"])
-            self.processortabwidgets["savewav"] = QCheckBox('WAV File') #10
-            self.processortabwidgets["savewav"].setChecked(self.settingsdict["savewav"])
-            self.processortabwidgets["savesig"] = QCheckBox('Signal Data') #11
-            self.processortabwidgets["savesig"].setChecked(self.settingsdict["savesig"])
+            self.processortabwidgets["savenvo_raw"] = QCheckBox('NVO File') #8
+            self.processortabwidgets["savenvo_raw"].setChecked(self.settingsdict["savenvo_raw"])
+            self.processortabwidgets["saveedf_raw"] = QCheckBox('EDF File') #9
+            self.processortabwidgets["saveedf_raw"].setChecked(self.settingsdict["saveedf_raw"])
+            self.processortabwidgets["savewav_raw"] = QCheckBox('WAV File') #10
+            self.processortabwidgets["savewav_raw"].setChecked(self.settingsdict["savewav_raw"])
+            self.processortabwidgets["savesig_raw"] = QCheckBox('Signal Data') #11
+            self.processortabwidgets["savesig_raw"].setChecked(self.settingsdict["savesig_raw"])
 
             self.processortabwidgets["dtgwarn"] = QCheckBox('Warn if DTG is not within past 12 hours') #12
             self.processortabwidgets["dtgwarn"].setChecked(self.settingsdict["dtgwarn"])
@@ -356,7 +506,7 @@ class RunSettings(QMainWindow):
 
             # should be 24 entries
             widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel",
-                           "IDedit", "filesavetypes", "savelog", "saveedf","savewav", "savesig",
+                           "IDedit", "filesavetypes", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw",
                            "dtgwarn", "renametab", "autosave", "fftwindowlabel", "fftwindow",
                            "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel",
                            "triggersiglev","triggerratiolabel","triggerratio"]
@@ -411,7 +561,7 @@ class RunSettings(QMainWindow):
             self.tzconverttabwidgets = {}
 
             # making widgets
-            tc = self.settingsdict["tcoeff"]
+            tc = self.settingsdict["tcoeff_axbt"]
             self.tzconverttabwidgets["F2Tlabel"] = QLabel('Frequency to Temperature Conversion:') #1
             self.tzconverttabwidgets["F2Teqn"] = QLabel(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>") #2
             self.tzconverttabwidgets["F2Tb0"] = QLineEdit(str(tc[0])) #3
@@ -427,7 +577,7 @@ class RunSettings(QMainWindow):
             self.tzconverttabwidgets["F2Ts2"] = QLabel("* f<sup>2</sup> + ") #9
             self.tzconverttabwidgets["F2Ts3"] = QLabel("* f<sup>3</sup> ") #10
             
-            zc = self.settingsdict["zcoeff"]
+            zc = self.settingsdict["zcoeff_axbt"]
             self.tzconverttabwidgets["t2zlabel"] = QLabel('Time Elapsed to Depth Conversion:') #11
             self.tzconverttabwidgets["t2zeqn"] = QLabel(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>") #12
             self.tzconverttabwidgets["t2zb0"] = QLineEdit(str(zc[0])) #13
@@ -443,7 +593,7 @@ class RunSettings(QMainWindow):
             self.tzconverttabwidgets["t2zs2"] = QLabel("* t<sup>2</sup> + ") #19
             self.tzconverttabwidgets["t2zs3"] = QLabel("* t<sup>3</sup> ") #20
             
-            flims = self.settingsdict["flims"]
+            flims_axbt = self.settingsdict["flims_axbt"]
             self.tzconverttabwidgets["flimlabel"] = QLabel('Valid Frequency/Temperature Limits:') #21
             self.tzconverttabwidgets["flowlabel"] = QLabel('Minimum Valid Frequency (Hz):') #22
             self.tzconverttabwidgets["fhighlabel"] = QLabel('Maximum Valid Frequency (Hz):') #23
@@ -452,17 +602,17 @@ class RunSettings(QMainWindow):
             self.tzconverttabwidgets["flow"].setMinimum(0)
             self.tzconverttabwidgets["flow"].setMaximum(5000)
             self.tzconverttabwidgets["flow"].setSingleStep(1)
-            self.tzconverttabwidgets["flow"].setValue(flims[0])
-            self.tzconverttabwidgets["flow"].valueChanged.connect(self.updateflims)
+            self.tzconverttabwidgets["flow"].setValue(flims_axbt[0])
+            self.tzconverttabwidgets["flow"].valueChanged.connect(self.updateflims_axbt)
             self.tzconverttabwidgets["fhigh"] = QSpinBox() #25
             self.tzconverttabwidgets["fhigh"].setMinimum(0)
             self.tzconverttabwidgets["fhigh"].setMaximum(5000)
             self.tzconverttabwidgets["fhigh"].setSingleStep(1)
-            self.tzconverttabwidgets["fhigh"].setValue(flims[1])
-            self.tzconverttabwidgets["fhigh"].valueChanged.connect(self.updateflims)
+            self.tzconverttabwidgets["fhigh"].setValue(flims_axbt[1])
+            self.tzconverttabwidgets["fhigh"].valueChanged.connect(self.updateflims_axbt)
             
-            self.tzconverttabwidgets["Tlowlabel"]  = QLabel(f"Minimum Valid Temperature (\xB0C): {vsp.btconvert(flims[0],tc):5.2f}") #26
-            self.tzconverttabwidgets["Thighlabel"] = QLabel(f"Maximum Valid Temperature (\xB0C): {vsp.btconvert(flims[1],tc):5.2f}") #27
+            self.tzconverttabwidgets["Tlowlabel"]  = QLabel(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}") #26
+            self.tzconverttabwidgets["Thighlabel"] = QLabel(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}") #27
             
             
             # formatting widgets 
@@ -510,7 +660,7 @@ class RunSettings(QMainWindow):
         try: #only updates if the values are numeric
             tc = [float(self.tzconverttabwidgets["F2Tb0"].text()), float(self.tzconverttabwidgets["F2Tb1"].text()), float(self.tzconverttabwidgets["F2Tb2"].text()), float(self.tzconverttabwidgets["F2Tb3"].text())]
             self.tzconverttabwidgets["F2Teqn"].setText(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>")
-            self.settingsdict["tcoeff"] = tc
+            self.settingsdict["tcoeff_axbt"] = tc
         except ValueError:
             pass
 
@@ -520,26 +670,26 @@ class RunSettings(QMainWindow):
         try: #only updates if the values are numeric
             zc = [float(self.tzconverttabwidgets["t2zb0"].text()), float(self.tzconverttabwidgets["t2zb1"].text()), float(self.tzconverttabwidgets["t2zb2"].text()), float(self.tzconverttabwidgets["t2zb3"].text())]
             self.tzconverttabwidgets["t2zeqn"].setText(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>")
-            self.settingsdict["zcoeff"] = zc
+            self.settingsdict["zcoeff_axbt"] = zc
         except ValueError:
             pass
             
             
-    def updateflims(self):
+    def updateflims_axbt(self):
         
-        flims = [self.tzconverttabwidgets["flow"].value(), self.tzconverttabwidgets["fhigh"].value()]
-        tc = self.settingsdict["tcoeff"]
+        flims_axbt = [self.tzconverttabwidgets["flow"].value(), self.tzconverttabwidgets["fhigh"].value()]
+        tc = self.settingsdict["tcoeff_axbt"]
         
-        if flims[1] > flims[0]: #valid min frequency must be less than valid max frequency
-            self.tzconverttabwidgets["Tlowlabel"].setText(f"Minimum Valid Temperature (\xB0C): {vsp.btconvert(flims[0],tc):5.2f}")
-            self.tzconverttabwidgets["Thighlabel"].setText(f"Maximum Valid Temperature (\xB0C): {vsp.btconvert(flims[1],tc):5.2f}")
+        if flims_axbt[1] > flims_axbt[0]: #valid min frequency must be less than valid max frequency
+            self.tzconverttabwidgets["Tlowlabel"].setText(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}")
+            self.tzconverttabwidgets["Thighlabel"].setText(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}")
             
-            self.settingsdict["flims"] = flims
+            self.settingsdict["flims_axbt"] = flims_axbt
             
         #else: #reset previous setting
         #    self.postwarning("Minimum valid frequency must be less than maximum valid frequency!")
-        #    self.tzconverttabwidgets["flow"].setValue(self.settingsdict["flims"][0])
-        #    self.tzconverttabwidgets["fhigh"].setValue(self.settingsdict["flims"][1])
+        #    self.tzconverttabwidgets["flow"].setValue(self.settingsdict["flims_axbt"][0])
+        #    self.tzconverttabwidgets["fhigh"].setValue(self.settingsdict["flims_axbt"][1])
             
             
         
@@ -749,21 +899,23 @@ class RunSettings(QMainWindow):
             self.profeditortabwidgets["overlayclimo"].setChecked(self.settingsdict["overlayclimo"])
 
             self.profeditortabwidgets["filesavetypes"] = QLabel('Filetypes to save:     ')  # 5
-            self.profeditortabwidgets["savefin"] = QCheckBox('FIN File')  # 6
-            self.profeditortabwidgets["savefin"].setChecked(self.settingsdict["savefin"])
-            self.profeditortabwidgets["savejjvv"] = QCheckBox('JJVV File')  # 7
-            self.profeditortabwidgets["savejjvv"].setChecked(self.settingsdict["savejjvv"])
-            self.profeditortabwidgets["savebufr"] = QCheckBox('BUFR File')  # 8
-            self.profeditortabwidgets["savebufr"].setChecked(self.settingsdict["savebufr"])
-            self.profeditortabwidgets["saveprof"] = QCheckBox('Profile PNG')  # 9
-            self.profeditortabwidgets["saveprof"].setChecked(self.settingsdict["saveprof"])
-            self.profeditortabwidgets["saveloc"] = QCheckBox('Location PNG')  # 10
-            self.profeditortabwidgets["saveloc"].setChecked(self.settingsdict["saveloc"])
+            self.profeditortabwidgets["savefin_qc"] = QCheckBox('FIN File')  # 6
+            self.profeditortabwidgets["savefin_qc"].setChecked(self.settingsdict["savefin_qc"])
+            self.profeditortabwidgets["saveedf_qc"] = QCheckBox('EDF File')  # 6
+            self.profeditortabwidgets["saveedf_qc"].setChecked(self.settingsdict["saveedf_qc"])
+            self.profeditortabwidgets["savejjvv_qc"] = QCheckBox('JJVV File')  # 7
+            self.profeditortabwidgets["savejjvv_qc"].setChecked(self.settingsdict["savejjvv_qc"])
+            self.profeditortabwidgets["savebufr_qc"] = QCheckBox('BUFR File')  # 8
+            self.profeditortabwidgets["savebufr_qc"].setChecked(self.settingsdict["savebufr_qc"])
+            self.profeditortabwidgets["saveprof_qc"] = QCheckBox('Profile PNG')  # 9
+            self.profeditortabwidgets["saveprof_qc"].setChecked(self.settingsdict["saveprof_qc"])
+            self.profeditortabwidgets["saveloc_qc"] = QCheckBox('Location PNG')  # 10
+            self.profeditortabwidgets["saveloc_qc"].setChecked(self.settingsdict["saveloc_qc"])
 
             self.profeditortabwidgets["useoceanbottom"] = QCheckBox(
-                'ID bottom strikes with NOAA ETOPO1 bathymetry data')  # 11
+                'ID bottom strikes with NOAA bathymetry')  # 11
             self.profeditortabwidgets["useoceanbottom"].setChecked(self.settingsdict["useoceanbottom"])
-            self.profeditortabwidgets["checkforgaps"] = QCheckBox('ID false starts due to VHF interference')  # 12
+            self.profeditortabwidgets["checkforgaps"] = QCheckBox('ID AXBT false starts')  # 12
             self.profeditortabwidgets["checkforgaps"].setChecked(self.settingsdict["checkforgaps"])
 
             self.settingsdict["profres"] = float(self.settingsdict["profres"])
@@ -810,14 +962,12 @@ class RunSettings(QMainWindow):
             self.profeditortabwidgets["originatingcentername"].setText("Center "+str(self.settingsdict["originatingcenter"]).zfill(3)+": "+curcentername)
 
             # should be 18 entries
-            widgetorder = ["climotitle", "useclimobottom", "comparetoclimo", "overlayclimo", "filesavetypes", "savefin",
-                           "savejjvv", "savebufr", "saveprof", "saveloc", "useoceanbottom", "checkforgaps", "profreslabel",
-                           "profres","smoothlevlabel", "smoothlev", "maxstdevlabel", "maxstdev", "originatingcentername","originatingcenter"]
+            widgetorder = ["climotitle", "useclimobottom", "comparetoclimo", "overlayclimo", "filesavetypes", "savefin_qc", "saveedf_qc", "savejjvv_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", "profreslabel", "profres","smoothlevlabel", "smoothlev", "maxstdevlabel", "maxstdev", "originatingcentername","originatingcenter"]
 
-            wcols = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 5, 1, 1]
-            wrows = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
-            wrext = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 4, 4, 1, 1, 1, 1, 1, 1, 4, 4]
+            wcols   = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 1, 1, 5, 5, 5, 5, 5, 5,   1,  1]
+            wrows   = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
+            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1,  1]
+            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1, 1,   4,  4]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
@@ -957,228 +1107,7 @@ class SettingsSignals(QObject):
     updateGPS = pyqtSignal(str,int)
     
     
-
-#Default settings for program
-def setdefaultsettings():
     
-    settingsdict = {}
-    
-    # processor preferences
-    settingsdict["autodtg"] = True  # auto determine profile date/time as system date/time on clicking "START"
-    settingsdict["autolocation"] = True #auto determine location with GPS
-    settingsdict["autoid"] = True #autopopulate platform ID
-    settingsdict["platformid"] = 'NNNNN'
-    settingsdict["savelog"] = True
-    settingsdict["saveedf"] = False
-    settingsdict["savewav"] = True
-    settingsdict["savesig"] = True
-    settingsdict["dtgwarn"] = True  # warn user if entered dtg is more than 12 hours old or after current system time (in future)
-    settingsdict["renametabstodtg"] = True  # auto rename tab to dtg when loading profile editor
-    settingsdict["autosave"] = False  # automatically save raw data before opening profile editor (otherwise brings up prompt asking if want to save)
-    settingsdict["fftwindow"] = 0.3  # window to run FFT (in seconds)
-    settingsdict["minfftratio"] = 0.42  # minimum signal to noise ratio to ID data
-    settingsdict["minsiglev"] = 58.  # minimum total signal level to receive data
-
-    settingsdict["triggerfftratio"] = 0.8  # minimum signal to noise ratio to ID data
-    settingsdict["triggersiglev"] = 70.  # minimum total signal level to receive data
-    
-    settingsdict["tcoeff"] = [-40,0.02778,0,0] #temperature conversion coefficients
-    settingsdict["zcoeff"] = [0,1.524,0,0] #depth conversion coefficients
-    settingsdict["flims"] = [1300, 2800] #valid frequency range limits
-
-    #profeditorpreferences
-    settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
-    settingsdict["overlayclimo"] = True  # overlay the climatology on the plot
-    settingsdict["comparetoclimo"] = True  # check for climatology mismatch and display result on plot
-    settingsdict["savefin"] = True  # file types to save
-    settingsdict["savejjvv"] = True
-    settingsdict["savebufr"] = True
-    settingsdict["saveprof"] = True
-    settingsdict["saveloc"] = True
-    settingsdict["useoceanbottom"] = True  # use NTOPO1 bathymetry data to ID bottom strikes
-    settingsdict["checkforgaps"] = True  # look for/correct gaps in profile due to false starts from VHF interference
-    settingsdict["smoothlev"] = 8.  # Smoothing Window size (m)
-    settingsdict["profres"] = 1. #profile minimum vertical resolution (m)
-    settingsdict["maxstdev"] = 1.5 #profile standard deviation coefficient for despiker (autoQC)
-    settingsdict["originatingcenter"] = 62 #BUFR table code for NAVO
-
-    settingsdict["comport"] = 'n' #default com port is none
-    settingsdict["gpsbaud"] = 4800 #baud rate for GPS- default to 4800
-    
-    settingsdict["fontsize"] = 14 #font size for general UI
-    
-
-    return settingsdict
-
-
-    
-    
-#Read settings from txt file
-def readsettings(filename):
-    try:
-        
-        settingsdict = {}
-        
-        #read settings from file
-        with open(filename) as file:
             
-            #Data Acquisition System Settings
-            line = file.readline()
-            settingsdict["autodtg"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["autolocation"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["autoid"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["platformid"] = str(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["savelog"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["saveedf"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["savewav"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["savesig"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["dtgwarn"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["renametabstodtg"] = bool(int(line.strip().split()[1]))
-            line = file.readline() 
-            settingsdict["autosave"] = bool(int(line.strip().split()[1]))             
-            line = file.readline()
-            settingsdict["fftwindow"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["minfftratio"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["minsiglev"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["triggerfftratio"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["triggersiglev"] = float(line.strip().split()[1]) 
             
-            #DAS F2T and dt2z conversion equations- multiple values per setting, forward slash delimited
-            line = file.readline()
-            settingsdict["tcoeff"] = []
-            tcstr = line.strip().split()[1].split('/')
-            for val in tcstr:
-                settingsdict["tcoeff"].append(float(val))
-                
-            line = file.readline()
-            settingsdict["zcoeff"] = []
-            zcstr = line.strip().split()[1].split('/')
-            for val in zcstr:
-                settingsdict["zcoeff"].append(float(val))
-                
-            line = file.readline()
-            settingsdict["flims"] = []
-            for val in line.strip().split()[1].split('/'):
-                settingsdict["flims"].append(int(val)) #frequency limits must be whole numbers
             
-            #Profile Editing System Settings
-            line = file.readline()
-            settingsdict["useclimobottom"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["overlayclimo"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["comparetoclimo"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["savefin"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["savejjvv"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["savebufr"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["saveprof"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["saveloc"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["useoceanbottom"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["checkforgaps"] = bool(int(line.strip().split()[1])) 
-            line = file.readline()
-            settingsdict["smoothlev"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["profres"] = float(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["maxstdev"] = float(line.strip().split()[1])
-            line = file.readline()
-            settingsdict["originatingcenter"] = int(line.strip().split()[1]) 
-            line = file.readline()
-            settingsdict["comport"] = str(line.strip().split()[1]) #GPS setting
-            line = file.readline()
-            settingsdict["gpsbaud"] = int(line.strip().split()[1]) #GPS setting
-            line = file.readline()
-            settingsdict["fontsize"] = int(line.strip().split()[1]) 
-            
-    #if settings file doesn't exist or is invalid, rewrites file with default settings
-    except:
-        settingsdict = setdefaultsettings()
-        writesettings(filename, settingsdict)
-        trace_error() #report issue
-
-    return settingsdict
-
-    
-    
-#Write settings from txt file
-def writesettings(filename,settingsdict):
-    
-    #overwrites file by deleting if it exists
-    if path.exists(filename):
-        remove(filename)
-
-    #writes settings to file
-    with open(filename,'w') as file:
-        
-        #Data Acquisition System settings
-        file.write('autodtg: '+str(int(settingsdict["autodtg"])) + '\n')
-        file.write('autolocation: '+str(int(settingsdict["autolocation"])) + '\n')
-        file.write('autoid: '+str(int(settingsdict["autoid"])) + '\n')
-        file.write('platformid: '+str(settingsdict["platformid"]) + '\n')
-        file.write('savelog: '+str(int(settingsdict["savelog"])) + '\n')
-        file.write('saveedf: '+str(int(settingsdict["saveedf"])) + '\n')
-        file.write('savewav: '+str(int(settingsdict["savewav"])) + '\n')
-        file.write('savesig: '+str(int(settingsdict["savesig"])) + '\n')
-        file.write('dtgwarn: '+str(int(settingsdict["dtgwarn"])) + '\n')
-        file.write('renametabstodtg: '+str(int(settingsdict["renametabstodtg"])) + '\n')
-        file.write('autosave: '+str(int(settingsdict["autosave"])) + '\n')
-        file.write('fftwindow: '+str(settingsdict["fftwindow"]) + '\n')
-        file.write('minfftratio: '+str(settingsdict["minfftratio"]) + '\n')
-        file.write('minsiglev: '+str(settingsdict["minsiglev"]) + '\n')
-        file.write('triggerfftratio: '+str(settingsdict["triggerfftratio"]) + '\n')
-        file.write('triggersiglev: '+str(settingsdict["triggersiglev"]) + '\n')
-        
-        #writing coefficient settings is a bit more complicated
-        tcoeffstr = ""
-        zcoeffstr = ""
-        for t in settingsdict["tcoeff"]:
-            tcoeffstr += f"{t}/"
-        for z in settingsdict["zcoeff"]:
-            zcoeffstr += f"{z}/"
-        file.write('tcoeff: ' + tcoeffstr[:-1] + '\n')
-        file.write('zcoeff: ' + zcoeffstr[:-1] + '\n')
-        file.write(f"flims: {settingsdict['flims'][0]}/{settingsdict['flims'][1]}\n")
-        
-        
-        #Profile Editing System settings
-        file.write('useclimobottom: '+str(int(settingsdict["useclimobottom"])) + '\n')
-        file.write('overlayclimo: '+str(int(settingsdict["overlayclimo"])) + '\n')
-        file.write('comparetoclimo: '+str(int(settingsdict["comparetoclimo"])) + '\n')
-        file.write('savefin: '+str(int(settingsdict["savefin"])) + '\n')
-        file.write('savejjvv: '+str(int(settingsdict["savejjvv"])) + '\n')
-        file.write('savebufr: '+str(int(settingsdict["savebufr"])) + '\n')
-        file.write('saveprof: '+str(int(settingsdict["saveprof"])) + '\n')
-        file.write('saveloc: '+str(int(settingsdict["saveloc"])) + '\n')
-        file.write('useoceanbottom: '+str(int(settingsdict["useoceanbottom"])) + '\n')
-        file.write('checkforgaps: '+str(int(settingsdict["checkforgaps"])) + '\n')
-        file.write('smoothlev: '+str(settingsdict["smoothlev"]) + '\n')
-        file.write('profres: '+str(settingsdict["profres"]) + '\n')
-        file.write('maxstdev: '+str(settingsdict["maxstdev"]) + '\n')
-        file.write('originatingcenter: '+str(settingsdict["originatingcenter"]) + '\n')
-        file.write('comport: '+str(settingsdict["comport"]) + '\n') #GPS settings
-        file.write('gpsbaud: '+str(settingsdict["gpsbaud"]) + '\n') #GPS settings
-        file.write('fontsize: '+str(settingsdict["fontsize"]) + '\n')
-        
-        
-
-        
