@@ -345,22 +345,22 @@ class RunSettings(QMainWindow):
         self.processortabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
         
         tc = self.settingsdict["tcoeff_axbt"]
-        self.tzconverttabwidgets["F2Tb0"].setText(str(tc[0]))
-        self.tzconverttabwidgets["F2Tb1"].setText(str(tc[1]))
-        self.tzconverttabwidgets["F2Tb2"].setText(str(tc[2]))
-        self.tzconverttabwidgets["F2Tb3"].setText(str(tc[3]))
+        self.axbtconverttabwidgets["F2Tb0"].setText(str(tc[0]))
+        self.axbtconverttabwidgets["F2Tb1"].setText(str(tc[1]))
+        self.axbtconverttabwidgets["F2Tb2"].setText(str(tc[2]))
+        self.axbtconverttabwidgets["F2Tb3"].setText(str(tc[3]))
         self.updateF2Teqn()
         
         zc = self.settingsdict["zcoeff_axbt"]
-        self.tzconverttabwidgets["t2zb0"].setText(str(zc[0]))
-        self.tzconverttabwidgets["t2zb1"].setText(str(zc[1]))
-        self.tzconverttabwidgets["t2zb2"].setText(str(zc[2]))
-        self.tzconverttabwidgets["t2zb3"].setText(str(zc[3]))
+        self.axbtconverttabwidgets["t2zb0"].setText(str(zc[0]))
+        self.axbtconverttabwidgets["t2zb1"].setText(str(zc[1]))
+        self.axbtconverttabwidgets["t2zb2"].setText(str(zc[2]))
+        self.axbtconverttabwidgets["t2zb3"].setText(str(zc[3]))
         self.updatet2zeqn()
         
         flims_axbt = self.settingsdict["flims_axbt"]
-        self.tzconverttabwidgets["flow"].setValue(flims_axbt[0])
-        self.tzconverttabwidgets["fhigh"].setValue(flims_axbt[1])
+        self.axbtconverttabwidgets["flow"].setValue(flims_axbt[0])
+        self.axbtconverttabwidgets["fhigh"].setValue(flims_axbt[1])
         self.updateflims_axbt()
 
         self.profeditortabwidgets["useclimobottom"].setChecked(self.settingsdict["useclimobottom"])
@@ -576,73 +576,73 @@ class RunSettings(QMainWindow):
             self.tabWidget.setCurrentIndex(0)
 
             # and add new buttons and other widgets
-            self.tzconverttabwidgets = {}
+            self.axbtconverttabwidgets = {}
 
             # making widgets
             tc = self.settingsdict["tcoeff_axbt"]
-            self.tzconverttabwidgets["F2Tlabel"] = QLabel('Frequency to Temperature Conversion:') #1
-            self.tzconverttabwidgets["F2Teqn"] = QLabel(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>") #2
-            self.tzconverttabwidgets["F2Tb0"] = QLineEdit(str(tc[0])) #3
-            self.tzconverttabwidgets["F2Tb0"].textChanged.connect(self.updateF2Teqn)
-            self.tzconverttabwidgets["F2Tb1"] = QLineEdit(str(tc[1])) #4
-            self.tzconverttabwidgets["F2Tb1"].textChanged.connect(self.updateF2Teqn)
-            self.tzconverttabwidgets["F2Tb2"] = QLineEdit(str(tc[2])) #5
-            self.tzconverttabwidgets["F2Tb2"].textChanged.connect(self.updateF2Teqn)
-            self.tzconverttabwidgets["F2Tb3"] = QLineEdit(str(tc[3])) #6
-            self.tzconverttabwidgets["F2Tb3"].textChanged.connect(self.updateF2Teqn)
-            self.tzconverttabwidgets["F2Ts0"] = QLabel(" + ") #7
-            self.tzconverttabwidgets["F2Ts1"] = QLabel("* f + ") #8
-            self.tzconverttabwidgets["F2Ts2"] = QLabel("* f<sup>2</sup> + ") #9
-            self.tzconverttabwidgets["F2Ts3"] = QLabel("* f<sup>3</sup> ") #10
+            self.axbtconverttabwidgets["F2Tlabel"] = QLabel('Frequency to Temperature Conversion:') #1
+            self.axbtconverttabwidgets["F2Teqn"] = QLabel(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>") #2
+            self.axbtconverttabwidgets["F2Tb0"] = QLineEdit(str(tc[0])) #3
+            self.axbtconverttabwidgets["F2Tb0"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb1"] = QLineEdit(str(tc[1])) #4
+            self.axbtconverttabwidgets["F2Tb1"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb2"] = QLineEdit(str(tc[2])) #5
+            self.axbtconverttabwidgets["F2Tb2"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb3"] = QLineEdit(str(tc[3])) #6
+            self.axbtconverttabwidgets["F2Tb3"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Ts0"] = QLabel(" + ") #7
+            self.axbtconverttabwidgets["F2Ts1"] = QLabel("* f + ") #8
+            self.axbtconverttabwidgets["F2Ts2"] = QLabel("* f<sup>2</sup> + ") #9
+            self.axbtconverttabwidgets["F2Ts3"] = QLabel("* f<sup>3</sup> ") #10
             
             zc = self.settingsdict["zcoeff_axbt"]
-            self.tzconverttabwidgets["t2zlabel"] = QLabel('Time Elapsed to Depth Conversion:') #11
-            self.tzconverttabwidgets["t2zeqn"] = QLabel(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>") #12
-            self.tzconverttabwidgets["t2zb0"] = QLineEdit(str(zc[0])) #13
-            self.tzconverttabwidgets["t2zb0"].textChanged.connect(self.updatet2zeqn)
-            self.tzconverttabwidgets["t2zb1"] = QLineEdit(str(zc[1])) #14
-            self.tzconverttabwidgets["t2zb1"].textChanged.connect(self.updatet2zeqn)
-            self.tzconverttabwidgets["t2zb2"] = QLineEdit(str(zc[2])) #15
-            self.tzconverttabwidgets["t2zb2"].textChanged.connect(self.updatet2zeqn)
-            self.tzconverttabwidgets["t2zb3"] = QLineEdit(str(zc[3])) #16
-            self.tzconverttabwidgets["t2zb3"].textChanged.connect(self.updatet2zeqn)
-            self.tzconverttabwidgets["t2zs0"] = QLabel(" + ") #17
-            self.tzconverttabwidgets["t2zs1"] = QLabel("* t + ") #18
-            self.tzconverttabwidgets["t2zs2"] = QLabel("* t<sup>2</sup> + ") #19
-            self.tzconverttabwidgets["t2zs3"] = QLabel("* t<sup>3</sup> ") #20
+            self.axbtconverttabwidgets["t2zlabel"] = QLabel('Time Elapsed to Depth Conversion:') #11
+            self.axbtconverttabwidgets["t2zeqn"] = QLabel(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>") #12
+            self.axbtconverttabwidgets["t2zb0"] = QLineEdit(str(zc[0])) #13
+            self.axbtconverttabwidgets["t2zb0"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb1"] = QLineEdit(str(zc[1])) #14
+            self.axbtconverttabwidgets["t2zb1"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb2"] = QLineEdit(str(zc[2])) #15
+            self.axbtconverttabwidgets["t2zb2"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb3"] = QLineEdit(str(zc[3])) #16
+            self.axbtconverttabwidgets["t2zb3"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zs0"] = QLabel(" + ") #17
+            self.axbtconverttabwidgets["t2zs1"] = QLabel("* t + ") #18
+            self.axbtconverttabwidgets["t2zs2"] = QLabel("* t<sup>2</sup> + ") #19
+            self.axbtconverttabwidgets["t2zs3"] = QLabel("* t<sup>3</sup> ") #20
             
             flims_axbt = self.settingsdict["flims_axbt"]
-            self.tzconverttabwidgets["flimlabel"] = QLabel('Valid Frequency/Temperature Limits:') #21
-            self.tzconverttabwidgets["flowlabel"] = QLabel('Minimum Valid Frequency (Hz):') #22
-            self.tzconverttabwidgets["fhighlabel"] = QLabel('Maximum Valid Frequency (Hz):') #23
+            self.axbtconverttabwidgets["flimlabel"] = QLabel('Valid Frequency/Temperature Limits:') #21
+            self.axbtconverttabwidgets["flowlabel"] = QLabel('Minimum Valid Frequency (Hz):') #22
+            self.axbtconverttabwidgets["fhighlabel"] = QLabel('Maximum Valid Frequency (Hz):') #23
             
-            self.tzconverttabwidgets["flow"] = QSpinBox() #24
-            self.tzconverttabwidgets["flow"].setMinimum(0)
-            self.tzconverttabwidgets["flow"].setMaximum(5000)
-            self.tzconverttabwidgets["flow"].setSingleStep(1)
-            self.tzconverttabwidgets["flow"].setValue(flims_axbt[0])
-            self.tzconverttabwidgets["flow"].valueChanged.connect(self.updateflims_axbt)
-            self.tzconverttabwidgets["fhigh"] = QSpinBox() #25
-            self.tzconverttabwidgets["fhigh"].setMinimum(0)
-            self.tzconverttabwidgets["fhigh"].setMaximum(5000)
-            self.tzconverttabwidgets["fhigh"].setSingleStep(1)
-            self.tzconverttabwidgets["fhigh"].setValue(flims_axbt[1])
-            self.tzconverttabwidgets["fhigh"].valueChanged.connect(self.updateflims_axbt)
+            self.axbtconverttabwidgets["flow"] = QSpinBox() #24
+            self.axbtconverttabwidgets["flow"].setMinimum(0)
+            self.axbtconverttabwidgets["flow"].setMaximum(5000)
+            self.axbtconverttabwidgets["flow"].setSingleStep(1)
+            self.axbtconverttabwidgets["flow"].setValue(flims_axbt[0])
+            self.axbtconverttabwidgets["flow"].valueChanged.connect(self.updateflims_axbt)
+            self.axbtconverttabwidgets["fhigh"] = QSpinBox() #25
+            self.axbtconverttabwidgets["fhigh"].setMinimum(0)
+            self.axbtconverttabwidgets["fhigh"].setMaximum(5000)
+            self.axbtconverttabwidgets["fhigh"].setSingleStep(1)
+            self.axbtconverttabwidgets["fhigh"].setValue(flims_axbt[1])
+            self.axbtconverttabwidgets["fhigh"].valueChanged.connect(self.updateflims_axbt)
             
-            self.tzconverttabwidgets["Tlowlabel"]  = QLabel(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}") #26
-            self.tzconverttabwidgets["Thighlabel"] = QLabel(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}") #27
+            self.axbtconverttabwidgets["Tlowlabel"]  = QLabel(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}") #26
+            self.axbtconverttabwidgets["Thighlabel"] = QLabel(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}") #27
             
             
             # formatting widgets 
-            self.tzconverttabwidgets["F2Tlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-            self.tzconverttabwidgets["t2zlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-            self.tzconverttabwidgets["flimlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
-            self.tzconverttabwidgets["flowlabel"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.tzconverttabwidgets["fhighlabel"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.axbtconverttabwidgets["F2Tlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axbtconverttabwidgets["t2zlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axbtconverttabwidgets["flimlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axbtconverttabwidgets["flowlabel"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.axbtconverttabwidgets["fhighlabel"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             
 
             # should be XX entries
-            widgetorder = ["F2Tlabel","F2Teqn","F2Tb0","F2Tb1","F2Tb2","F2Tb3","F2Ts0","F2Ts1","F2Ts2","F2Ts3","t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2","t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "flimlabel", "flowlabel", "fhighlabel", "flow", "fhigh", "Tlowlabel", "Thighlabel"]
+            widgetorder = ["F2Tlabel", "F2Teqn", "F2Tb0", "F2Tb1", "F2Tb2", "F2Tb3", "F2Ts0", "F2Ts1", "F2Ts2", "F2Ts3", "t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "flimlabel", "flowlabel", "fhighlabel", "flow", "fhigh", "Tlowlabel", "Thighlabel"]
 
             wcols = [1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,4,5,5,5,5,1,0,0,2,2,4,4]
             wrows = [1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6,9,10,11,10,11,10,11]
@@ -652,7 +652,7 @@ class RunSettings(QMainWindow):
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
-                self.tzconverttablayout.addWidget(self.tzconverttabwidgets[i], r, c, re, ce)
+                self.tzconverttablayout.addWidget(self.axbtconverttabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
             colstretches = [1,2,1,1,2,1,1]
@@ -676,8 +676,8 @@ class RunSettings(QMainWindow):
     def updateF2Teqn(self):
         
         try: #only updates if the values are numeric
-            tc = [float(self.tzconverttabwidgets["F2Tb0"].text()), float(self.tzconverttabwidgets["F2Tb1"].text()), float(self.tzconverttabwidgets["F2Tb2"].text()), float(self.tzconverttabwidgets["F2Tb3"].text())]
-            self.tzconverttabwidgets["F2Teqn"].setText(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>")
+            tc = [float(self.axbtconverttabwidgets["F2Tb0"].text()), float(self.axbtconverttabwidgets["F2Tb1"].text()), float(self.axbtconverttabwidgets["F2Tb2"].text()), float(self.axbtconverttabwidgets["F2Tb3"].text())]
+            self.axbtconverttabwidgets["F2Teqn"].setText(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>")
             self.settingsdict["tcoeff_axbt"] = tc
         except ValueError:
             pass
@@ -686,8 +686,8 @@ class RunSettings(QMainWindow):
     def updatet2zeqn(self):
         
         try: #only updates if the values are numeric
-            zc = [float(self.tzconverttabwidgets["t2zb0"].text()), float(self.tzconverttabwidgets["t2zb1"].text()), float(self.tzconverttabwidgets["t2zb2"].text()), float(self.tzconverttabwidgets["t2zb3"].text())]
-            self.tzconverttabwidgets["t2zeqn"].setText(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>")
+            zc = [float(self.axbtconverttabwidgets["t2zb0"].text()), float(self.axbtconverttabwidgets["t2zb1"].text()), float(self.axbtconverttabwidgets["t2zb2"].text()), float(self.axbtconverttabwidgets["t2zb3"].text())]
+            self.axbtconverttabwidgets["t2zeqn"].setText(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>")
             self.settingsdict["zcoeff_axbt"] = zc
         except ValueError:
             pass
@@ -695,19 +695,19 @@ class RunSettings(QMainWindow):
             
     def updateflims_axbt(self):
         
-        flims_axbt = [self.tzconverttabwidgets["flow"].value(), self.tzconverttabwidgets["fhigh"].value()]
+        flims_axbt = [self.axbtconverttabwidgets["flow"].value(), self.axbtconverttabwidgets["fhigh"].value()]
         tc = self.settingsdict["tcoeff_axbt"]
         
         if flims_axbt[1] > flims_axbt[0]: #valid min frequency must be less than valid max frequency
-            self.tzconverttabwidgets["Tlowlabel"].setText(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}")
-            self.tzconverttabwidgets["Thighlabel"].setText(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}")
+            self.axbtconverttabwidgets["Tlowlabel"].setText(f"Minimum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[0],tc):5.2f}")
+            self.axbtconverttabwidgets["Thighlabel"].setText(f"Maximum Valid Temperature (\xB0C): {cdf.dataconvert(flims_axbt[1],tc):5.2f}")
             
             self.settingsdict["flims_axbt"] = flims_axbt
             
         #else: #reset previous setting
         #    self.postwarning("Minimum valid frequency must be less than maximum valid frequency!")
-        #    self.tzconverttabwidgets["flow"].setValue(self.settingsdict["flims_axbt"][0])
-        #    self.tzconverttabwidgets["fhigh"].setValue(self.settingsdict["flims_axbt"][1])
+        #    self.axbtconverttabwidgets["flow"].setValue(self.settingsdict["flims_axbt"][0])
+        #    self.axbtconverttabwidgets["fhigh"].setValue(self.settingsdict["flims_axbt"][1])
             
             
         
