@@ -22,7 +22,7 @@ import numpy as np
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from shapefile import Reader as shread
-
+import matplotlib.ticker as mticker
 
 
 
@@ -59,49 +59,39 @@ def setgeoaxes(fig,ax,xrange,yrange,changeaxis):
         ax.set_xlim(lonrangenew)
     elif changeaxis.lower() == 'y':
         ax.set_ylim(latrangenew)
-    
 
+
+@mticker.FuncFormatter
+def major_lon_formatter(x, pos):
+    if x >= 0 and x <= 180: #eastern hemisphere
+        hem = 'E'
+    elif x < 0 and x > -180: #western hemisphere
+        hem = 'W'
+        x = abs(x)
+    elif x <= -180: #WH plot overlap into EH
+        x += 360
+        hem = 'E'
+    elif x > 180: #EH plot overlap into WH
+        x = abs(x - 360)
+        hem = 'W'
         
+    return f"{x}$^\circ${hem}" # set current tick label
+        
+@mticker.FuncFormatter
+def major_lat_formatter(y, pos):
+    if y >= 0: #N hemisphere
+        hem = 'N'
+    elif y < 0: #S hemisphere
+        hem = 'S'
+        
+    return f"{y}$^\circ${hem}" # set current tick label    
+
 
 def setgeotick(ax):
+    # ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
+    ax.xaxis.set_major_formatter(major_lon_formatter)
+    ax.yaxis.set_major_formatter(major_lat_formatter)
     
-    # getting plot info
-    xticks = ax.get_xticks()
-    yticks = ax.get_yticks()
-    xticklabels = ax.get_xticklabels()
-    yticklabels = ax.get_yticklabels()
-    
-    # xticklabel correction
-    for i,ctick in enumerate(xticks):
-        if ctick >= 0 and ctick <= 180: #eastern hemisphere
-            hem = 'E'
-        elif ctick < 0 and ctick > -180: #western hemisphere
-            hem = 'W'
-            ctick = abs(ctick)
-        elif ctick <= -180: #WH plot overlap into EH
-            ctick = ctick + 360
-            hem = 'E'
-        elif ctick > 180: #EH plot overlap into WH
-            ctick = abs(ctick - 360)
-            hem = 'W'
-        clab = f"{ctick}$^\circ${hem}" # set current tick label
-        xticklabels[i]._text = clab
-        
-    # yticklabel correction
-    for i,ctick in enumerate(yticks):
-        if ctick >= 0: # hemisphere of current tick
-            hem = 'N'
-        else:
-            hem = 'S'
-        clab = f"{ctick}$^\circ${hem}" # set current tick label
-        if abs(ctick) <= 90:
-            yticklabels[i]._text = clab
-        else:
-            yticklabels[i]._text = ''
-        
-    # applying corrections
-    ax.set_xticklabels(xticklabels)
-    ax.set_yticklabels(yticklabels)
 
 
     

@@ -107,7 +107,7 @@ def initUI(self):
         windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
         
-    # prepping to include tabs
+    # prepping main window/widget, configuring tab widget
     mainWidget = QWidget()
     self.setCentralWidget(mainWidget)
     mainLayout = QVBoxLayout()

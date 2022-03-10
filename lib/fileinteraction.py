@@ -56,6 +56,84 @@ def readlogfile(logfile):
     return [temperature,depth]
     
             
+    
+    
+    
+def parse_date(line):
+    day = month = year = False #initializing
+    
+    if "/" in line and len(line) <= 8: #mm/dd/yy format
+        line = line.split('/')
+        month = int(line[0])
+        day = int(line[1])
+        year = int(line[2]) + 2000
+    elif "/" in line and len(line) <= 10: #mm/dd/yyyy, or yyyy/mm/dd (assuming not dd/mm/yyyy)
+        line = line.split('/')
+        if len(line[0]) == 4:
+            year = int(line[0])
+            month = int(line[1])
+            day = int(line[2])
+        elif len(line[2]) == 4:
+            month = int(line[0])
+            day = int(line[1])
+            year = int(line[2])
+            
+    elif "-" in line and len(line) <= 8: #mm-dd-yy format
+        line = line.split('-')
+        month = int(line[0])
+        day = int(line[1])
+        year = int(line[2]) + 2000
+    elif "-" in line and len(line) <= 10: #mm-dd-yyyy, or yyyy-mm-dd (assuming not dd-mm-yyyy)
+        line = line.split('-')
+        if len(line[0]) == 4:
+            year = int(line[0])
+            month = int(line[1])
+            day = int(line[2])
+        elif len(line[2]) == 4:
+            year = int(line[2])
+            month = int(line[1])
+            day = int(line[0])
+    
+    else: #trying YYYYMMDD format instead
+        year = int(line[:4])
+        month = int(line[4:6])
+        day = int(line[6:8])
+        
+    return year,month,day
+    
+    
+    
+    
+        
+def parse_lat_lon(line):
+    line = line.strip().lower() #sanitizing
+    
+    #identifying hemisphere
+    hemsign = 1 #assuming N/E hemisphere unless proven otherwise
+    if 'n' in line or 's' in line or 'e' in line or 'w' in line: #hemisphere given
+        if 's' in line or 'w' in line:
+            hemsign = -1
+        line = line[:-1] #drop hemisphere from line
+            
+    else: #lat/lon is positive or negative for E/N or W/S hemisphere respectively
+        if line[0] == '-':
+            hemsign = -1
+            line = line[1:]
+    
+    #sanitize and split line
+    line_split = line.replace(' ',':')
+    line_split = line_split.split(':')
+        
+    #calculating lon/lat in decimal degrees
+    value = 0
+    for i,valstr in enumerate(line_split):
+        value += hemsign*float(valstr)/60**i
+    
+    return value
+    
+    
+    
+    
 
     
 def readedffile(edffile):
@@ -71,17 +149,17 @@ def readedffile(edffile):
     
     with open(edffile,'rb') as f_in:
         
-        for line in f_in:
+        for cline in f_in:
             try:
-                line = line.decode(encoding).strip()
+                cline = cline.decode(encoding).strip()
             except:
-                fileinfo = chardet.detect(line)
+                fileinfo = chardet.detect(cline)
                 encoding = fileinfo['encoding']
-                line = line.decode(encoding).strip()
+                cline = cline.decode(encoding).strip()
                 
             try:
-                if ":" in line: #input parameter- parse appropriately
-                    line = line.strip().split(':')
+                if ":" in cline: #input parameter- parse appropriately
+                    line = cline.strip().split(':')
                     
                     if "time" in line[0].lower(): #assumes time is in "HH", "HH:MM", or "HH:MM:SS" format
                         hour = int(line[1].strip())
@@ -90,89 +168,17 @@ def readedffile(edffile):
                         
                     elif "date" in line[0].lower(): #TODO: fix date and time reading
                         line = line[1].strip() #should be eight digits long
-                        if "/" in line and len(line) <= 8: #mm/dd/yy format
-                            line = line.split('/')
-                            month = int(line[0])
-                            day = int(line[1])
-                            year = int(line[2]) + 2000
-                        elif "/" in line and len(line) <= 10: #mm/dd/yyyy, or yyyy/mm/dd (assuming not dd/mm/yyyy)
-                            line = line.split('/')
-                            if len(line[0]) == 4:
-                                year = int(line[0])
-                                month = int(line[1])
-                                day = int(line[2])
-                            elif len(line[2]) == 4:
-                                month = int(line[0])
-                                day = int(line[1])
-                                year = int(line[2])
-                                
-                        elif "-" in line and len(line) <= 8: #mm-dd-yy format
-                            line = line.split('-')
-                            month = int(line[0])
-                            day = int(line[1])
-                            year = int(line[2]) + 2000
-                        elif "-" in line and len(line) <= 10: #mm-dd-yyyy, or yyyy-mm-dd (assuming not dd-mm-yyyy)
-                            line = line.split('-')
-                            if len(line[0]) == 4:
-                                year = int(line[0])
-                                month = int(line[1])
-                                day = int(line[2])
-                            elif len(line[2]) == 4:
-                                year = int(line[2])
-                                month = int(line[1])
-                                day = int(line[0])
-                        
-                        else: #trying YYYYMMDD format instead
-                            year = int(line[:4])
-                            month = int(line[4:6])
-                            day = int(line[6:8])
+                        year,month,day = parse_date(line)
                             
                     
                     elif "latitude" in line[0].lower(): 
-                        if 'n' in line[-1].lower() or 's' in line[-1].lower():
-                            if len(line) == 2: #XX.XXXH format
-                                lat = float(line[1][:-1])
-                                if line[1][-1].lower() == 's':
-                                    lat = -1.*lat
-                            elif len(line) == 3: #XX:XX.XXXH format
-                                lat = float(line[1]) + float(line[2][:-1])/60
-                                if line[2][-1].lower() == 's':
-                                    lat = -1.*lat
-                            elif len(line) == 4: #XX:XX:XXH format
-                                lat = float(line[1]) + float(line[2])/60 + float(line[3][:-1])/3600
-                                if line[3][-1].lower() == 's':
-                                    lat = -1.*lat
-                        else:
-                            if len(line) == 2: #XX.XXX format
-                                lat = float(line[1])
-                            elif len(line) == 3: #XX:XX.XXX format
-                                lat = float(line[1]) + float(line[2])/60
-                            elif len(line) == 4: #XX:XX:XX format
-                                lat = float(line[1]) + float(line[2])/60 + float(line[3])/3600
+                        startind = cline.find(':')
+                        lat = parse_lat_lon(cline[startind+1:])
                             
                     elif "longitude" in line[0].lower():
-                        if 'e' in line[-1].lower() or 'w' in line[-1].lower():
-                            if len(line) == 2: #XX.XXXH format
-                                lon = float(line[1][:-1])
-                                if line[1][-1].lower() == 'w':
-                                    lon = -1.*lon
-                            elif len(line) == 3: #XX:XX.XXXH format
-                                lon = float(line[1]) + float(line[2][:-1])/60
-                                if line[2][-1].lower() == 'w':
-                                    lon = -1.*lon
-                            elif len(line) == 4: #XX:XX:XXH format
-                                lon = float(line[1]) + float(line[2])/60 + float(line[3][:-1])/3600
-                                if line[3][-1].lower() == 'w':
-                                    lon = -1.*lon
-                        else:
-                            if len(line) == 2: #XX.XXX format
-                                lon = float(line[1])
-                            elif len(line) == 3: #XX:XX.XXX format
-                                lon = float(line[1]) + float(line[2])/60
-                            elif len(line) == 4: #XX:XX:XX format
-                                lon = float(line[1]) + float(line[2])/60 + float(line[3])/3600
-                                
-                                
+                        startind = cline.find(':')
+                        lon = parse_lat_lon(cline[startind+1:])
+                        
                     elif "field" in line[0].lower(): #specifying which column contains temperature, depth, salinity (optional)
                         matched = False
                         curlinefield = line[1].lower()
@@ -188,8 +194,8 @@ def readedffile(edffile):
                         
                                 
                 #space or tab delimited data (if number of datapoints matches fields and line doesnt start with //)
-                elif line[:2] != '//': 
-                    curdata = line.strip().split()
+                elif cline[:2] != '//': 
+                    curdata = cline.strip().split()
                     #if salinity is included, #of columns should match number of fields, if not, # columns should be # fields minus 1 (no salinity data)
                     if (fieldcolumns[2] >= 0 and len(curdata) == len(fields)) or (fieldcolumns[2] == -1 and len(curdata) == len(fields)-1):
                         for i,cfield in enumerate(fields):
@@ -209,14 +215,12 @@ def readedffile(edffile):
         try:
             curdata_float = [float(val) for val in data[field]] #if this doesn't raise an error, the float conversion worked
             data[field] = curdata_float
-            print(f"{field=}, data={data[field][:10]}")
         except (ValueError, TypeError): #raised if data can't be converted to float
             pass
     
     for cfield in ['depth','temperature','salinity']:  
         data[cfield] = np.asarray(data[cfield])   
-    print(data)
-    
+        
     return data,dropdatetime,lat,lon
 
     
@@ -372,6 +376,10 @@ def readjjvvfile(jjvvfile):
     depth = np.asarray(depth)
     temperature = np.asarray(temperature)
     
+    #correcting negative temperatures (encoded as abs(T) + 50)
+    ind = temperature >= 50
+    temperature[ind] = -1*(temperature[ind]-50)
+    
     return [temperature,depth,dropdatetime,lat,lon,identifier]
 
 
@@ -409,6 +417,9 @@ def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike
         while i < len(depth):
             cdepth = round(depth[i])
             ctemp = temperature[i]
+            
+            if ctemp < 0: #correcting if value is negative
+                ctemp = np.abs(ctemp) + 50
             
             if cdepth - hundreds > 99:  # need to increment hundreds counter in file
                 hundreds = hundreds + 100

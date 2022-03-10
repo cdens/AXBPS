@@ -152,8 +152,9 @@ def closecurrenttab(self):
 
             #closing open figures in tab to prevent memory leak
             if self.alltabdata[opentab]["tabtype"] == "ProfileEditor":
-                plt.close(self.alltabdata[opentab]["ProfFig"])
                 plt.close(self.alltabdata[opentab]["LocFig"])
+                for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
+                    plt.close(self.alltabdata[opentab]["ProfFigs"][ckey])
 
             elif self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_incomplete' or self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_completed':
                 plt.close(self.alltabdata[opentab]["ProcessorFig"])
@@ -226,8 +227,9 @@ def closeEvent(self, event):
         #explicitly closing figures to clean up memory (should be redundant here but just in case)
         for ctab,_ in enumerate(self.alltabdata):
             if self.alltabdata[ctab]["tabtype"] == "PE_p": #processed only
-                plt.close(self.alltabdata[ctab]["ProfFig"])
                 plt.close(self.alltabdata[ctab]["LocFig"])
+                for ckey in self.alltabdata[ctab]["ProfFigs"].keys():
+                    plt.close(self.alltabdata[ctab]["ProfFigs"][ckey])
 
             elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS': #processed or unprocessed
                 plt.close(self.alltabdata[ctab]["ProcessorFig"])
@@ -655,10 +657,10 @@ def savePEfiles(self,opentab,outdir,probetype):
     #pulling salinity data if AXCTD
     if hasSal:
         rawsalinity = self.alltabdata[opentab]["profdata"]["salinity_raw"]
-        climopsalfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
+        climopsalfill = self.alltabdata[opentab]["profdata"]["climopsalfill"]
         depthS = self.alltabdata[opentab]["profdata"]["depthS_plot"]
         salinity = self.alltabdata[opentab]["profdata"]["salinity_plot"]
-        salinity1m = np.interp(depth1m,depth,salinity)
+        salinity1m = np.interp(depth1m,depthS,salinity)
         edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m, 'Salinity (PSU)':salinity1m}
     else:
         salinity = None

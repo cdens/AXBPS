@@ -57,7 +57,7 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
         xmax = np.max(data)
         if climodatafill is not None:
             xmin = np.min([xmin,np.min(climodatafill)])
-            xmax = np.min([xmax,np.max(climodatafill)])
+            xmax = np.max([xmax,np.max(climodatafill)])
         dx = xmax-xmin
         if dx > 20: #dx threshold
             xcut = 5
@@ -122,7 +122,8 @@ def makelocationplot(fig,ax,lat,lon,dtg,exportlon,exportlat,exportrelief,dcoord)
 
     #contour bathymetry
     c = ax.pcolormesh(exportlon,exportlat,exportrelief,vmin=-4000,vmax=10,cmap = topomap, shading='gouraud')
-    ax.contour(exportlon, exportlat, exportrelief, np.arange(-8000,-4000,1000), colors='white',linestyles='dashed', linewidths=0.5,alpha=0.5)
+    if np.min(exportrelief) <= -4000:
+        ax.contour(exportlon, exportlat, exportrelief, np.arange(-8000,-4000,1000), colors='white',linestyles='dashed', linewidths=0.5,alpha=0.5)
     cbar = fig.colorbar(c,ax=ax)
     cbar.set_label('Elevation (m)')
     

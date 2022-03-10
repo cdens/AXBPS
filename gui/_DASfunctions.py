@@ -88,6 +88,7 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["ProcessorAx"].set_xlim([-2,32])
         self.alltabdata[opentab]["ProcessorAx"].set_ylim([5,1000])
         self.alltabdata[opentab]["ProcessorAx"].invert_yaxis()
+        self.alltabdata[opentab]["ProcessorFig"].set_tight_layout(True)
         self.alltabdata[opentab]["ProcessorCanvas"].draw() #refresh plots on window
         
         #and add new buttons and other widgets
