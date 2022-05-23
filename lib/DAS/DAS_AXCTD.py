@@ -174,16 +174,18 @@ class AXCTDProcessor(QRunnable):
     
                 #UPDATE DATA TO EMIT
                 if self.triggerstatus == 2:
-                    cframe = [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
+                    data = [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds, cframes]
                 
                 elif len(ctimes) > 0: #triggerstatus is 1 (400 Hz pulses transmitting but 7500 Hz profile tone not detected)
-                    cframe = [self.triggerstatus, [ctimes[-1]], [r400[-1]], [r7500[-1]], [np.NaN], [np.NaN], [np.NaN]]
+                    data = [self.triggerstatus, [ctimes[-1]], [r400[-1]], [r7500[-1]], [np.NaN], [np.NaN], [np.NaN], [cframes[-1]]]
                 else:
-                    cframe = [] #dont pass any info
+                    data = [] #dont pass any info
                 
                     
-                if self.keepgoing and len(cframe) > 0: #won't send if keepgoing stopped since current iteration began
-                    self.signals.iterated.emit(self.tabID, cframe)
+                #TODO: ADD TRIGGERED SIGNAL RELEASE WITH NECESSARY TIMES
+                    
+                if self.keepgoing and len(data) > 0: #won't send if keepgoing stopped since current iteration began
+                self.signals.iterated.emit(self.tabID, data)
                         
                         
                         

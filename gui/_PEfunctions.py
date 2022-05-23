@@ -161,7 +161,7 @@ def checkdatainputs_editorinput(self):
     profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
     timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
     logfile = self.alltabdata[opentab]["tabwidgets"]["logedit"].toPlainText()
-    
+        
     if probetype.upper() == "AXCTD":
         hasSal = True
     else:
@@ -309,8 +309,14 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             rawdata['temperature'] = rawdata['temperature'][:cutoff]
             rawdata['depth'] = rawdata['depth'][:cutoff]
             
+            if probetype == "AXCTD":
+                rawdata['salinity'] = rawdata['salinity'][:cutoff]
+            
+                
         rawdepth = rawdata['depth']
         rawtemperature = rawdata['temperature']
+        #salinity is saved ~20 lines later for AXCTD profiles
+            
 
         # pull ocean depth from ETOPO1 Grid-Registered Ice Sheet based global relief dataset
         # Data source: NOAA-NGDC: https://www.ngdc.noaa.gov/mgg/global/global.html
@@ -323,7 +329,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             exportrelief = np.NaN*np.ones((2,2))
             self.posterror("Unable to find/load bathymetry data for profile location!")
         
-        #getting climatology
+        #loading climatology T/S data for current position/month
         try:
             [climotemps,climopsals,climodepths,climotempfill,climopsalfill,climodepthfill] = oci.getclimatologyprofile(lat,lon,dropdatetime.month,self.climodata)
         except:
@@ -543,6 +549,10 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             self.alltabdata[opentab]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
 
             self.alltabdata[opentab]["tabtype"] = "PE_p"
+            
+        else:
+            self.posterror("autoQC algorithm failed!")
+            
     except Exception:
         trace_error()
         self.posterror("Failed to build profile editor tab!")
@@ -560,10 +570,11 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
 def runqc(self):
     try:
         opentab = self.whatTab()
+        success = False
 
         # getting necessary data for QC from dictionary
         rawtemperature = self.alltabdata[opentab]["profdata"]["temperature_raw"]
-        rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
+        rawdepthT = self.alltabdata[opentab]["profdata"]["depth_raw"]
         climotemps = self.alltabdata[opentab]["profdata"]["climotemp"]
         climodepths = self.alltabdata[opentab]["profdata"]["climodepth"]
         climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
@@ -574,14 +585,15 @@ def runqc(self):
         if probetype == "AXCTD":
             rawsalinity = self.alltabdata[opentab]["profdata"]["salinity_raw"]
             climopsalfill = self.alltabdata[opentab]["profdata"]["climopsalfill"]
+            rawdepthS = rawdepthT.copy()
             
         try:
             # running QC, comparing to climo
-            temperature, depthT = qc.autoqc(rawtemperature, rawdepth, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
+            temperature, depthT = qc.autoqc(rawtemperature, rawdepthT, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
             
             #running for salinity as well
             if probetype == "AXCTD":
-                salinity, depthS = qc.autoqc(rawsalinity, rawdepth, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
+                salinity, depthS = qc.autoqc(rawsalinity, rawdepthS, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
                 
             if self.settingsdict["comparetoclimo"] and climodepths.size != 0:
                 matchclimo, climobottomcutoff = oci.comparetoclimo(temperature, depthT, climotemps, climodepths,climotempfill,climodepthfill)
@@ -591,7 +603,9 @@ def runqc(self):
                 
         except Exception:
             temperature = np.array([np.NaN])
-            depth = np.array([0])
+            depthT = np.array([0])
+            salinity = np.array([np.NaN])
+            depthS = np.array([0])
             matchclimo = climobottomcutoff = 0
             trace_error()
             self.posterror("Error raised in automatic profile QC")
@@ -648,14 +662,14 @@ def runqc(self):
             self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(False)
 
         self.updateprofeditplots() #update profile plot, data on window
+        success = True
         
-        return True #return true if autoQC runs successfully
-
     except Exception:
         trace_error()
         self.posterror("Failed to run autoQC")
-        
-        return False #return false if autoQC fails
+    
+    finally:    
+        return success #return success status of algorithm
 
 
 

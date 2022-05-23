@@ -116,6 +116,7 @@ class AXCTDProcessor(QRunnable):
                 cdepths = []
                 ctemps = []
                 cconds = []
+                cframes = []
                 for _ in range(self.linesperquartersec):
                     cline = self.f.readline().strip().split()
                     if len(cline) < 6:
@@ -125,10 +126,13 @@ class AXCTDProcessor(QRunnable):
                         
                         i += 1
                         
+                        current_frame = cline[2]
+                        cframes.append(current_frame)
+                        
                         if len(cline) <= 10:
-                            if cline[1] == "000000":
+                            if current_frame == "000000":
                                 self.triggerstatus = 0
-                            elif cline[1] == "ffffff":
+                            elif current_frame == "ffffff":
                                 self.triggerstatus = 1 
                         else:
                             if cline[9] != '//':
@@ -189,18 +193,18 @@ class AXCTDProcessor(QRunnable):
                 
                 #UPDATE DATA TO EMIT
                 if self.triggerstatus == 2:
-                    cframe = [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
+                    data = [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds, cframes]
                 
                 elif len(ctimes) > 0: #triggerstatus is 1 (400 Hz pulses transmitting but 7500 Hz profile tone not detected)
-                    cframe = [self.triggerstatus, [ctimes[-1]], [r400[-1]], [r7500[-1]], [np.NaN], [np.NaN], [np.NaN]]
+                    data = [self.triggerstatus, [ctimes[-1]], [r400[-1]], [r7500[-1]], [np.NaN], [np.NaN], [np.NaN], [cframes[-1]]]
                 else:
-                    cframe = [] #dont pass any info
+                    data = [] #dont pass any info
                 
                     
                 #TODO: ADD TRIGGERED SIGNAL RELEASE WITH NECESSARY TIMES
                     
-                if self.keepgoing and len(cframe) > 0: #won't send if keepgoing stopped since current iteration began
-                    self.signals.iterated.emit(self.tabID, cframe)
+                if self.keepgoing and len(data) > 0: #won't send if keepgoing stopped since current iteration began
+                    self.signals.iterated.emit(self.tabID, data)
 
                     
                 timemodule.sleep(0.22)  #every iteration for test should take a quarter second

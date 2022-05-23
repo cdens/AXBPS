@@ -280,14 +280,16 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
     lon = np.NaN
     lat = np.NaN
     dropdatetime = dt.datetime(1,1,1)
-    identifier = 'none'
     
     try:
         #parsing and checking data
         if checkcoords:
             try:
                 #checking latitude validity
-                latstr = latstr.split(',')
+                latstr = latstr.strip().replace(' ',',').split(',')
+                if '' in latstr:
+                    latstr.remove('')
+                    
                 latsign = np.sign(float(latstr[0]))
                 if len(latstr) == 3:
                     lat = float(latstr[0]) + latsign*float(latstr[1])/60 + latsign*float(latstr[2])/3600
@@ -301,7 +303,10 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
 
             try:
                 #checking longitude validity
-                lonstr = lonstr.split(',')
+                lonstr = lonstr.strip().replace(' ',',').split(',')
+                if '' in lonstr:
+                    lonstr.remove('')
+                    
                 lonsign = np.sign(float(lonstr[0]))
                 if len(lonstr) == 3:
                     lon = float(lonstr[0]) + lonsign*float(lonstr[1])/60 + lonsign*float(lonstr[2])/3600
@@ -404,7 +409,7 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
             if option == 'cancel':
                 isgood = False
             else:
-                identifier = 'noIDx' #default 5 character ID for JJVV
+                identifier = 'NOIDT' #default 5 character ID for JJVV
         
     except Exception:
         trace_error()
@@ -504,7 +509,7 @@ def saveDASfiles(self,opentab,outdir,probetype):
     if probetype.upper() == 'AXCTD':
         hasSal = True
         rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"]}
-        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["Salinity"]}
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["salinity"]}
         zcoeff = self.settingsdict["zcoeff_axctd"]
         tcoeff = self.settingsdict["tcoeff_axctd"]
         ccoeff = self.settingsdict["ccoeff_axctd"]

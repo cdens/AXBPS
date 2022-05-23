@@ -73,7 +73,11 @@ def setdefaultsettings():
     settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
     settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
     settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
-
+    
+    settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
+    settingsdict["tcoeff_axctd"] = [-5.5387245882, 0.0107164443, 0,0]
+    settingsdict["ccoeff_axctd"] = [-0.0622192776, 0.0153199220, 0,0]
+    
     #profeditorpreferences
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
     settingsdict["overlayclimo"] = True  # overlay the climatology on the plot
@@ -96,13 +100,12 @@ def setdefaultsettings():
     
     settingsdict["fontsize"] = 14 #font size for general UI
     
-
     return settingsdict
 
 
 #lists of settings broken down by data type (for settings file reading/writing)
 strsettings = ["platformid", "comport"] #settings saved as strings
-listsettings = ["tcoeff_axbt", "zcoeff_axbt", "flims_axbt"] #saved as lists of coefficients/parameters (each element is a float)
+listsettings = ["tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"] #saved as lists of coefficients/parameters (each element is a float)
 floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "smoothlev", "profres", "maxstdev"] #saved as floats
 intsettings = ["originatingcenter", "gpsbaud", "fontsize"] #saved as ints
 boolsettings = ["autodtg", "autolocation", "autoid", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean

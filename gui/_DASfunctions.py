@@ -60,7 +60,7 @@ def makenewprocessortab(self):
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
         #initializing raw data storage
-        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]), "depth":np.array([]), "conductivity":np.array([]), "frequency":np.array([]), "time":np.array([]), "starttime":0, "istriggered":False, "firstpointtime":0, "firstpulsetime":0}
+        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]), "depth":np.array([]), "conductivity":np.array([]), "salinity":np.array([]), "frequency":np.array([]), "time":np.array([]), "frame":[], "starttime":0, "istriggered":False, "firstpointtime":0, "firstpulsetime":0}
         
         self.alltabdata[opentab]["tablayout"].setSpacing(10)
 
@@ -225,7 +225,7 @@ def prep_graph_and_table(self, probetype, plottabnum):
     self.alltabdata[plottabnum]["ProcAxes"][0].set_title('Data Received',fontweight="bold", fontsize=14)
     
     if probetype == "AXCTD": #AXCTD conductivity plot
-        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Conductivity (mS/cm)', fontsize=12)
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Salinity (PSU)', fontsize=12)
         self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(True)
         self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("red") #temperature axis red
         self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='red')
@@ -252,7 +252,7 @@ def prep_graph_and_table(self, probetype, plottabnum):
     if probetype == "AXBT":
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
     elif probetype == "AXCTD":
-        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz (dB)', 'R-7500 Hz (dB)', 'Depth (m)','Temp. (C)', 'Cond. (mS/cm)'))
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz (dB)', 'R-7500 Hz (dB)', 'Depth (m)','Temp. (C)', 'Sal. (PSU)'))
         
     
     for ii in range(0,6):
@@ -267,18 +267,18 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     #hard-coded graph settings
     depthlims = [-5,1000] #axis default limits
     templims = [-2,32]
-    condlims = [20,60]
+    psallims = [25,40]
     depthint = 50 #intervals at which to extend axis limits
-    tcint = 2
+    tsint = 2
         
     cdepths = np.array([0])
     ctemps = np.array([26])
-    cconds = np.array([27])
+    cpsal = np.array([27])
     if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
         cdepths = self.alltabdata[plottabnum]["rawdata"]["depth"]
         ctemps = self.alltabdata[plottabnum]["rawdata"]["depth"]
         if probetype == "AXCTD":
-            cconds = self.alltabdata[plottabnum]["rawdata"]["conductivity"]
+            cpsal = self.alltabdata[plottabnum]["rawdata"]["salinity"]
     
     #determining best axis limits and applying them
     if np.max(cdepths) > depthlims[1]:
@@ -294,12 +294,12 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     self.alltabdata[plottabnum]["ProcAxes"][0].invert_yaxis() 
     
     if probetype == "AXCTD":
-        if np.min(cconds) < condlims[0]:
-            condlims[0] = np.floor(np.min(cconds)/tcint)*tcint
-        if np.max(cconds) > condlims[1]:
-            condlims[1] = np.ceil(np.max(cconds)/tcint)*tcint
+        if np.min(cpsal) < psallims[0]:
+            psallims[0] = np.floor(np.min(cpsal)/tsint)*tsint
+        if np.max(cpsal) > psallims[1]:
+            psallims[1] = np.ceil(np.max(cpsal)/tsint)*tsint
                         
-        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(condlims)
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(psallims)
         self.alltabdata[plottabnum]["ProcAxes"][1].set_ylim(depthlims)
         self.alltabdata[plottabnum]["ProcAxes"][1].grid(visible=False, axis='both')
         self.alltabdata[plottabnum]["ProcAxes"][1].invert_yaxis() 
@@ -891,6 +891,7 @@ def update_AXCTD_DAS(self, plottabnum, data):
     newdepth = data[4]
     newtemp = data[5]
     newcond = data[6]
+    newframe = data[7]
         
     
     #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
@@ -906,6 +907,12 @@ def update_AXCTD_DAS(self, plottabnum, data):
         self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"], newdepth)
         self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"], newtemp)
         self.alltabdata[plottabnum]["rawdata"]["conductivity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["conductivity"], newcond)
+        self.alltabdata[plottabnum]["rawdata"]["frame"].extend(newframe)
+        
+        
+        #calculating salinity for new observations with GSW toolbox
+        newsal = [np.round(cs,2) for cs in SP_from_C(newcond, newtemp, newdepth)]
+        self.alltabdata[plottabnum]["rawdata"]["salinity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["salinity"], newsal)
 
         #plot the most recent point
         cdt = dt.datetime.utcnow()
@@ -917,17 +924,20 @@ def update_AXCTD_DAS(self, plottabnum, data):
                 pass
                 
             self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='r')
-            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["conductivity"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["salinity"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
             self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
             self.alltabdata[plottabnum]["date_plot_updated"] = cdt
+            
+    else:
+        newsal = [np.NaN] * len(newtemp)
             
 
     #coloring new cells based on whether or not it has good data, prepping data to append to table
     curcolor = []
     table_data = []
-    for (ctime, cr400, cr7500, cdepth, ctemp, ccond) in zip(newtime, newr400, newr7500, newdepth, newtemp, newcond):
+    for (ctime, cr400, cr7500, cdepth, ctemp, csal) in zip(newtime, newr400, newr7500, newdepth, newtemp, newsal):
         if triggerstatus <= 1:
-            ctemp = ccond = cdepth = '------'
+            ctemp = csal = cdepth = '------'
             if triggerstatus: #must = 1, therefore in 400 Hz pulse detection phase
                 curcolor.append(QColor(204, 220, 255)) #light blue
             else: #nothing detected yet
@@ -935,7 +945,7 @@ def update_AXCTD_DAS(self, plottabnum, data):
         else: #active profile collection
             curcolor.append(QColor(204, 255, 220)) #light green
         
-        table_data.append([ctime, cr400, cr7500, cdepth, ctemp, ccond])
+        table_data.append([ctime, cr400, cr7500, cdepth, ctemp, csal])
     
     return curcolor, table_data
   
@@ -1056,6 +1066,9 @@ def processprofile(self):
         if probetype == "AXCTD":
             rawconductivity = self.alltabdata[opentab]["rawdata"]["conductivity"]
             notnanind = ~np.isnan(rawtemperature*rawdepth*rawconductivity) #removing NaNs
+            rawconductivity = rawconductivity[notnanind]
+            rawsalinity = self.alltabdata[opentab]["rawdata"]["salinity"]
+            rawsalinity = rawsalinity[notnanind]
         else:
             notnanind = ~np.isnan(rawtemperature*rawdepth) #removing NaNs
         
@@ -1066,8 +1079,6 @@ def processprofile(self):
         rawdata = {'temperature':rawtemperature, 'depth':rawdepth}
         
         if probetype == "AXCTD": #calculating salinity (AXCTD only)
-            rawsalinity = SP_from_C(self.alltabdata[opentab]["rawdata"]["conductivity"], self.alltabdata[opentab]["rawdata"]["temperature"], self.alltabdata[opentab]["rawdata"]["depth"])
-            self.alltabdata[opentab]["rawdata"]["salinity"] = rawsalinity
             rawdata['salinity'] = rawsalinity
             
         #saves profile if necessary
