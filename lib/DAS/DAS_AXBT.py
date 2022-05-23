@@ -188,7 +188,7 @@ class AXBTProcessor(QRunnable):
                 ctemp = np.round(ctemp, 2)
                 cdepth = np.round(cdepth, 1)
                 if self.keepgoing: #won't send if keepgoing stopped since current iteration began
-                    self.signals.iterated.emit(self.tabID, [ctemp, cdepth, fp, Sp, np.round(100*Rp,1), ctime, i])
+                    self.signals.iterated.emit(self.tabID, [ctemp, cdepth, fp, Sp, np.round(100*Rp,1), ctime])
 
                 if not self.isfromaudio: 
                     timemodule.sleep(0.1)  #pauses when processing in realtime (fs ~ 10 Hz)

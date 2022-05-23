@@ -1,3 +1,11 @@
+
+# =============================================================================
+#   THIS IS A TEST FILE USED TO DEVELOP THE AXCTD GUI SLOTS/TRIGGERS. IT DOES
+#   NOT PROCESS ACTUAL AXCTD AUDIO DATA
+# =============================================================================
+
+
+
 # =============================================================================
 #     Author: LTJG Casey R. Densmore, 12FEB2022
 #
@@ -91,70 +99,81 @@ class AXCTDProcessor(QRunnable):
         
         try:
             
-            #Declaring the callbuck function to update the audio buffer (importing from DAS_callbacks)
-            if self.sourcetype == 'WR': #callback for winradio
-                from lib.DAS._DAS_callbacks import wr_axctd_callback as updateaudiobuffer
-                
-                # initializes audio callback function
-                status = initialize_receiver_callback(rtype, hradio, destination, tabID)
-                if status:
-                    timemodule.sleep(0.3)  # gives the buffer time to populate
-                else:
-                    self.kill(7)
-    
-                    
-            else: #if source is an audio file
-                #configuring sample times for the audio file
-                self.lensignal = len(self.audiostream)
-                self.maxtime = self.lensignal/self.f_s
-                    
                 
             # setting up thread while loop- terminates when user clicks "STOP" or audio file finishes processing
             i = -1
             ctime = 0
-                
+            
+            oldtriggerstatus = self.triggerstatus
+            
             #MAIN PROCESSOR LOOP
             while self.keepgoing:
-                i += 1
-
-
-                if not self.isfromaudio and not self.isfromtest:
-
-                    #protocal to kill thread if connection with WiNRADIO is lost
-                    if self.numcontacts == self.lastcontacts: #checks if the audio stream is receiving new data
-                        self.disconnectcount += 1
+                
+                #READ LINES FROM TEST AXCTD DEBUG FILE
+                r400 = []
+                r7500 = []
+                ctimes = []
+                cdepths = []
+                ctemps = []
+                cconds = []
+                for _ in range(self.linesperquartersec):
+                    cline = self.f.readline().strip().split()
+                    if len(cline) < 6:
+                        self.f.close()
+                        break
                     else:
-                        self.disconnectcount = 0
-                        self.lastcontacts = self.numcontacts
-
-                    #if the audio stream hasn't received new data for several iterations and checking device connection fails
-                    if self.disconnectcount >= 30 and not cdf.check_connected(self.dll, self.sourcetype, self.hradio):
-                        self.kill(8)
                         
-                    #TODO: WHAT CURRENT DATA TO PULL
-                    
-                else:
-                    #TODO: UPDATE BUFFER OVERFLOW PREVENTION FOR AXCTD/PULL FROM AXCTDPROCESSOR
-                    #kill test/audio threads once time exceeds the max time of the audio file
-                    #NOTE: need to do this on the cycle before hitting the max time when processing from audio because the WAV file processes faster than the thread can kill itself
-                    # if (self.isfromtest and ctime >= self.maxtime - self.settings["fftwindow"]) or (self.isfromaudio and i >= len(self.sampletimes)-1):
-                    #     self.keepgoing = False
-                    #     self.kill(0)
-                    #     return
+                        i += 1
                         
-                    # #getting current time to sample from audio file
-                    # if self.isfromaudio:
-                    #     ctime += self.maxtime/1000 #TODO: FIX
-                    #     if i % 10 == 0: #updates progress every 10 data points
-                    #         self.signals.updateprogress.emit(self.tabID,int(ctime / self.maxtime * 100))
+                        if len(cline) <= 10:
+                            if cline[1] == "000000":
+                                self.triggerstatus = 0
+                            elif cline[1] == "ffffff":
+                                self.triggerstatus = 1 
+                        else:
+                            if cline[9] != '//':
+                                self.triggerstatus = 2
+                            else:
+                                self.triggerstatus = 1
+                        
+                        
+                        ctimes.append(np.round(i/24,2))
+                        if self.triggerstatus <= 1:
+                            cdepths.append(np.NaN)
+                            ctemps.append(np.NaN)
+                            cconds.append(np.NaN)
+                            if self.triggerstatus == 0:
+                                r400.append(0.93)
+                                r7500.append(0.97)
+                        if self.triggerstatus >= 1:
+                            r400.append(2.23)
+                            r7500.append(1.78)
+                            if self.triggerstatus == 2:
+                                cdepths.append(np.round(float(cline[12]),2))
+                                ctemps.append(np.round(float(cline[17]),2))
+                                cconds.append(np.round(float(cline[20]),2))                          
+                            
+                        if oldtriggerstatus != self.triggerstatus:
+                            if self.triggerstatus == 1:
+                                self.firstpulsetime = ctimes[-1]
+                            elif self.triggerstatus == 2:
+                                self.firstpointtime = ctimes[-1]
+                                
+                            self.signals.triggered.emit(self.tabID, self.triggerstatus, ctimes[-1])
+                            oldtriggerstatus = self.triggerstatus
+    
+                        #TODO: WHAT CURRENT DATA TO PULL
+                        #r400, r7500, ctimes, cdepths, ctemps, cconds, triggersatus
+                        #r400 threshold is 2.0, r7500 threshold is 1.5
 
-                    #TODO: WHAT CURRENT DATA TO PULL
                     
-
+                    
+                    
                 #TODO: SIGNAL CALCULATIONS, DEMODULATE DATA
                 
-                #TODO: DETERMINE IF VALID SIGNAL RECEIVED YET (modify triggerstatus)
-                
+                #TODO: DETERMINE IF VALID SIGNAL RECEIVED YET (modify triggerstatus) **returns r400, r7500
+                # if oldtriggerstatus != self.triggerstatus:
+                #     self.signals.triggered.emit(self.tabID, self.triggerstatus, ctriggertime)
                 
                 if self.triggerstatus:
                     pass
@@ -164,14 +183,10 @@ class AXCTDProcessor(QRunnable):
                     # if self.keepgoing: #only writes if thread hasn't been stopped since start of current segment
                         # self.txtfile.write(f"{ctime},{fp},{Sp},{Rp}\n")
                         
-                        
                     #TODO: frame parsing here: return ctimes, cdepths, ctemps, cconds (rounded to 2 decimal places)
-                    
-                    
-                    
-                    
-                    
-    
+                    #update triggerstatus
+                
+                
                 #UPDATE DATA TO EMIT
                 if self.triggerstatus == 2:
                     cframe = [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
@@ -182,22 +197,23 @@ class AXCTDProcessor(QRunnable):
                     cframe = [] #dont pass any info
                 
                     
+                #TODO: ADD TRIGGERED SIGNAL RELEASE WITH NECESSARY TIMES
+                    
                 if self.keepgoing and len(cframe) > 0: #won't send if keepgoing stopped since current iteration began
                     self.signals.iterated.emit(self.tabID, cframe)
-                        
-                        
-                        
-                        
-                        
-                if not self.isfromaudio: 
-                    timemodule.sleep(0.1)  #pauses when processing in realtime (fs ~ 10 Hz)
-                else:
-                    timemodule.sleep(0.001) #slight pause to free some resources when processing from audio
+
+                    
+                timemodule.sleep(0.22)  #every iteration for test should take a quarter second
+                    
+                    
+            #outside while loop
+            self.f.close()
 
         except Exception: #if the thread encounters an error, terminate
             trace_error()  # if there is an error, terminates processing
             if self.keepgoing:
                 self.kill(10)
+                self.f.close()
                 
         while self.waittoterminate: #waits for kill process to complete to avoid race conditions with audio buffer callback
             timemodule.sleep(0.1)

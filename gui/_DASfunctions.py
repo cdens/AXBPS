@@ -35,7 +35,10 @@ import datetime as dt
 import numpy as np
 import wave
 
-import lib.DAS.DAS_AXBT as das_axbt
+from gsw import SP_from_C #conductivity-to-salinity conversion
+
+import lib.DAS.DAS_AXBT as das_axbt 
+import lib.DAS.DAS_AXCTD_TEST as das_axctd #TODO!!! SWITCH BACK FROM TEST TO NORMAL INPUT
 from lib.DAS.common_DAS_functions import channelandfrequencylookup, list_receivers
 import lib.GPS_COM_interaction as gps
 
@@ -48,18 +51,16 @@ from ._PEfunctions import continuetoqc
 # =============================================================================
 def makenewprocessortab(self):     
     try:
-
+        
         opentab,tabID = self.addnewtab()
 
         #also creates proffig and locfig so they will both be ready to go when the tab transitions from signal processor to profile editor
-        self.alltabdata[opentab] = {"tab":QWidget(), "tablayout":QGridLayout(), "ProcessorFig":plt.figure(), "profileSaved":True, "tabtype":"DAS_u", "isprocessing":False, "datasource":"INIT", "sourcetype":"NONE", "probetype":'unknown'}
+        self.alltabdata[opentab] = {"tab":QWidget(), "tablayout":QGridLayout(), "ProcessorFig":plt.figure(), "profileSaved":True, "tabtype":"DAS_u", "isprocessing":False, "datasource":"INIT", "sourcetype":"NONE", "probetype":'unknown', "date_plot_updated":dt.datetime.utcnow()}
 
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
         #initializing raw data storage
-        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]),
-                  "depth":np.array([]),"frequency":np.array([]),"time":np.array([]),
-                  "istriggered":False,"firstpointtime":0,"starttime":0}
+        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]), "depth":np.array([]), "conductivity":np.array([]), "frequency":np.array([]), "time":np.array([]), "starttime":0, "istriggered":False, "firstpointtime":0, "firstpulsetime":0}
         
         self.alltabdata[opentab]["tablayout"].setSpacing(10)
 
@@ -77,19 +78,8 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["ProcessorFig"].patch.set_facecolor('None')
 
         #making profile processing result plots
-        self.alltabdata[opentab]["ProcessorAx"] = plt.axes()
-
-
-        #prep window to plot data
-        self.alltabdata[opentab]["ProcessorAx"].set_xlabel('Temperature ($^\circ$C)', fontsize=12)
-        self.alltabdata[opentab]["ProcessorAx"].set_ylabel('Depth (m)', fontsize=12)
-        self.alltabdata[opentab]["ProcessorAx"].set_title('Data Received',fontweight="bold", fontsize=14)
-        self.alltabdata[opentab]["ProcessorAx"].grid()
-        self.alltabdata[opentab]["ProcessorAx"].set_xlim([-2,32])
-        self.alltabdata[opentab]["ProcessorAx"].set_ylim([5,1000])
-        self.alltabdata[opentab]["ProcessorAx"].invert_yaxis()
-        self.alltabdata[opentab]["ProcessorFig"].set_tight_layout(True)
-        self.alltabdata[opentab]["ProcessorCanvas"].draw() #refresh plots on window
+        self.alltabdata[opentab]["ProcAxes"] = [plt.axes()]
+        self.alltabdata[opentab]["ProcAxes"].append(self.alltabdata[opentab]["ProcAxes"][0].twiny())
         
         #and add new buttons and other widgets
         self.alltabdata[opentab]["tabwidgets"] = {}
@@ -133,7 +123,8 @@ def makenewprocessortab(self):
         for p in self.probetypes:
             self.alltabdata[opentab]["tabwidgets"]["probetype"].addItem(p)
         self.alltabdata[opentab]["tabwidgets"]["probetype"].setCurrentIndex(self.probetypes.index(self.defaultprobe)) #set option to default probe
-        
+        self.alltabdata[opentab]["probetype"] = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
+        self.alltabdata[opentab]["tabwidgets"]["probetype"].currentIndexChanged.connect(self.probetypechange)
         
         self.alltabdata[opentab]["tabwidgets"]["channeltitle"] = QLabel('Channel:') #4
         self.alltabdata[opentab]["tabwidgets"]["freqtitle"] = QLabel('Frequency (MHz):') #5
@@ -192,21 +183,15 @@ def makenewprocessortab(self):
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
             self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
             self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
-                
+        
         #adding table widget after all other buttons populated
         self.alltabdata[opentab]["tabwidgets"]["table"] = QTableWidget() #19
-        self.alltabdata[opentab]["tabwidgets"]["table"].setColumnCount(6)
-        self.alltabdata[opentab]["tabwidgets"]["table"].setRowCount(0) 
-        self.alltabdata[opentab]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
-        self.alltabdata[opentab]["tabwidgets"]["table"].setFont(self.labelfont)
-        self.alltabdata[opentab]["tabwidgets"]["table"].verticalHeader().setVisible(False)
-        self.alltabdata[opentab]["tabwidgets"]["table"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #removes scroll bars
+        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"]["table"],9,2,2,7)
         self.alltabdata[opentab]["tabwidgets"]["tableheader"] = self.alltabdata[opentab]["tabwidgets"]["table"].horizontalHeader() 
         self.alltabdata[opentab]["tabwidgets"]["tableheader"].setFont(self.labelfont)
-        for ii in range(0,6):
-            self.alltabdata[opentab]["tabwidgets"]["tableheader"].setSectionResizeMode(ii, QHeaderView.Stretch)  
-        self.alltabdata[opentab]["tabwidgets"]["table"].setEditTriggers(QTableWidget.NoEditTriggers)
-        self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"]["table"],9,2,2,7)
+    
+        #calling function to format graph and table based on probe type #TODO
+        self.prep_graph_and_table(self.alltabdata[opentab]["probetype"], opentab)
 
         #adjusting stretch factors for all rows/columns
         colstretch = [8,0,1,1,1,1,1,1,1]
@@ -222,6 +207,104 @@ def makenewprocessortab(self):
     except Exception: #if something breaks
         trace_error()
         self.posterror("Failed to build new processor tab")
+    
+    
+        
+def probetypechange(self):
+    opentab = self.whatTab()
+    probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
+    self.alltabdata[opentab]["probetype"] = probetype
+    self.prep_graph_and_table(probetype, opentab)
+        
+    
+def prep_graph_and_table(self, probetype, plottabnum):
+    
+    #prep window to plot data
+    self.alltabdata[plottabnum]["ProcAxes"][0].set_xlabel('Temperature ($^\circ$C)', fontsize=12)
+    self.alltabdata[plottabnum]["ProcAxes"][0].set_ylabel('Depth (m)', fontsize=12)
+    self.alltabdata[plottabnum]["ProcAxes"][0].set_title('Data Received',fontweight="bold", fontsize=14)
+    
+    if probetype == "AXCTD": #AXCTD conductivity plot
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Conductivity (mS/cm)', fontsize=12)
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(True)
+        self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("red") #temperature axis red
+        self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='red')
+        self.alltabdata[plottabnum]["ProcAxes"][1].xaxis.label.set_color("blue") #conductivity axis blue
+        self.alltabdata[plottabnum]["ProcAxes"][1].tick_params(axis='x', colors='blue')
+        
+    else: 
+        self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("black") #temperature axis black
+        self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='black')
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(False)
+        
+    self.config_graph_ticks_lims(plottabnum, probetype)
+    self.alltabdata[plottabnum]["ProcessorFig"].set_tight_layout(True)
+    self.alltabdata[plottabnum]["ProcessorCanvas"].draw() #refresh plots on window
+        
+    
+    self.alltabdata[plottabnum]["tabwidgets"]["table"].setColumnCount(6)
+    self.alltabdata[plottabnum]["tabwidgets"]["table"].setRowCount(0) 
+    self.alltabdata[plottabnum]["tabwidgets"]["table"].setFont(self.labelfont)
+    self.alltabdata[plottabnum]["tabwidgets"]["table"].verticalHeader().setVisible(False)
+    self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #removes scroll bars
+    
+    
+    if probetype == "AXBT":
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
+    elif probetype == "AXCTD":
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz (dB)', 'R-7500 Hz (dB)', 'Depth (m)','Temp. (C)', 'Cond. (mS/cm)'))
+        
+    
+    for ii in range(0,6):
+        self.alltabdata[plottabnum]["tabwidgets"]["tableheader"].setSectionResizeMode(ii, QHeaderView.Stretch)  
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        
+        
+#determining ideal axis limits and configuring limits/grids for data
+def config_graph_ticks_lims(self, plottabnum, probetype):
+    
+    #hard-coded graph settings
+    depthlims = [-5,1000] #axis default limits
+    templims = [-2,32]
+    condlims = [20,60]
+    depthint = 50 #intervals at which to extend axis limits
+    tcint = 2
+        
+    cdepths = np.array([0])
+    ctemps = np.array([26])
+    cconds = np.array([27])
+    if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
+        cdepths = self.alltabdata[plottabnum]["rawdata"]["depth"]
+        ctemps = self.alltabdata[plottabnum]["rawdata"]["depth"]
+        if probetype == "AXCTD":
+            cconds = self.alltabdata[plottabnum]["rawdata"]["conductivity"]
+    
+    #determining best axis limits and applying them
+    if np.max(cdepths) > depthlims[1]:
+        depthlims[1] = np.ceil(np.max(cdepths)/depthint)*depthint
+    if np.min(ctemps) < templims[0]:
+        templims[0] = np.floor(np.min(ctemps)/tcint)*tcint
+    if np.max(ctemps) > templims[1]:
+        templims[1] = np.ceil(np.max(ctemps)/tcint)*tcint
+    
+    self.alltabdata[plottabnum]["ProcAxes"][0].set_xlim(templims)
+    self.alltabdata[plottabnum]["ProcAxes"][0].set_ylim(depthlims)
+    self.alltabdata[plottabnum]["ProcAxes"][0].grid()
+    self.alltabdata[plottabnum]["ProcAxes"][0].invert_yaxis() 
+    
+    if probetype == "AXCTD":
+        if np.min(cconds) < condlims[0]:
+            condlims[0] = np.floor(np.min(cconds)/tcint)*tcint
+        if np.max(cconds) > condlims[1]:
+            condlims[1] = np.ceil(np.max(cconds)/tcint)*tcint
+                        
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(condlims)
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_ylim(depthlims)
+        self.alltabdata[plottabnum]["ProcAxes"][1].grid(visible=False, axis='both')
+        self.alltabdata[plottabnum]["ProcAxes"][1].invert_yaxis() 
+        
+    
     
     
     
@@ -533,7 +616,11 @@ def runprocessor(self, opentab, datasource, sourcetype):
         settings[csetting] = self.settingsdict[csetting]
     
     #initializing processor, connecting signals/slots to GUI thread
-    self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
+    if probetype == "AXBT":
+        self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
+    elif probetype == "AXCTD":
+        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir)
+        
     
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
@@ -674,11 +761,24 @@ def gettabnumfromID(self,tabID):
 #slot to notify main GUI that the thread has been triggered with AXBT data
 #event is only used for AXCTDs where there are multiple triggers (e.g. 400 Hz pulses, 7.5 kHz pulse)
 @pyqtSlot(int,int,float)
-def triggerUI(self,tabID,event,firstpointtime):
+def triggerUI(self,tabID,event,eventtime):
     try:
         plottabnum = self.gettabnumfromID(tabID)
-        self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = firstpointtime
-        self.alltabdata[plottabnum]["rawdata"]["istriggered"] = True
+        probetype = self.alltabdata[plottabnum]["probetype"]
+        
+        if probetype == "AXBT":
+            self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = eventtime
+            self.alltabdata[plottabnum]["rawdata"]["istriggered"] = True
+        
+        elif probetype == "AXCTD":
+            self.alltabdata[plottabnum]["rawdata"]["istriggered"] = event
+            
+            if event == 1: #triggerstatus 1: 400 Hz pulse received
+                self.alltabdata[plottabnum]["rawdata"]["firstpulsetime"] = eventtime
+            else: #profile collection initiated
+                self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = eventtime
+            
+            
     except Exception:
         self.posterror("Failed to trigger temperature/depth profile in GUI!")
         trace_error()
@@ -692,68 +792,154 @@ def updateUIinfo(self,tabID,data):
         
         plottabnum = self.gettabnumfromID(tabID)
         
-        
         if self.alltabdata[plottabnum]["isprocessing"]:
             
-            #pulling data from list
-            ctemp = data[0]
-            cdepth = data[1]
-            cfreq = data[2]
-            cact = data[3]
-            cratio = data[4]
-            ctime = data[5]
-            i = data[6]
+            probetype = self.alltabdata[plottabnum]["probetype"]
             
-            #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
-            lastdepth = -1
-            if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
-                lastdepth = self.alltabdata[plottabnum]["rawdata"]["depth"][-1]
+            #appending data to current tab's list, generating table entries
+            if probetype == "AXBT":
+                curcolors, table_data = self.update_AXBT_DAS(plottabnum, data)
+            elif probetype == "AXCTD":
+                curcolors, table_data = self.update_AXCTD_DAS(plottabnum, data)
                 
-            #only appending a datapoint if depths are different
-            if cdepth != lastdepth:
-                #writing data to tab dictionary
-                self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"],ctime)
-                self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"],cdepth)
-                self.alltabdata[plottabnum]["rawdata"]["frequency"] = np.append(self.alltabdata[plottabnum]["rawdata"]["frequency"],cfreq)
-                self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"],ctemp)
-    
-                #plot the most recent point
-                if i%50 == 0: #draw the canvas every fifty points (~5 sec for 10 Hz sampling)
-                    try:
-                        del self.alltabdata[plottabnum]["ProcessorAx"].lines[-1]
-                    except IndexError:
-                        pass
-                        
-                    self.alltabdata[plottabnum]["ProcessorAx"].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='k')
-                    self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
-    
-                #coloring new cell based on whether or not it has good data
-                stars = '------'
-                if np.isnan(cdepth):
-                    ctemp = stars
-                    cdepth = stars
-                    curcolor = QColor(200, 200, 200) #light gray
-                else:
-                    curcolor = QColor(204, 255, 220) #light green
-    
-                #updating table
-                table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
+            #updating table
+            table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
+            
+            for curcolor,current_row_data in zip(curcolors,table_data):
                 crow = table.rowCount()
                 table.insertRow(crow)
                 
-                table_data = [ctime, cdepth, cfreq, ctemp, cact, cratio]
-                for cind,cdata in enumerate(table_data):
+                for cind,cdata in enumerate(current_row_data):
                     curtableobject = QTableWidgetItem(str(cdata))
                     curtableobject.setBackground(curcolor)
                     table.setItem(crow, cind, curtableobject)
                     
-                table.scrollToBottom()
-                #        if crow > 20: #uncomment to remove old rows
-                #            table.removeRow(0)
+            table.scrollToBottom()
+            #        if crow > 20: #uncomment to remove old rows
+            #            table.removeRow(0)
             
     except Exception:
         trace_error()
     
+        
+        
+def update_AXBT_DAS(self, plottabnum, data):
+    #pulling data from list
+    ctemp = data[0]
+    cdepth = data[1]
+    cfreq = data[2]
+    cact = data[3]
+    cratio = data[4]
+    ctime = data[5]
+    
+    #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
+    lastdepth = -1
+    if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
+        lastdepth = self.alltabdata[plottabnum]["rawdata"]["depth"][-1]
+        
+    
+    #initialize in case depths match
+    curcolor = []
+    table_data = []
+        
+    #only appending a datapoint if depths are different
+    if cdepth != lastdepth:
+        #writing data to tab dictionary
+        self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"],ctime)
+        self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"],cdepth)
+        self.alltabdata[plottabnum]["rawdata"]["frequency"] = np.append(self.alltabdata[plottabnum]["rawdata"]["frequency"],cfreq)
+        self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"],ctemp)
+
+        #plot the most recent point
+        cdt = dt.datetime.utcnow()
+        if self.alltabdata[plottabnum]["rawdata"]["istriggered"] and (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5:
+            try:
+                del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
+            except IndexError:
+                pass
+                
+            self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='k')
+            self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
+            self.alltabdata[plottabnum]["date_plot_updated"] = cdt
+
+        #coloring new cell based on whether or not it has good data
+        if np.isnan(cdepth):
+            ctemp = cdepth = cfreq = '------'
+            curcolor.append(QColor(200, 200, 200)) #light gray
+        else:
+            curcolor.append(QColor(204, 255, 220)) #light green
+            
+        table_data.append([ctime,cfreq, cact, cratio, cdepth, ctemp])
+        
+        
+    return curcolor, table_data
+    
+    
+    
+    
+def update_AXCTD_DAS(self, plottabnum, data):
+    
+    #data organization:
+    # profile started:     [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
+    # profile not started: [self.triggerstatus, ctimes[-1], r400[-1], r7500[-1]]
+    
+    #pulling data from list
+    triggerstatus = data[0]
+    newtime = data[1]
+    newr400 = data[2]
+    newr7500 = data[3]
+    newdepth = data[4]
+    newtemp = data[5]
+    newcond = data[6]
+        
+    
+    #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
+    lastdepth = -1
+    if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
+        lastdepth = self.alltabdata[plottabnum]["rawdata"]["depth"][-1]
+        
+    
+    #only appending a datapoint if depths are different
+    if self.alltabdata[plottabnum]["rawdata"]["istriggered"] == 2:
+        #writing data to tab dictionary
+        self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"], newtime)
+        self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"], newdepth)
+        self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"], newtemp)
+        self.alltabdata[plottabnum]["rawdata"]["conductivity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["conductivity"], newcond)
+
+        #plot the most recent point
+        cdt = dt.datetime.utcnow()
+        if (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5:
+            try:
+                del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
+                del self.alltabdata[plottabnum]["ProcAxes"][1].lines[-1]
+            except IndexError:
+                pass
+                
+            self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='r')
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["conductivity"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
+            self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
+            self.alltabdata[plottabnum]["date_plot_updated"] = cdt
+            
+
+    #coloring new cells based on whether or not it has good data, prepping data to append to table
+    curcolor = []
+    table_data = []
+    for (ctime, cr400, cr7500, cdepth, ctemp, ccond) in zip(newtime, newr400, newr7500, newdepth, newtemp, newcond):
+        if triggerstatus <= 1:
+            ctemp = ccond = cdepth = '------'
+            if triggerstatus: #must = 1, therefore in 400 Hz pulse detection phase
+                curcolor.append(QColor(204, 220, 255)) #light blue
+            else: #nothing detected yet
+                curcolor.append(QColor(200, 200, 200)) #light gray
+        else: #active profile collection
+            curcolor.append(QColor(204, 255, 220)) #light green
+        
+        table_data.append([ctime, cr400, cr7500, cdepth, ctemp, ccond])
+    
+    return curcolor, table_data
+  
+        
         
         
 #final update from thread after being aborted- restoring scroll bar, other info
@@ -856,21 +1042,34 @@ def processprofile(self):
         if not isgood:
             return
         
-        #pulling raw t-d profile
-        rawtemperature = self.alltabdata[opentab]["rawdata"]["temperature"]
-        rawdepth = self.alltabdata[opentab]["rawdata"]["depth"]
-        
-        #removing NaNs
-        notnanind = ~np.isnan(rawtemperature*rawdepth)
-        rawtemperature = rawtemperature[notnanind]
-        rawdepth = rawdepth[notnanind]
-        
-        #writing other raw data inputs
+        #saving profile metadata inputs
         self.alltabdata[opentab]["rawdata"]["lat"] = lat
         self.alltabdata[opentab]["rawdata"]["lon"] = lon
         self.alltabdata[opentab]["rawdata"]["dropdatetime"] = dropdatetime
         self.alltabdata[opentab]["rawdata"]["ID"] = identifier
         
+        #pulling raw t-d profile
+        rawtemperature = self.alltabdata[opentab]["rawdata"]["temperature"]
+        rawdepth = self.alltabdata[opentab]["rawdata"]["depth"]
+        
+        #identifying and removing NaNs
+        if probetype == "AXCTD":
+            rawconductivity = self.alltabdata[opentab]["rawdata"]["conductivity"]
+            notnanind = ~np.isnan(rawtemperature*rawdepth*rawconductivity) #removing NaNs
+        else:
+            notnanind = ~np.isnan(rawtemperature*rawdepth) #removing NaNs
+        
+        rawtemperature = rawtemperature[notnanind]
+        rawdepth = rawdepth[notnanind]
+                
+        #raw data structure to be passed to QC tab
+        rawdata = {'temperature':rawtemperature, 'depth':rawdepth}
+        
+        if probetype == "AXCTD": #calculating salinity (AXCTD only)
+            rawsalinity = SP_from_C(self.alltabdata[opentab]["rawdata"]["conductivity"], self.alltabdata[opentab]["rawdata"]["temperature"], self.alltabdata[opentab]["rawdata"]["depth"])
+            self.alltabdata[opentab]["rawdata"]["salinity"] = rawsalinity
+            rawdata['salinity'] = rawsalinity
+            
         #saves profile if necessary
         if not self.alltabdata[opentab]["profileSaved"]: #only if it hasn't been saved
             if self.settingsdict["autosave"]:
@@ -899,9 +1098,8 @@ def processprofile(self):
         trace_error()
         self.posterror("Failed to read profile data")
         return
+        
     
-    #generating QC tab
-    rawdata = {'temperature':rawtemperature, 'depth':rawdepth}
     self.continuetoqc(opentab, rawdata, lat, lon, dropdatetime, identifier, probetype)
         
     
