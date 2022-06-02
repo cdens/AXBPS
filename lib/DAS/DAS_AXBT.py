@@ -91,7 +91,7 @@ class AXBTProcessor(QRunnable):
                 from lib.DAS._DAS_callbacks import wr_axbt_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = initialize_receiver_callback(rtype, hradio, destination, tabID)
+                status = cdf.initialize_receiver_callback(rtype, hradio, updateaudiobuffer, tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:

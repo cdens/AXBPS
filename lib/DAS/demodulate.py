@@ -91,7 +91,7 @@ def demodulate_axctd(pcm, fs, edge_buffer, sos, bitrate, f1, f2, trig1, trig2, N
         next_options = zerocrossings[c+1:c+5]
         c += 1 + np.argmin(abs(next_options - (zerocrossings[c] + fs/bitrate)))
         bit_edges.append(zerocrossings[c])
-    
+        
     #calculate power at FSK frequencies for each "bit"
     s1 = [] #stores power levels 
     s2 = []

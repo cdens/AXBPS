@@ -38,7 +38,7 @@ import wave
 from gsw import SP_from_C #conductivity-to-salinity conversion
 
 import lib.DAS.DAS_AXBT as das_axbt 
-import lib.DAS.DAS_AXCTD_TEST as das_axctd #TODO!!! SWITCH BACK FROM TEST TO NORMAL INPUT
+import lib.DAS.DAS_AXCTD as das_axctd #TODO!!! SWITCH BACK FROM TEST TO NORMAL INPUT
 from lib.DAS.common_DAS_functions import channelandfrequencylookup, list_receivers
 import lib.GPS_COM_interaction as gps
 
@@ -466,6 +466,7 @@ def startprocessor(self):
         if not self.alltabdata[opentab]["isprocessing"]:
             
             status, datasource, newsource = self.prepprocessor(opentab)
+            
             if status:
                 self.runprocessor(opentab, datasource, newsource)
                 self.alltabdata[opentab]["profileSaved"] = False
@@ -513,7 +514,7 @@ def prepprocessor(self, opentab):
                 
             nchannels = file_info.getnchannels()
             if nchannels == 1:
-                datasource = f"Audio-0001{fname}"
+                datasource = f"AA-0001{fname}"
             else:
                 if self.selectedChannel >= -1: #active tab already opened 
                     self.postwarning("An audio channel selector dialog box has already been opened in another tab. Please close that box before processing an audio file with multiple channels in this tab.")
@@ -595,6 +596,9 @@ def runprocessor(self, opentab, datasource, sourcetype):
             self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"], 8, 2, 1, 7)
         self.alltabdata[opentab]["tabwidgets"]["audioprogressbar"].setValue(0)
         QApplication.processEvents()
+        
+        #disable start button (once you stop reprocessing from audio file you can't restart)
+        self.alltabdata[opentab]["tabwidgets"]["startprocessing"].setEnabled(False)
         
         
     #initializing thread, connecting signals/slots
@@ -745,6 +749,7 @@ class AudioWindowSignals(QObject):
 @pyqtSlot(int, int, str)
 def audioWindowClosed(self, wasGood, opentab, datasource):
     if wasGood:
+        print(datasource)
         self.runprocessor(opentab, datasource, "AA")
     
     
@@ -894,7 +899,8 @@ def update_AXCTD_DAS(self, plottabnum, data):
     newdepth = data[4]
     newtemp = data[5]
     newcond = data[6]
-    newframe = data[7]
+    newpsal = data[7]
+    newframe = data[8]
         
     
     #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
@@ -910,12 +916,9 @@ def update_AXCTD_DAS(self, plottabnum, data):
         self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"], newdepth)
         self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"], newtemp)
         self.alltabdata[plottabnum]["rawdata"]["conductivity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["conductivity"], newcond)
+        self.alltabdata[plottabnum]["rawdata"]["salinity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["salinity"], newpsal)
         self.alltabdata[plottabnum]["rawdata"]["frame"].extend(newframe)
         
-        
-        #calculating salinity for new observations with GSW toolbox
-        newsal = [np.round(cs,2) for cs in SP_from_C(newcond, newtemp, newdepth)]
-        self.alltabdata[plottabnum]["rawdata"]["salinity"] = np.append(self.alltabdata[plottabnum]["rawdata"]["salinity"], newsal)
 
         #plot the most recent point
         cdt = dt.datetime.utcnow()
@@ -938,9 +941,9 @@ def update_AXCTD_DAS(self, plottabnum, data):
     #coloring new cells based on whether or not it has good data, prepping data to append to table
     curcolor = []
     table_data = []
-    for (ctime, cr400, cr7500, cdepth, ctemp, csal) in zip(newtime, newr400, newr7500, newdepth, newtemp, newsal):
+    for (ctime, cr400, cr7500, cdepth, ctemp, cpsal) in zip(newtime, newr400, newr7500, newdepth, newtemp, newpsal):
         if triggerstatus <= 1:
-            ctemp = csal = cdepth = '------'
+            ctemp = cpsal = cdepth = '------'
             if triggerstatus: #must = 1, therefore in 400 Hz pulse detection phase
                 curcolor.append(QColor(204, 220, 255)) #light blue
             else: #nothing detected yet
@@ -948,7 +951,7 @@ def update_AXCTD_DAS(self, plottabnum, data):
         else: #active profile collection
             curcolor.append(QColor(204, 255, 220)) #light green
         
-        table_data.append([ctime, cr400, cr7500, cdepth, ctemp, csal])
+        table_data.append([ctime, cr400, cr7500, cdepth, ctemp, cpsal])
     
     return curcolor, table_data
   

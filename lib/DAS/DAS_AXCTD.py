@@ -18,6 +18,7 @@
 # =============================================================================
 
 import numpy as np
+from scipy import signal
 
 from PyQt5.QtCore import pyqtSlot #run slot
 from PyQt5.Qt import QRunnable #base for Processor class
@@ -50,7 +51,7 @@ class AXCTDProcessor(QRunnable):
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, triggerstatus, firstpointtime, firstpulsetime,
-        settings, slash, tempdir, minR400=2.0, mindR7500=1.5, deadfreq=3000, minpointsperloop=22050, triggerrange=[30,-1], mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, *args,**kwargs):
+        settings, slash, tempdir, minR400=2.0, mindR7500=1.5, deadfreq=3000, mintimeperloop=2, triggerrange=[30,-1], mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, *args,**kwargs):
         
         super(AXCTDProcessor, self).__init__()
 
@@ -75,7 +76,7 @@ class AXCTDProcessor(QRunnable):
         self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,'AXCTD')
         
         #initializing AXCTD processor specific vars
-        self.initialize_AXCTD_vars(minR400, mindR7500, deadfreq, minpointsperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass)
+        self.initialize_AXCTD_vars(minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass)
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()
@@ -87,17 +88,15 @@ class AXCTDProcessor(QRunnable):
             
             
             
-    def initialize_AXCTD_vars(self,minR400, mindR7500, deadfreq, minpointsperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass):
+    def initialize_AXCTD_vars(self,minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass):
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)        
         self.keepgoing = True  # signal connections
         self.waittoterminate = False #whether to pause on termination of run loop for kill process to complete
-        
-        self.audiofile = audiofile
-        
+                
         self.minR400 = minR400 #threshold to ID first 400 Hz pulse
         self.mindR7500 = mindR7500 #threshold to ID profile start by 7.5 kHz tone
         self.deadfreq = deadfreq #frequency to use as "data-less" control to normalize signal levels
-        self.minpointsperloop = minpointsperloop #how many PCM datapoints AXCTDprocessor handles per loop
+        self.minpointsperloop = int(mintimeperloop*self.f_s) #how many PCM datapoints AXCTDprocessor handles per loop
         
         #index 0: earliest time AXBT will trigger after 400 Hz pulse in seconds (default 30 sec)
         #index 1: time AXCTD will autotrigger without 7.5kHz signal (set to -1 to never trigger profile)
@@ -125,8 +124,6 @@ class AXCTDProcessor(QRunnable):
         self.r7500 = np.array([])
         self.power_inds = []
         
-        
-        self.demodbufferstartind = 0
         self.firstpulse400 = -1 #will store r400 index corresponding to first 400 Hz pulse
         self.profstartind = -1
         self.lastdemodind = -1 #set to -1 to indicate no demodulation has occurred
@@ -134,27 +131,28 @@ class AXCTDProcessor(QRunnable):
         
         #updating status info (400 Hz pulse/trigger times, status variable) if processor is being restarted
         if self.firstpulsetime > 0:
-            self.firstpulse400 = int(self.fs * self.firstpulsetime)
+            self.firstpulse400 = int(self.f_s * self.firstpulsetime)
             self.curpulse = 1
             self.status = 1
             if self.firstpointtime > 0:
-                self.firstpulseind = int(self.fs * self.firstpointtime)
+                self.firstpulseind = int(self.f_s * self.firstpointtime)
                 self.status = 2
                         
         self.mean7500pwr = np.NaN
         
 
-        if self.isfromaudio:            
+        if self.isfromaudio or self.isfromtest:            
             self.numpoints = len(self.audiostream)
         
         #constant settings for analysis
-        self.fs_power = 25 #check 25 times per second aka once per frame
-        self.N_power = int(self.fs/10) #each power calculation is for 0.1 seconds of PCM data
+        self.f_s_power = 25 #check 25 times per second aka once per frame
+        self.N_power = int(self.f_s/10) #each power calculation is for 0.1 seconds of PCM data
         self.power_smooth_window = 5
-        self.d_pcm = int(np.round(self.fs/self.fs_power)) #how many points apart to sample power
+        self.d_pcm = int(np.round(self.f_s/self.f_s_power)) #how many points apart to sample power
         
         self.demod_buffer = np.array([]) #buffer (list) for demodulating PCM data
         self.demod_Npad = 50 #how many points to pad on either side of demodulation window (must be larger than window length for low-pass filter in demodulation function)
+        self.next_demod_ind = 0
         
         #demodulator configuration
         self.f1 = mark_space_freqs[0] # bit 1 (mark) = 400 Hz
@@ -162,16 +160,16 @@ class AXCTDProcessor(QRunnable):
         self.bitrate = bitrate #symbol rate = 800 Hz
         self.bit_inset = bit_inset #number of points after/before zero crossing where bit identification starts/ends
         self.phase_error = phase_error
-        N = int(np.round(self.fs/self.bitrate*(1 - self.phase_error/100))) #length of PCM for bit power test
+        N = int(np.round(self.f_s/self.bitrate*(1 - self.phase_error/100))) #length of PCM for bit power test
         self.Npcm = N - 2*self.bit_inset
-        self.trig1 = 2*np.pi*np.arange(0,self.Npcm)/self.fs*self.f1 #trig term for power calculation
-        self.trig2 = 2*np.pi*np.arange(0,self.Npcm)/self.fs*self.f2
+        self.trig1 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f1 #trig term for power calculation
+        self.trig2 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f2
         
         #filter to be applied to PCM data before demodulation
         if use_bandpass:
-            self.sos_filter = signal.butter(6, [100,1200], btype='bandpass', fs=self.fs, output='sos') #low pass
+            self.sos_filter = signal.butter(6, [100,1200], btype='bandpass', fs=self.f_s, output='sos') #low pass
         else:
-            self.sos_filter = signal.butter(6, 1200, btype='lowpass', fs=self.fs, output='sos') #low pass
+            self.sos_filter = signal.butter(6, 1200, btype='lowpass', fs=self.f_s, output='sos') #low pass
     
         
         self.high_bit_scale = 1.5 #scale factor for high frequency bit to correct for higher power at low frequencies (will be adjusted to optimize demodulation after reading first header data)
@@ -179,13 +177,14 @@ class AXCTDProcessor(QRunnable):
         self.binary_buffer = [] #buffer for demodulated binary data not organized into frames
         self.binary_buffer_inds = [] #pcm indices for each bit start point (used to calculate observation times during frame parsing)
         self.binary_buffer_conf = [] #confidence ratios: used for demodulation debugging/improvement
+        self.r400_buffer = []
         self.r7500_buffer = [] #holds 7500 Hz sig lev ratios corresponding to each bit
         
         
         #trig terms for power calculations
-        self.theta400 = 2*np.pi*np.arange(0,self.N_power)/self.fs*400 #400 Hz (main pulse)
-        self.theta7500 = 2*np.pi*np.arange(0,self.N_power)/self.fs*7500 #400 Hz (main pulse)
-        self.thetadead = 2*np.pi*np.arange(0,self.N_power)/self.fs*self.deadfreq #400 Hz (main pulse)
+        self.theta400 = 2*np.pi*np.arange(0,self.N_power)/self.f_s*400 #400 Hz (main pulse)
+        self.theta7500 = 2*np.pi*np.arange(0,self.N_power)/self.f_s*7500 #400 Hz (main pulse)
+        self.thetadead = 2*np.pi*np.arange(0,self.N_power)/self.f_s*self.deadfreq #400 Hz (main pulse)
         
         #-1: not processing, 0: no pulses, 1: found pulse, 2: active profile parsing
         self.status = -1 
@@ -198,6 +197,13 @@ class AXCTDProcessor(QRunnable):
         
         #waits for self.threadstatus to change to 100 (indicating __init__ finished) before proceeding
         self.wait_to_run()
+        
+        #writing basic info about source to sigdata file
+        if self.isfromaudio or self.isfromtest:
+            cursource = self.audiofile
+        else:
+            cursource = self.serial
+        self.txtfile.write(f"AXCTD Processor initialized : source={self.sourcetype} ({cursource}), fs={self.f_s} Hz\n")
 
         
         try:
@@ -207,7 +213,7 @@ class AXCTDProcessor(QRunnable):
                 from lib.DAS._DAS_callbacks import wr_axctd_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = initialize_receiver_callback(rtype, hradio, destination, tabID)
+                status = cdf.initialize_receiver_callback(rtype, hradio, updateaudiobuffer, tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:
@@ -219,14 +225,18 @@ class AXCTDProcessor(QRunnable):
                 self.lensignal = len(self.audiostream)
                 self.maxtime = self.lensignal/self.f_s
                 
-                self.bufferstartind = 0
-                    
+                
                 
             # setting up thread while loop- terminates when user clicks "STOP" or audio file finishes processing
             i = -1
             
             self.status = 0
-            #self.demodbufferstartind is initialized in self.initialize_AXCTD_vars()
+            
+            #initialize self.demodbufferstartind
+            self.demodbufferstartind = 0
+            if not self.isfromaudio: #can stop/restart test or realtime processing tabs only (not audio)
+                self.demodbufferstartind = int(self.f_s * (dt.datetime.utcnow()-self.starttime).total_seconds())
+                #start index is based on current time for realtime/test
                 
             #MAIN PROCESSOR LOOP
             while self.keepgoing:
@@ -246,68 +256,83 @@ class AXCTDProcessor(QRunnable):
                     if self.disconnectcount >= 30 and not cdf.check_connected(self.dll, self.sourcetype, self.hradio):
                         self.kill(8)
                         
-                    #TODO: pulling data from audio buffer
+                    #pulling data from audio buffer
+                    lenbuffer = len(self.audiostream)
+                    if lenbuffer >= self.minpointsperloop:
+                        self.demod_buffer = np.append(self.demod_buffer, self.audiostream[:lenbuffer])
+                        del self.audiostream[:lenbuffer] #pull data from receiver buffer to demodulation buffer, remove data from head of receiver buffer
+                        e = self.demodbufferstartind + lenbuffer #won't use the entire array
+                    else:
+                        e = self.demodbufferstartind #start index = end index, causes processor to skip this iteration and add more points to the buffer
+                    
                     
                     
                 else:
-                    #TODO: UPDATE BUFFER OVERFLOW PREVENTION FOR AXCTD/PULL FROM AXCTDPROCESSOR
                     #kill test/audio threads once time exceeds the max time of the audio file
                     #NOTE: need to do this on the cycle before hitting the max time when processing from audio because the WAV file processes faster than the thread can kill itself
-                    if self.isfromaudio and i >= len(self.sampletimes)-1:
+                    
+                    #calculating end of next slice of PCM data for signal level calcuation and demodulation
+                    e = self.demodbufferstartind + self.minpointsperloop
+                    
+                    if self.numpoints - self.demodbufferstartind < 4*self.N_power: #kill process at file end
                         self.kill(0)
-                        return
+                    
+                    elif e >= self.numpoints: #terminate loop if at end of file
+                        e = self.numpoints - 1
                         
+                    
                     #updates progress every iteration
                     if self.isfromaudio:
                         self.signals.updateprogress.emit(self.tabID, int(self.demodbufferstartind / self.numpoints * 100))
-
-                    #TODO: WHAT CURRENT DATA TO PULL
+                    
+                    #add next round of PCM data to buffer for signal calculation and demodulation
+                    # self.demod_buffer = np.append(self.demod_buffer, self.audiostream[self.demodbufferstartind:e])
+                    self.demod_buffer = self.audiostream[self.demodbufferstartind:e]
                     
 
-                #TODO: SIGNAL CALCULATIONS, DEMODULATE DATA
+                    
                 
-                #TODO: DETERMINE IF VALID SIGNAL RECEIVED YET (modify triggerstatus)
-                
-                
+                if e > self.demodbufferstartind + self.N_power and self.keepgoing: #only process buffer if there is enough data
+                    oldstatus = self.status #track status change to emit triggered signal when necessary
                     
+                    #demodulating and parsing current batch of AXCTD PCM data
+                    data = self.iterate_AXCTD_process(e)
                     
-                oldstatus = self.status
-                data = self.iterate_AXCTD_process(e)
-                
-                if self.status != oldstatus: #status updated = profile or 400 Hz pulses triggered
-                    if self.status == 1:
-                        triggertime = self.firstpulsetime
-                    elif self.status == 2:
-                        triggertime = self.firstpointtime
-                    
-                    #release signal indicating probe triggered
-                    self.signals.triggered.emit(self.tabID, self.status, triggertime) 
-                    
-                    
-                #won't send if keepgoing stopped since current iteration began
-                if self.keepgoing and len(data) > 0: 
-                    self.signals.iterated.emit(self.tabID, data) #updating data in GUI loop
+                    if self.status != oldstatus: #status updated = profile or 400 Hz pulses triggered
+                        if self.status == 1:
+                            triggertime = self.firstpulsetime
+                        elif self.status == 2:
+                            triggertime = self.firstpointtime
+                        
+                        #release signal indicating probe triggered
+                        self.signals.triggered.emit(self.tabID, self.status, triggertime) 
                         
                         
-                #increment demod buffer index forward
-                if self.status > 0: #if active demodulation occuring, increment to start of next bit, corrected for padding
-                    if next_demod_ind > self.demod_Npad:
-                        self.demodbufferstartind += next_demod_ind - self.demod_Npad
-                    else:
-                        self.demodbufferstartind += self.fs/self.bitrate #skip one bit, keep going
-                else: #signal level calcs only, increment buffer by pointsperloop
-                    self.demodbufferstartind += e  
+                    #won't send if keepgoing stopped since current iteration began
+                    if self.keepgoing and len(data) > 0: 
+                        self.signals.iterated.emit(self.tabID, data) #updating data in GUI loop
+                            
+                            
+                    #increment demod buffer index forward
+                    if self.status > 0: #if active demodulation occuring, increment to start of next bit, corrected for padding
+                        if self.next_demod_ind > self.demod_Npad:
+                            self.demodbufferstartind += self.next_demod_ind - self.demod_Npad
+                        else:
+                            self.demodbufferstartind += self.f_s/self.bitrate #skip one bit, keep going
+                    else: #signal level calcs only, increment buffer by pointsperloop
+                        self.demodbufferstartind = e 
                         
                         
-                    
+                        
+                #sleeping until ready to process more data (sleep length is datasource-dependent)
                 if self.isfromtest: #sleep until real time catches up to number of demodulated points
-                    ctimeinaudio = self.demodbufferstartind/self.fs
+                    ctimeinaudio = self.demodbufferstartind/self.f_s
                     while (dt.datetime.utcnow() - self.starttime).total_seconds() < ctimeinaudio:
                         timemodule.sleep(0.01)
                 elif self.isfromaudio: 
                     timemodule.sleep(0.001) #slight pause to free some resources when processing from audio
                 else: 
-                    timemodule.sleep(0.2) #realtime processing- wait 0.2 sec for buffer to refill
+                    timemodule.sleep(0.1) #realtime processing- wait 0.1 sec for buffer to refill
                     
 
         except Exception: #if the thread encounters an error, terminate
@@ -336,6 +361,7 @@ class AXCTDProcessor(QRunnable):
         for cind in self.power_inds[pstartind:]:
             bufferind = cind - self.demodbufferstartind
             cdata = self.demod_buffer[bufferind:bufferind+self.N_power]
+            
             self.p400 = np.append(self.p400, np.abs(np.sum(cdata*np.cos(self.theta400) + 1j*cdata*np.sin(self.theta400))))
             self.p7500 = np.append(self.p7500, np.abs(np.sum(cdata*np.cos(self.theta7500) + 1j*cdata*np.sin(self.theta7500))))
             self.pdead = np.append(self.pdead, np.abs(np.sum(cdata*np.cos(self.thetadead) + 1j*cdata*np.sin(self.thetadead))))
@@ -353,8 +379,9 @@ class AXCTDProcessor(QRunnable):
             matchpoints = np.where(self.r400[pstartind:] >= self.minR400)
             if len(matchpoints[0]) > 0: #found a match!
                 self.firstpulse400 = self.power_inds[pstartind:][matchpoints[0][0]] #getting index in original PCM data
-                self.firstpulsetime = self.firstpulse400/self.fs
+                self.firstpulsetime = self.firstpulse400/self.f_s
                 self.status = 1
+                self.txtfile.write(f"400 Hz pulse detected : {self.firstpulsetime} sec (ind = {self.firstpulse400})\n")
             
         
         #if pulse discovered, demodulate data to bitstream AND check 7500 Hz power
@@ -362,43 +389,47 @@ class AXCTDProcessor(QRunnable):
             
             #calculate 7500 Hz lower power (in range 4.5-5.5 seconds after first 400 Hz pulse start)
             #last power index is at least 5.5 seconds after 400 Hz pulse detected
-            if self.power_inds[-1] >= self.firstpulse400 + int(self.fs*5.5) and np.isnan(self.mean7500pwr): 
+            if self.power_inds[-1] >= self.firstpulse400 + int(self.f_s*5.5) and np.isnan(self.mean7500pwr): 
                 #mean signal level at 7500 Hz between 4.5 and 5.5 sec after 400 Hz pulse
                 pwr_ind_array = np.asarray(self.power_inds)
-                s7500ind = np.argmin(np.abs(self.firstpulse400 + int(self.fs*4.5) - pwr_ind_array))
-                e7500ind = np.argmin(np.abs(self.firstpulse400 + int(self.fs*5.5) - pwr_ind_array))
+                s7500ind = np.argmin(np.abs(self.firstpulse400 + int(self.f_s*4.5) - pwr_ind_array))
+                e7500ind = np.argmin(np.abs(self.firstpulse400 + int(self.f_s*5.5) - pwr_ind_array))
                 self.mean7500pwr = np.nanmean(self.r7500[s7500ind:e7500ind])
             
             #get 7500 Hz power and update status (and bitstream) as necessary 
             #(only bother if time since 400 Hz pulse exceeds the minimum time for profile start)
-            if self.power_inds[-1] > self.firstpulse400 + int(self.triggerrange[0]*self.fs):
+            if self.power_inds[-1] > self.firstpulse400 + int(self.triggerrange[0]*self.f_s):
                 if not np.isnan(self.mean7500pwr) and self.status == 1:
                     matchpoints = np.where(self.r7500[pstartind:] - self.mean7500pwr >= self.mindR7500)
                     if len(matchpoints[0]) > 0: #if power threshold is exceeded
                         self.profstartind = self.power_inds[pstartind:][matchpoints[0][0]]
                         self.status = 2
                 #if the latest trigger time setting has been exceeded
-                elif self.triggerrange[1] > 0 and self.power_inds[-1] >= self.firstpulse400 + int(self.fs*self.triggerrange[1]):
-                    self.profstartind = self.firstpulse400 + int(self.fs*self.triggerrange[1])
+                elif self.triggerrange[1] > 0 and self.power_inds[-1] >= self.firstpulse400 + int(self.f_s*self.triggerrange[1]):
+                    self.profstartind = self.firstpulse400 + int(self.f_s*self.triggerrange[1])
                     self.status = 2
                 if self.profstartind > 0 and self.firstpointtime <= 0:
-                    self.firstpointtime = self.profstartind/self.fs
+                    self.firstpointtime = self.profstartind/self.f_s
+                    self.txtfile.write(f"7500 Hz tone detected : {self.firstpointtime} sec (ind = {self.profstartind})\n")
             
             #demodulate to bitstream and append bits to buffer
-            curbits, conf, bit_edges, next_demod_ind = demodulate.demodulate_axctd(self.demod_buffer, self.fs, self.demod_Npad, self.sos_filter, self.bitrate, self.f1, self.f2, self.trig1, self.trig2, self.Npcm, self.bit_inset, self.phase_error, self.high_bit_scale)
+            curbits, conf, bit_edges, self.next_demod_ind = demodulate.demodulate_axctd(self.demod_buffer, self.f_s, self.demod_Npad, self.sos_filter, self.bitrate, self.f1, self.f2, self.trig1, self.trig2, self.Npcm, self.bit_inset, self.phase_error, self.high_bit_scale)
             
             self.binary_buffer.extend(curbits) #buffer for demodulated binary data not organized into frames
             
             new_bit_inds = [be + self.demodbufferstartind for be in bit_edges]
             self.binary_buffer_inds.extend(new_bit_inds)
-            
             self.binary_buffer_conf.extend(conf)
             
             
-            #TODO: WRITE WAV FILE AND SIGDATA FILE INFO
             #array of profile signal levels to go with other data 
             recent_r7500 = self.r7500[pstartind:]
+            recent_r400 = self.r400[pstartind:]
             recent_pwrinds = self.power_inds[pstartind:]
+            
+            new_r400 = [recent_r400[np.argmin(np.abs(recent_pwrinds - ci))] for ci in new_bit_inds]
+            self.r400_buffer.extend(new_r400)
+            
             new_r7500 = [recent_r7500[np.argmin(np.abs(recent_pwrinds - ci))]-self.mean7500pwr for ci in new_bit_inds]
             self.r7500_buffer.extend(new_r7500)
             
@@ -418,23 +449,23 @@ class AXCTDProcessor(QRunnable):
             
             #first header should start around 1.8 sec and end around 3.7 seconds
             #only processing a small margin within that to be sure we are only capturing 1 sec of header
-            p1headerstartpcm = self.firstpulse400 + int(self.fs*2.3)
-            p1headerendpcm = self.firstpulse400 + int(self.fs*3.3)
+            p1headerstartpcm = self.firstpulse400 + int(self.f_s*2.3)
+            p1headerendpcm = self.firstpulse400 + int(self.f_s*3.3)
             
             #second header should start around 11.48 sec and end around 14.36 seconds
-            p2headerstartpcm = self.firstpulse400 + int(self.fs*10.5) #capture 1 sec of pulse
-            p2headerendpcm = self.firstpulse400 + int(self.fs*14.8) #~half second margin on backend
+            p2headerstartpcm = self.firstpulse400 + int(self.f_s*10.5) #capture 1 sec of pulse
+            p2headerendpcm = self.firstpulse400 + int(self.f_s*14.8) #~half second margin on backend
             
             #third header should start around 21.16 sec and end around 24.04 seconds
-            p3headerstartpcm = self.firstpulse400 + int(self.fs*20) #same margins as header 2
-            p3headerendpcm =  self.firstpulse400 + int(self.fs*24.5)
+            p3headerstartpcm = self.firstpulse400 + int(self.f_s*20) #same margins as header 2
+            p3headerendpcm =  self.firstpulse400 + int(self.f_s*24.5)
             
             #establishing signal amplitudes based on first header to improve demodulation
             if firstbin <= p1headerstartpcm and lastbin >= p1headerendpcm and not self.header1_read: 
                 
                 #determining binary data start/end index (adding extra 0.5 sec of data if available)
-                p1startind = np.where(cbufferindarray >= p1headerstartpcm - int(self.fs*0.5))[0][0]
-                p1endind = np.where(cbufferindarray <= p1headerendpcm + int(self.fs*0.5))[0][-1]
+                p1startind = np.where(cbufferindarray >= p1headerstartpcm - int(self.f_s*0.5))[0][0]
+                p1endind = np.where(cbufferindarray <= p1headerendpcm + int(self.f_s*0.5))[0][-1]
                 
                 #pulling confidence ratios from the header and recalculating optimal high bit scale
                 header_confs = self.binary_buffer_conf[p1startind:p1endind]
@@ -446,8 +477,8 @@ class AXCTDProcessor(QRunnable):
             if firstbin <= p2headerstartpcm and lastbin >= p2headerendpcm and not self.header2_read: 
                 
                 #determining binary data start/end index (adding extra 0.5 sec of data if available)
-                p2startind = np.where(cbufferindarray >= p2headerstartpcm - int(self.fs*0.5))[0][0]
-                p2endind = np.where(cbufferindarray <= p2headerendpcm + int(self.fs*0.5))[0][-1]
+                p2startind = np.where(cbufferindarray >= p2headerstartpcm - int(self.f_s*0.5))[0][0]
+                p2endind = np.where(cbufferindarray <= p2headerendpcm + int(self.f_s*0.5))[0][-1]
                 
                 #pulling header data from pulse
                 header_bindata = parse.trim_header(self.binary_buffer[p2startind:p2endind])
@@ -462,8 +493,8 @@ class AXCTDProcessor(QRunnable):
             if firstbin <= p3headerstartpcm and lastbin >= p3headerendpcm and not self.header3_read: 
                 
                 #determining binary data start/end index (adding extra 0.5 sec of data if available)
-                p3startind = np.where(cbufferindarray >= p3headerstartpcm - int(self.fs*0.5))[0][0]
-                p3endind = np.where(cbufferindarray <= p3headerendpcm + int(self.fs*0.5))[0][-1]
+                p3startind = np.where(cbufferindarray >= p3headerstartpcm - int(self.f_s*0.5))[0][0]
+                p3endind = np.where(cbufferindarray <= p3headerendpcm + int(self.f_s*0.5))[0][-1]
                 
                 #pulling header data from pulse
                 header_bindata = parse.trim_header(self.binary_buffer[p3startind:p3endind])
@@ -496,6 +527,11 @@ class AXCTDProcessor(QRunnable):
                     for key in other_data: #incorporating other profile metadata
                         if header[key] is not None and self.metadata[key] is None:
                             self.metadata[key] = header[key]
+                    
+                    #printing header info to sigdata file
+                    self.txtfile.write(f"Header {i+2} detected!\n")
+                    for key in header.keys():
+                        self.txtfile.write(f"{key} : {header[key]}\n")
                             
             
             #if updated headers included, then try to update coefficients
@@ -520,20 +556,22 @@ class AXCTDProcessor(QRunnable):
                 self.binary_buffer = self.binary_buffer[firstind:]
                 self.binary_buffer_inds = self.binary_buffer_inds[firstind:]
                 self.binary_buffer_conf = self.binary_buffer_conf[firstind:]
+                self.r400_buffer = self.r400_buffer[firstind:]
                 self.r7500_buffer = self.r7500_buffer[firstind:]
             
             #calculting times corresponding to each bit
-            binbufftimes = (np.asarray(self.binary_buffer_inds) - self.profstartind)/self.fs
+            binbufftimes = (np.asarray(self.binary_buffer_inds) - self.profstartind)/self.f_s
                 
             #parsing data into frames
             hexframes,times,depths,temps,conds,psals,next_buffer_ind = parse.parse_bitstream_to_profile(self.binary_buffer, binbufftimes, self.r7500_buffer, self.tempLUT, self.tcoeff, self.ccoeff, self.zcoeff)
             
-            #rounding data and appending to lists #TODO SWITCH TO SIGNAL SEND
-            times = np.round(times,2)
+            #rounding data and appending to lists
+            times = np.round(np.asarray(times) + self.firstpointtime, 2)
             depths = np.round(depths,2)
             temps = np.round(temps,2)
             conds = np.round(conds,2)
             psals = np.round(psals,2)
+            r400 = np.round(self.r400_buffer,2)
             r7500 = np.round(self.r7500_buffer,2)
             
             #removing parsed data from binary buffer
@@ -544,17 +582,18 @@ class AXCTDProcessor(QRunnable):
             
         else:
             
-            times = [np.round(self.power_inds[-1]/self.fs,2)]
+            times = [np.round(self.power_inds[-1]/self.f_s,2)]
             r400 = [np.round(self.r400[-1],2)]
             r7500 = [np.round(self.r7500[-1],2)]
             depths = [np.NaN]
             temps = [np.NaN]
             conds = [np.NaN]
+            psals = [np.NaN]
             hexframes = ['00000000']
                 
                 
                 
-        data = [self.status, times, r400, r7500, depths, temps, conds, hexframes] #what to send to AXCTD GUI loop   
+        data = [self.status, times, r400, r7500, depths, temps, conds, psals, hexframes] #what to send to AXCTD GUI loop   
         return data
 
 

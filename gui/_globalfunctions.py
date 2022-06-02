@@ -345,40 +345,45 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
             except:
                 self.postwarning('Invalid (non-numeric) Date Entered!')
                 isgood = False
+                year = month = day = -99999
             try:
                 hour = int(timestr[:2])
                 minute = int(timestr[2:4])
             except:
                 self.postwarning('Invalid (non-numeric) Time Entered!')
                 isgood = False
-
-            if year < 1938 or year > 3000: #year the bathythermograph was invented and the year by which it was probably made obsolete
-                self.postwarning('Invalid Year Entered (< 1938 AD or > 3000 AD)!')
-                isgood = False
-            elif month <= 0 or month > 12:
-                self.postwarning("Invalid Month Entered (must be between 1 and 12)")
-                isgood = False
-            elif hour > 23 or hour < 0:
-                self.postwarning('Invalid Time Entered (hour must be between 0 and 23')
-                isgood = False
-            elif minute >= 60 or minute < 0:
-                self.postwarning('Invalid Time Entered (minute must be between 0 and 59')
-                isgood = False
+                hour = minute = -99999
             
-            #figuring out number of days in month   
-            monthnames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] 
-            if month in [1,3,5,7,8,10,12]:
-                maxdays = 31
-            elif month in [4,6,9,11]:
-                maxdays = 30
-            elif month == 2 and year%4 == 0:
-                maxdays = 29
-            elif month == 2:
-                maxdays = 28
-            else:
-                maxdays = 31
-                isgood = False
-                self.postwarning('Invalid month entered!')
+            if year != -99999:
+                if year < 1938 or year > 3000: #year the bathythermograph was invented and the year by which it was probably made obsolete
+                    self.postwarning('Invalid Year Entered (< 1938 AD or > 3000 AD)!')
+                    isgood = False
+                elif month <= 0 or month > 12:
+                    self.postwarning("Invalid Month Entered (must be between 1 and 12)")
+                    isgood = False
+            if hour != -99999:
+                if hour > 23 or hour < 0:
+                    self.postwarning('Invalid Time Entered (hour must be between 0 and 23')
+                    isgood = False
+                elif minute >= 60 or minute < 0:
+                    self.postwarning('Invalid Time Entered (minute must be between 0 and 59')
+                    isgood = False
+            
+            #figuring out number of days in month
+            if month != -99999:
+                monthnames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'] 
+                if month in [1,3,5,7,8,10,12]:
+                    maxdays = 31
+                elif month in [4,6,9,11]:
+                    maxdays = 30
+                elif month == 2 and year%4 == 0:
+                    maxdays = 29
+                elif month == 2:
+                    maxdays = 28
+                else:
+                    maxdays = 31
+                    isgood = False
+                    self.postwarning('Invalid month entered!')
                 
             #checking to make sure days are in valid range
             if isgood and (day <= 0 or day > maxdays):
@@ -440,14 +445,36 @@ def savedataincurtab(self):
     #this will be 'unknown' if the tab hasn't been processed but another check will prevent the function from trying to save a profile from an unprocessed tab
     probetype = self.alltabdata[opentab]["probetype"]
     
+    profheadername = ''
+    try:
+        if self.alltabdata[opentab]["tabtype"] == "PE_p":
+            profheadername = dt.datetime.strftime(self.alltabdata[opentab]["profdata"]["dropdatetime"],'%Y%m%d%H%M')
+        elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
+            profheadername = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text() + self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+    except: #if it doesn't work, dont worry just use default drop filename
+        pass
+        
+    if profheadername == '' or profheadername.upper() == 'YYYYMMDDHHMM':
+        csavedtg = dt.datetime.strftime(dt.datetime.utcnow(),'%Y%m%d%H%M')
+        profheadername = f'{probetype}_profile_savedAt_{csavedtg}'
+        
+    #default file directory and header
+    defaultfilename = self.check_filename(self.defaultfilewritedir + slash + profheadername)
+    
     #getting directory to save files from QFileDialog
     try:
-        outdir = str(QFileDialog.getExistingDirectory(self, "Select Directory to Save File(s)",self.defaultfilewritedir,QFileDialog.DontUseNativeDialog))
+        outfileheader = str(QFileDialog.getSaveFileName(self, "Select directory/header for saved file(s)", defaultfilename, options=QFileDialog.DontUseNativeDialog))
         
-        if outdir == '': #checking directory validity
+        #pull filename from returned info
+        print(outfileheader)
+        outfileheader = outfileheader.replace('(',' ').replace(')',' ').replace("'",' ').strip().split(',')[0].strip()
+        print(outfileheader)
+        
+        if outfileheader == '': #checking directory validity (if you hit cancel, outfileheader will evaluate to ')' )
             QApplication.restoreOverrideCursor()
             return False
         else:
+            outdir,_  = path.split(outfileheader)
             self.defaultfilewritedir = outdir
     except Exception:
         trace_error()
@@ -459,12 +486,12 @@ def savedataincurtab(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         if self.alltabdata[opentab]["tabtype"] == "PE_p":
-            self.savePEfiles(opentab,outdir,probetype)
+            self.savePEfiles(opentab,outfileheader,probetype)
         elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
             if self.alltabdata[opentab]["isprocessing"]:
                 self.postwarning('You must stop processing the current tab before saving data!')
             else:
-                self.saveDASfiles(opentab,outdir,probetype)
+                self.saveDASfiles(opentab,outfileheader,probetype)
         else:
             self.postwarning('You must process a profile before attempting to save data!')
             
@@ -504,7 +531,7 @@ def check_filename(self,original_file_header):
     
     
 #save files from DAS in specified tab
-def saveDASfiles(self,opentab,outdir,probetype):
+def saveDASfiles(self,opentab,outfileheader,probetype):
     
     if probetype.upper() == 'AXCTD':
         hasSal = True
@@ -560,12 +587,11 @@ def saveDASfiles(self,opentab,outdir,probetype):
     #creating file header to save, taking care not to overwrite files and note if good position/time exists
     if not isgood:
         goodmetadata = False
-        csavedtg = dt.datetime.strftime(dt.datetime.utcnow(),'%Y%m%d%H%M')
-        filename = self.check_filename(outdir + self.slash + f"output_savedAt_{csavedtg}")
         self.postwarning("Bad date/time or position: cannot save NVO or EDF files if requested!")
     else:
         goodmetadata = True
-        filename = self.check_filename(outdir + self.slash + dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M'))
+        
+    filename = self.check_filename(outfileheader)
         
     
     if self.settingsdict["savenvo_raw"] and goodmetadata:
@@ -636,7 +662,7 @@ def saveDASfiles(self,opentab,outdir,probetype):
         
         
 #save files in profile editor tab
-def savePEfiles(self,opentab,outdir,probetype):
+def savePEfiles(self,opentab,outfileheader,probetype):
     
     if probetype.upper() == 'AXCTD':
         hasSal = True
@@ -691,7 +717,7 @@ def savePEfiles(self,opentab,outdir,probetype):
 // Data interpolated to 1-meter interval"""
     
     dtg = dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M')
-    filename = self.check_filename(outdir + self.slash + dtg)
+    filename = self.check_filename(outfileheader)
     
     if self.settingsdict["saveedf_qc"]:
         try:
