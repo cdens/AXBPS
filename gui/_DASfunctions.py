@@ -574,13 +574,16 @@ def runprocessor(self, opentab, datasource, sourcetype):
         if sourcetype != 'AA': #but not if reprocessing from audio file
             autopopulate = True
     
+    else:
+        starttime = self.alltabdata[opentab]["rawdata"]["starttime"]
+        
+            
     #add gps coordinates if a good gps fix is available
     if self.goodPosition == True:
         self.alltabdata[opentab]['tabwidgets']['latedit'].setText(str(round(self.lat, 3)))
         self.alltabdata[opentab]['tabwidgets']['lonedit'].setText(str(round(self.lon, 3)))
                 
-    else:
-        starttime = self.alltabdata[opentab]["rawdata"]["starttime"]
+        
         
     #this should never happen (if there is no DLL loaded there shouldn't be any receivers detected), but just in case
     if self.dll == 0 and sourcetype not in ['AA','TT']:

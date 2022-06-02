@@ -73,7 +73,7 @@ def wr_axctd_callback(streampointer_int, bufferpointer_int, size, samplerate):
         self.f_s = samplerate
         self.nframes += bufferlength
         self.audiostream.extend(bufferdata[:]) #append data to end
-        #dont delete data from start, the AXCTDProcessor thread will handle this as it is processed
+        #dont delete data from start, the AXCTD Processor thread will handle this as it is processed
         
         #recording to wav file: this terminates if the file exceeds a certain length
         if self.isrecordingaudio and self.nframes > self.maxsavedframes:

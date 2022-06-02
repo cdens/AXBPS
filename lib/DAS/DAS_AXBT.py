@@ -64,7 +64,7 @@ class AXBTProcessor(QRunnable):
         self.freqs = []
         
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource)
+        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,'AXBT')
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()

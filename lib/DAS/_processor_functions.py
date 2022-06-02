@@ -52,7 +52,7 @@ import lib.DAS.common_DAS_functions as cdf
 # =============================================================================        
         
         
-def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource):
+def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,probetype):
     
      
     self.dll = dll # saves DLL/API library
@@ -96,7 +96,10 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource):
         
     elif self.sourcetype == 'TT': #test run- use included audio file
         self.chselect = 0 #sum over multiple channels
-        self.audiofile = 'data/testdata/AXBT_sample.WAV'
+        if probetype == 'AXBT':
+            self.audiofile = 'data/testdata/AXBT_sample.WAV'
+        elif probetype == 'AXCTD':
+            self.audiofile = 'data/testdata/AXCTD_sample.WAV'
         self.isfromtest = True
     
     
