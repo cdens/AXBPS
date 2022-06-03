@@ -544,8 +544,7 @@ class AXCTDProcessor(QRunnable):
                     self.zcoeff = self.metadata['zcoeff']
             
                     
-        #getting 
-            
+                    
         if self.status == 2: #parsing bitstream into frames and calculating updated profile data
             
             self.past_headers = True
