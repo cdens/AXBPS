@@ -51,7 +51,7 @@ class AXCTDProcessor(QRunnable):
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, triggerstatus, firstpointtime, firstpulsetime,
-        settings, slash, tempdir, minR400=2.0, mindR7500=1.5, deadfreq=3000, mintimeperloop=2, triggerrange=[30,-1], mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, *args,**kwargs):
+        settings, slash, tempdir, minR400=2.0, mindR7500=1.5, deadfreq=3000, mintimeperloop=2, triggerrange=[30,-1], mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, zcoeffdefault=[0.72, 2.76124, -0.000238007, 0], tcoeffdefault=[0,1,0,0], ccoeffdefault=[0,1,0,0], *args,**kwargs):
         
         super(AXCTDProcessor, self).__init__()
 
@@ -76,7 +76,7 @@ class AXCTDProcessor(QRunnable):
         self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,'AXCTD')
         
         #initializing AXCTD processor specific vars
-        self.initialize_AXCTD_vars(minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass)
+        self.initialize_AXCTD_vars(minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass, zcoeffdefault, tcoeffdefault, ccoeffdefault)
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()
@@ -88,7 +88,7 @@ class AXCTDProcessor(QRunnable):
             
             
             
-    def initialize_AXCTD_vars(self,minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass):
+    def initialize_AXCTD_vars(self,minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass, zcoeffdefault, tcoeffdefault, ccoeffdefault):
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)        
         self.keepgoing = True  # signal connections
         self.waittoterminate = False #whether to pause on termination of run loop for kill process to complete
@@ -112,9 +112,9 @@ class AXCTDProcessor(QRunnable):
         self.metadata['counter_found_2'] = [False] * 72
         self.metadata['counter_found_3'] = [False] * 72
         self.tempLUT = parse.read_temp_LUT('lib/DAS/temp_LUT.txt')
-        self.tcoeff = self.metadata['tcoeff_default']
-        self.ccoeff = self.metadata['ccoeff_default']
-        self.zcoeff = self.metadata['zcoeff_default']
+        self.zcoeff = zcoeffdefault
+        self.tcoeff = tcoeffdefault
+        self.ccoeff = ccoeffdefault
         
         #store powers at different frequencies used to ID profile start
         self.p400 = np.array([])

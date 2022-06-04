@@ -466,9 +466,7 @@ def savedataincurtab(self):
         outfileheader = str(QFileDialog.getSaveFileName(self, "Select directory/header for saved file(s)", defaultfilename, options=QFileDialog.DontUseNativeDialog))
         
         #pull filename from returned info
-        print(outfileheader)
         outfileheader = outfileheader.replace('(',' ').replace(')',' ').replace("'",' ').strip().split(',')[0].strip()
-        print(outfileheader)
         
         if outfileheader == '': #checking directory validity (if you hit cancel, outfileheader will evaluate to ')' )
             QApplication.restoreOverrideCursor()
@@ -537,24 +535,34 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
         hasSal = True
         rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"]}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["salinity"]}
+        metadata = self.alltabdata[opentab]["processor"].metadata
+        coeffs = {}
+        coeffops = ['z','t','c']
+        for c in coeffops:
+            if sum(metadata[c + 'coeff_valid']) == 4:
+                coeffs[c] = metadata[c+'coeff']
+            else:
+                coeffs[c] = metadata[c+'coeff_default']
+        
         zcoeff = self.settingsdict["zcoeff_axctd"]
         tcoeff = self.settingsdict["tcoeff_axctd"]
         ccoeff = self.settingsdict["ccoeff_axctd"]
         edf_comments = f"""Probe Type       :  AXCTD
-    Terminal Depth   :  850 m
-    Depth Coeff. 1   :  {zcoeff[0]}
-    Depth Coeff. 2   :  {zcoeff[1]}
-    Depth Coeff. 3   :  {zcoeff[2]}
-    Depth Coeff. 4   :  {zcoeff[3]}
+    Serial Number      :  {metadata['serial_no'] if metadata['serial_no'] is not None else 'Not Provided'}
+    Terminal Depth (m) :  {metadata['max_depth'] if metadata['max_depth'] is not None else 'Not Provided'}
+    Depth Coeff. 1     :  {coeffs['z'][0]}
+    Depth Coeff. 2     :  {coeffs['z'][1]}
+    Depth Coeff. 3     :  {coeffs['z'][2]}
+    Depth Coeff. 4     :  {coeffs['z'][3]}
     Pressure Pt Correction:  N/A
-    Temp. Coeff. 1   :  {tcoeff[0]}
-    Temp. Coeff. 2   :  {tcoeff[1]}
-    Temp. Coeff. 3   :  {tcoeff[2]}
-    Temp. Coeff. 4   :  {tcoeff[3]}
-    Cond. Coeff. 1   :  {ccoeff[0]}
-    Cond. Coeff. 2   :  {ccoeff[1]}
-    Cond. Coeff. 3   :  {ccoeff[2]}
-    Cond. Coeff. 4   :  {ccoeff[3]}"""
+    Temp. Coeff. 1     :  {coeffs['t'][0]}
+    Temp. Coeff. 2     :  {coeffs['t'][1]}
+    Temp. Coeff. 3     :  {coeffs['t'][2]}
+    Temp. Coeff. 4     :  {coeffs['t'][3]}
+    Cond. Coeff. 1     :  {coeffs['c'][0]}
+    Cond. Coeff. 2     :  {coeffs['c'][1]}
+    Cond. Coeff. 3     :  {coeffs['c'][2]}
+    Cond. Coeff. 4     :  {coeffs['c'][3]}"""
     
     else:
         hasSal = False

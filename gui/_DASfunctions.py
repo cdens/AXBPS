@@ -290,7 +290,7 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     
     self.alltabdata[plottabnum]["ProcAxes"][0].set_xlim(templims)
     self.alltabdata[plottabnum]["ProcAxes"][0].set_ylim(depthlims)
-    self.alltabdata[plottabnum]["ProcAxes"][0].grid()
+    self.alltabdata[plottabnum]["ProcAxes"][0].grid(visible=True, which='major', axis='both')
     self.alltabdata[plottabnum]["ProcAxes"][0].invert_yaxis() 
     
     if probetype == "AXCTD":
@@ -301,8 +301,9 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
                         
         self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(psallims)
         self.alltabdata[plottabnum]["ProcAxes"][1].set_ylim(depthlims)
-        self.alltabdata[plottabnum]["ProcAxes"][1].grid(visible=False, axis='both')
         self.alltabdata[plottabnum]["ProcAxes"][1].invert_yaxis() 
+        self.alltabdata[plottabnum]["ProcAxes"][1].grid(visible=False, which='major', axis='both')
+        self.alltabdata[plottabnum]["ProcAxes"][0].grid(visible=True, which='major', axis='both')
         
     
     
@@ -966,7 +967,13 @@ def updateUIfinal(self,tabID):
         self.alltabdata[plottabnum]["isprocessing"] = False
         timemodule.sleep(0.25)
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-
+        
+        probetype = self.alltabdata[plottabnum]["probetype"]
+        if probetype == 'AXBT':
+            self.update_AXBT_DAS(plottabnum, [[],[],[],[],[],[]])
+        elif probetype == 'AXCTD':
+            self.update_AXCTD_DAS(plottabnum, [[],[],[],[],[],[],[],[],[]])
+            
         if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]:
             self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].deleteLater()
 

@@ -192,7 +192,7 @@ def trim_header(bits_in):
 def initialize_axctd_metadata():
     
     #dict containing metadata (conversions, other header info) for the AXCTD
-    axctd_metadata = {'tcoeff': [0,1,0,0], 'ccoeff': [0,1,0,0], 'zcoeff': [1,1,1,1], 'serial_no':None, 'probe_code':None, 'max_depth':None, 'misc':None, 'tcoeff_hex':['','','',''], 'ccoeff_hex':['','','',''], 'zcoeff_hex':['','','',''], 'tcoeff_valid':[False] * 4, 'ccoeff_valid':[False] * 4, 'zcoeff_valid':[False] * 4, 'tcoeff_default':[-0.053328, 0.994372, 0.0, 0.0], 'ccoeff_default':[-0.0622192, 1.04584, 0.0, 0.0], 'zcoeff_default':[0.72, 2.761235, -0.0002380066, 0.0]}
+    axctd_metadata = {'tcoeff': [0,1,0,0], 'ccoeff': [0,1,0,0], 'zcoeff': [1,1,1,1], 'serial_no':None, 'probe_code':None, 'max_depth':None, 'misc':None, 'tcoeff_hex':['','','',''], 'ccoeff_hex':['','','',''], 'zcoeff_hex':['','','',''], 'tcoeff_valid':[False] * 4, 'ccoeff_valid':[False] * 4, 'zcoeff_valid':[False] * 4}
     
     return axctd_metadata
     

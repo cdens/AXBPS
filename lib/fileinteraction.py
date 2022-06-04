@@ -233,7 +233,8 @@ def writeedffile(edffile,dropdatetime,lat,lon,data,comments,QC=False):
     with open(edffile,'w') as f_out:
     
         #writing header, date and time, drop # (bad value)
-        f_out.write("// This is an Air-Expendable Probe EXPORT DATA FILE  (EDF)\n//\n")
+        f_out.write("// This is an Air-Expendable Probe EXPORT DATA FILE  (EDF)\n")
+        f_out.write("// File generated with the Airborne eXpendable Buoy Processing System (AXBPS)\n")
         f_out.write(f"Date of Launch:  {datetime.strftime(dropdatetime,'%m/%d/%y')}\n")
         f_out.write(f"Time of Launch:  {datetime.strftime(dropdatetime,'%H:%M:%S')}\n")
         

@@ -75,8 +75,8 @@ def setdefaultsettings():
     settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
     
     settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
-    settingsdict["tcoeff_axctd"] = [-5.5387245882, 0.0107164443, 0,0]
-    settingsdict["ccoeff_axctd"] = [-0.0622192776, 0.0153199220, 0,0]
+    settingsdict["tcoeff_axctd"] = [0, 1, 0,0]
+    settingsdict["ccoeff_axctd"] = [0, 1, 0,0]
     
     #profeditorpreferences
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
@@ -231,8 +231,9 @@ class RunSettings(QMainWindow):
 
             #building window/tabs
             self.buildcentertable()
-            self.makeprocessorsettingstab()  # processor settings
-            self.makeaxbtconvertsettingstab() #temperature/depth conversion eqn settings
+            self.makeprocessorsettingstab()  #processor settings
+            self.makeaxbtconvertsettingstab() #AXBT conversion equation settings
+            self.makeaxctdconvertsettingstab() #AXCTD conversion equation settings
             self.makeprofileeditorsettingstab() #profile editor tab
             self.makegpssettingstab() #add GPS settings
 
@@ -352,19 +353,40 @@ class RunSettings(QMainWindow):
         self.axbtconverttabwidgets["F2Tb1"].setText(str(tc[1]))
         self.axbtconverttabwidgets["F2Tb2"].setText(str(tc[2]))
         self.axbtconverttabwidgets["F2Tb3"].setText(str(tc[3]))
-        self.updateF2Teqn()
+        self.updateAXBTF2Teqn()
         
         zc = self.settingsdict["zcoeff_axbt"]
         self.axbtconverttabwidgets["t2zb0"].setText(str(zc[0]))
         self.axbtconverttabwidgets["t2zb1"].setText(str(zc[1]))
         self.axbtconverttabwidgets["t2zb2"].setText(str(zc[2]))
         self.axbtconverttabwidgets["t2zb3"].setText(str(zc[3]))
-        self.updatet2zeqn()
+        self.updateAXBTt2zeqn()
         
         flims_axbt = self.settingsdict["flims_axbt"]
         self.axbtconverttabwidgets["flow"].setValue(flims_axbt[0])
         self.axbtconverttabwidgets["fhigh"].setValue(flims_axbt[1])
         self.updateflims_axbt()
+        
+        zc = self.settingsdict["zcoeff_axctd"]
+        self.axctdconverttabwidgets["t2zb0"].setText(str(zc[0]))
+        self.axctdconverttabwidgets["t2zb1"].setText(str(zc[1]))
+        self.axctdconverttabwidgets["t2zb2"].setText(str(zc[2]))
+        self.axctdconverttabwidgets["t2zb3"].setText(str(zc[3]))
+        self.updateAXCTDt2zeqn()
+        
+        tc = self.settingsdict["tcoeff_axctd"]
+        self.axctdconverttabwidgets["Tconvb0"].setText(str(tc[0]))
+        self.axctdconverttabwidgets["Tconvb1"].setText(str(tc[1]))
+        self.axctdconverttabwidgets["Tconvb2"].setText(str(tc[2]))
+        self.axctdconverttabwidgets["Tconvb3"].setText(str(tc[3]))
+        self.updateAXCTDTconveqn()
+        
+        cc = self.settingsdict["ccoeff_axctd"]
+        self.axctdconverttabwidgets["Cconvb0"].setText(str(cc[0]))
+        self.axctdconverttabwidgets["Cconvb1"].setText(str(cc[1]))
+        self.axctdconverttabwidgets["Cconvb2"].setText(str(cc[2]))
+        self.axctdconverttabwidgets["Cconvb3"].setText(str(cc[3]))
+        self.updateAXCTDCconveqn()
 
         self.profeditortabwidgets["useclimobottom"].setChecked(self.settingsdict["useclimobottom"])
         self.profeditortabwidgets["comparetoclimo"].setChecked(self.settingsdict["comparetoclimo"])
@@ -543,11 +565,9 @@ class RunSettings(QMainWindow):
                 self.processortablayout.addWidget(self.processortabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
-            self.processortablayout.setColumnStretch(0, 0)
-            self.processortablayout.setColumnStretch(1, 1)
-            self.processortablayout.setColumnStretch(2, 1)
-            self.processortablayout.setColumnStretch(3, 2)
-            self.processortablayout.setColumnStretch(4, 3)
+            colstretch = [5,1,1,2,3,3,5]
+            for i,s in enumerate(colstretch):
+                self.processortablayout.setColumnStretch(i, s)
             for i in range(0,12):
                 self.processortablayout.setRowStretch(i, 1)
             self.processortablayout.setRowStretch(13, 4)
@@ -564,18 +584,18 @@ class RunSettings(QMainWindow):
             
             
     # =============================================================================
-    #     TEMPERATURE-DEPTH CONVERSION EQNS + LIMITATIONS HERE
+    #     AXBT CONVERSION EQNS + LIMITATIONS HERE
     # =============================================================================
     def makeaxbtconvertsettingstab(self):
         try:
 
-            self.tzconverttab = QWidget()
-            self.tzconverttablayout = QGridLayout()
-            self.setnewtabcolor(self.tzconverttab)
+            self.axbtconverttab = QWidget()
+            self.axbtconverttablayout = QGridLayout()
+            self.setnewtabcolor(self.axbtconverttab)
 
-            self.tzconverttablayout.setSpacing(10)
+            self.axbtconverttablayout.setSpacing(10)
 
-            self.tabWidget.addTab(self.tzconverttab,'AXBT Conversions')
+            self.tabWidget.addTab(self.axbtconverttab,'AXBT Conversions')
             self.tabWidget.setCurrentIndex(0)
 
             # and add new buttons and other widgets
@@ -586,13 +606,13 @@ class RunSettings(QMainWindow):
             self.axbtconverttabwidgets["F2Tlabel"] = QLabel('Frequency to Temperature Conversion:') #1
             self.axbtconverttabwidgets["F2Teqn"] = QLabel(f"T = {tc[0]} + {tc[1]}*f + {tc[2]}*f<sup>2</sup> + {tc[3]}*f<sup>3</sup>") #2
             self.axbtconverttabwidgets["F2Tb0"] = QLineEdit(str(tc[0])) #3
-            self.axbtconverttabwidgets["F2Tb0"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb0"].textChanged.connect(self.updateAXBTF2Teqn)
             self.axbtconverttabwidgets["F2Tb1"] = QLineEdit(str(tc[1])) #4
-            self.axbtconverttabwidgets["F2Tb1"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb1"].textChanged.connect(self.updateAXBTF2Teqn)
             self.axbtconverttabwidgets["F2Tb2"] = QLineEdit(str(tc[2])) #5
-            self.axbtconverttabwidgets["F2Tb2"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb2"].textChanged.connect(self.updateAXBTF2Teqn)
             self.axbtconverttabwidgets["F2Tb3"] = QLineEdit(str(tc[3])) #6
-            self.axbtconverttabwidgets["F2Tb3"].textChanged.connect(self.updateF2Teqn)
+            self.axbtconverttabwidgets["F2Tb3"].textChanged.connect(self.updateAXBTF2Teqn)
             self.axbtconverttabwidgets["F2Ts0"] = QLabel(" + ") #7
             self.axbtconverttabwidgets["F2Ts1"] = QLabel("* f + ") #8
             self.axbtconverttabwidgets["F2Ts2"] = QLabel("* f<sup>2</sup> + ") #9
@@ -602,13 +622,13 @@ class RunSettings(QMainWindow):
             self.axbtconverttabwidgets["t2zlabel"] = QLabel('Time Elapsed to Depth Conversion:') #11
             self.axbtconverttabwidgets["t2zeqn"] = QLabel(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>") #12
             self.axbtconverttabwidgets["t2zb0"] = QLineEdit(str(zc[0])) #13
-            self.axbtconverttabwidgets["t2zb0"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb0"].textChanged.connect(self.updateAXBTt2zeqn)
             self.axbtconverttabwidgets["t2zb1"] = QLineEdit(str(zc[1])) #14
-            self.axbtconverttabwidgets["t2zb1"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb1"].textChanged.connect(self.updateAXBTt2zeqn)
             self.axbtconverttabwidgets["t2zb2"] = QLineEdit(str(zc[2])) #15
-            self.axbtconverttabwidgets["t2zb2"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb2"].textChanged.connect(self.updateAXBTt2zeqn)
             self.axbtconverttabwidgets["t2zb3"] = QLineEdit(str(zc[3])) #16
-            self.axbtconverttabwidgets["t2zb3"].textChanged.connect(self.updatet2zeqn)
+            self.axbtconverttabwidgets["t2zb3"].textChanged.connect(self.updateAXBTt2zeqn)
             self.axbtconverttabwidgets["t2zs0"] = QLabel(" + ") #17
             self.axbtconverttabwidgets["t2zs1"] = QLabel("* t + ") #18
             self.axbtconverttabwidgets["t2zs2"] = QLabel("* t<sup>2</sup> + ") #19
@@ -655,28 +675,28 @@ class RunSettings(QMainWindow):
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
-                self.tzconverttablayout.addWidget(self.axbtconverttabwidgets[i], r, c, re, ce)
+                self.axbtconverttablayout.addWidget(self.axbtconverttabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
             colstretches = [1,2,1,1,2,1,1]
             for i,s in enumerate(colstretches):
-                self.tzconverttablayout.setColumnStretch(i, s)
+                self.axbtconverttablayout.setColumnStretch(i, s)
             for i in range(12):
-                self.tzconverttablayout.setRowStretch(i, 1)
+                self.axbtconverttablayout.setRowStretch(i, 1)
                 
             # applying the current layout for the tab
-            self.tzconverttab.setLayout(self.tzconverttablayout)
+            self.axbtconverttab.setLayout(self.axbtconverttablayout)
 
         except Exception:
             trace_error()
-            self.posterror("Failed to build new temperature/depth conversion settings tab")
+            self.posterror("Failed to build new AXBT temperature/depth conversion settings tab")
             
             
             
             
             
             
-    def updateF2Teqn(self):
+    def updateAXBTF2Teqn(self):
         
         try: #only updates if the values are numeric
             tc = [float(self.axbtconverttabwidgets["F2Tb0"].text()), float(self.axbtconverttabwidgets["F2Tb1"].text()), float(self.axbtconverttabwidgets["F2Tb2"].text()), float(self.axbtconverttabwidgets["F2Tb3"].text())]
@@ -686,7 +706,7 @@ class RunSettings(QMainWindow):
             pass
 
        
-    def updatet2zeqn(self):
+    def updateAXBTt2zeqn(self):
         
         try: #only updates if the values are numeric
             zc = [float(self.axbtconverttabwidgets["t2zb0"].text()), float(self.axbtconverttabwidgets["t2zb1"].text()), float(self.axbtconverttabwidgets["t2zb2"].text()), float(self.axbtconverttabwidgets["t2zb3"].text())]
@@ -713,6 +733,154 @@ class RunSettings(QMainWindow):
         #    self.axbtconverttabwidgets["fhigh"].setValue(self.settingsdict["flims_axbt"][1])
             
             
+        
+    
+        
+        
+        
+    # =============================================================================
+    #     AXCTD CONVERSION EQNS 
+    # =============================================================================
+    def makeaxctdconvertsettingstab(self):
+        try:
+
+            self.axctdconverttab = QWidget()
+            self.axctdconverttablayout = QGridLayout()
+            self.setnewtabcolor(self.axctdconverttab)
+
+            self.axctdconverttablayout.setSpacing(10)
+
+            self.tabWidget.addTab(self.axctdconverttab,'AXCTD Conversions')
+            self.tabWidget.setCurrentIndex(0)
+
+            # and add new buttons and other widgets
+            self.axctdconverttabwidgets = {}
+
+            # making widgets
+            zc = self.settingsdict["zcoeff_axctd"]
+            self.axctdconverttabwidgets["t2zlabel"] = QLabel('Default Time to Depth Conversion:') #1
+            self.axctdconverttabwidgets["t2zeqn"] = QLabel(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>") #2
+            self.axctdconverttabwidgets["t2zb0"] = QLineEdit(str(zc[0])) #3
+            self.axctdconverttabwidgets["t2zb0"].textChanged.connect(self.updateAXCTDt2zeqn)
+            self.axctdconverttabwidgets["t2zb1"] = QLineEdit(str(zc[1])) #4
+            self.axctdconverttabwidgets["t2zb1"].textChanged.connect(self.updateAXCTDt2zeqn)
+            self.axctdconverttabwidgets["t2zb2"] = QLineEdit(str(zc[2])) #5
+            self.axctdconverttabwidgets["t2zb2"].textChanged.connect(self.updateAXCTDt2zeqn)
+            self.axctdconverttabwidgets["t2zb3"] = QLineEdit(str(zc[3])) #6
+            self.axctdconverttabwidgets["t2zb3"].textChanged.connect(self.updateAXCTDt2zeqn)
+            self.axctdconverttabwidgets["t2zs0"] = QLabel(" + ") #7
+            self.axctdconverttabwidgets["t2zs1"] = QLabel("* t + ") #8
+            self.axctdconverttabwidgets["t2zs2"] = QLabel("* t<sup>2</sup> + ") #9
+            self.axctdconverttabwidgets["t2zs3"] = QLabel("* t<sup>3</sup> ") #10
+            
+            
+            tc = self.settingsdict["tcoeff_axctd"]
+            self.axctdconverttabwidgets["Tconvlabel"] = QLabel('Default Temperature Conversion:') #11
+            self.axctdconverttabwidgets["Tconveqn"] = QLabel(f"T = {tc[0]} + {tc[1]}*T<sub>uncal</sub> + {tc[2]}*T<sub>uncal</sub><sup>2</sup> + {tc[3]}*T<sub>uncal</sub><sup>3</sup>") #12
+            self.axctdconverttabwidgets["Tconvb0"] = QLineEdit(str(tc[0])) #13
+            self.axctdconverttabwidgets["Tconvb0"].textChanged.connect(self.updateAXCTDTconveqn)
+            self.axctdconverttabwidgets["Tconvb1"] = QLineEdit(str(tc[1])) #14
+            self.axctdconverttabwidgets["Tconvb1"].textChanged.connect(self.updateAXCTDTconveqn)
+            self.axctdconverttabwidgets["Tconvb2"] = QLineEdit(str(tc[2])) #15
+            self.axctdconverttabwidgets["Tconvb2"].textChanged.connect(self.updateAXCTDTconveqn)
+            self.axctdconverttabwidgets["Tconvb3"] = QLineEdit(str(tc[3])) #16
+            self.axctdconverttabwidgets["Tconvb3"].textChanged.connect(self.updateAXCTDTconveqn)
+            self.axctdconverttabwidgets["Tconvs0"] = QLabel(" + ") #17
+            self.axctdconverttabwidgets["Tconvs1"] = QLabel("* T<sub>uncal</sub> + ") #18
+            self.axctdconverttabwidgets["Tconvs2"] = QLabel("* T<sub>uncal</sub><sup>2</sup> + ") #19
+            self.axctdconverttabwidgets["Tconvs3"] = QLabel("* T<sub>uncal</sub><sup>3</sup> ") #20
+            
+            cc = self.settingsdict["ccoeff_axctd"]
+            self.axctdconverttabwidgets["Cconvlabel"] = QLabel('Default Conductivity Conversion:') #21
+            self.axctdconverttabwidgets["Cconveqn"] = QLabel(f"C = {cc[0]} + {cc[1]}*C<sub>uncal</sub> + {cc[2]}*C<sub>uncal</sub><sup>2</sup> + {cc[3]}*C<sub>uncal</sub><sup>3</sup>") #22
+            self.axctdconverttabwidgets["Cconvb0"] = QLineEdit(str(cc[0])) #23
+            self.axctdconverttabwidgets["Cconvb0"].textChanged.connect(self.updateAXCTDCconveqn)
+            self.axctdconverttabwidgets["Cconvb1"] = QLineEdit(str(cc[1])) #24
+            self.axctdconverttabwidgets["Cconvb1"].textChanged.connect(self.updateAXCTDCconveqn)
+            self.axctdconverttabwidgets["Cconvb2"] = QLineEdit(str(cc[2])) #25
+            self.axctdconverttabwidgets["Cconvb2"].textChanged.connect(self.updateAXCTDCconveqn)
+            self.axctdconverttabwidgets["Cconvb3"] = QLineEdit(str(cc[3])) #26
+            self.axctdconverttabwidgets["Cconvb3"].textChanged.connect(self.updateAXCTDCconveqn)
+            self.axctdconverttabwidgets["Cconvs0"] = QLabel(" + ") #27
+            self.axctdconverttabwidgets["Cconvs1"] = QLabel("* C<sub>uncal</sub> + ") #28
+            self.axctdconverttabwidgets["Cconvs2"] = QLabel("* C<sub>uncal</sub><sup>2</sup> + ") #29
+            self.axctdconverttabwidgets["Cconvs3"] = QLabel("* C<sub>uncal</sub><sup>3</sup> ") #30
+            
+            
+            # formatting widgets 
+            self.axctdconverttabwidgets["t2zlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axctdconverttabwidgets["Tconvlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axctdconverttabwidgets["Cconvlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            
+
+            # should be XX entries
+            widgetorder = ["t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "Tconvlabel", "Tconveqn", "Tconvb0", "Tconvb1", "Tconvb2", "Tconvb3", "Tconvs0", "Tconvs1", "Tconvs2", "Tconvs3",  "Cconvlabel", "Cconveqn", "Cconvb0", "Cconvb1", "Cconvb2", "Cconvb3", "Cconvs0", "Cconvs1", "Cconvs2", "Cconvs3"]
+
+            wcols   = [1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,4,5,5,5,5,7,7,7,7,7,7,8,8,8,8]
+            wrows   = [1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6]
+            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            wcolext = [2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1]
+
+            # adding user inputs
+            for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
+                self.axctdconverttablayout.addWidget(self.axctdconverttabwidgets[i], r, c, re, ce)
+
+            # Applying spacing preferences to grid layout
+            colstretches = [5,2,1,1,2,1,1,2,1,5]
+            for i,s in enumerate(colstretches):
+                self.axctdconverttablayout.setColumnStretch(i, s)
+            rowstretches = [3,1,2,1,1,1,1,1,1,1,1,3]
+            for i,s in enumerate(rowstretches):
+                self.axctdconverttablayout.setRowStretch(i, s)
+                
+            # applying the current layout for the tab
+            self.axctdconverttab.setLayout(self.axctdconverttablayout)
+
+        except Exception:
+            trace_error()
+            self.posterror("Failed to build new AXCTD conversion settings tab")
+            
+            
+    
+       
+    def updateAXCTDt2zeqn(self):
+        
+        try: #only updates if the values are numeric
+            zc = [float(self.axctdconverttabwidgets["t2zb0"].text()), float(self.axctdconverttabwidgets["t2zb1"].text()), float(self.axctdconverttabwidgets["t2zb2"].text()), float(self.axctdconverttabwidgets["t2zb3"].text())]
+            self.axctdconverttabwidgets["t2zeqn"].setText(f"z = {zc[0]} + {zc[1]}*t + {zc[2]}*t<sup>2</sup> + {zc[3]}*t<sup>3</sup>")
+            self.settingsdict["zcoeff_axctd"] = zc
+        except ValueError:
+            pass    
+            
+            
+            
+    def updateAXCTDTconveqn(self):
+        
+        try: #only updates if the values are numeric
+            tc = [float(self.axctdconverttabwidgets["Tconvb0"].text()), float(self.axctdconverttabwidgets["Tconvb1"].text()), float(self.axctdconverttabwidgets["Tconvb2"].text()), float(self.axctdconverttabwidgets["Tconvb3"].text())]
+            self.axctdconverttabwidgets["Tconveqn"].setText(f"T = {tc[0]} + {tc[1]}*T<sub>uncal</sub> + {tc[2]}*T<sub>uncal</sub><sup>2</sup> + {tc[3]}*T<sub>uncal</sub><sup>3</sup>")
+            self.settingsdict["tcoeff_axctd"] = tc
+        except ValueError:
+            pass
+            
+    
+            
+            
+    def updateAXCTDCconveqn(self):
+        
+        try: #only updates if the values are numeric
+            cc = [float(self.axctdconverttabwidgets["Cconvb0"].text()), float(self.axctdconverttabwidgets["Cconvb1"].text()), float(self.axctdconverttabwidgets["Cconvb2"].text()), float(self.axctdconverttabwidgets["Cconvb3"].text())]
+            self.axctdconverttabwidgets["Cconveqn"].setText(f"C = {cc[0]} + {cc[1]}*C<sub>uncal</sub> + {cc[2]}*C<sub>uncal</sub><sup>2</sup> + {cc[3]}*C<sub>uncal</sub><sup>3</sup>")
+            self.settingsdict["ccoeff_axctd"] = cc
+        except ValueError:
+            pass
+            
+        
+        
+        
+        
+        
+        
         
         
             
@@ -989,18 +1157,16 @@ class RunSettings(QMainWindow):
             wcols   = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5,   1,  1]
             wrows   = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
             wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1,  1]
-            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1,   4,  4]
+            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1,   4,  3]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.profeditortablayout.addWidget(self.profeditortabwidgets[i], r, c, re, ce)
 
-            # Applying spacing preferences to grid layout
-            self.profeditortablayout.setColumnStretch(0, 0)
-            self.profeditortablayout.setColumnStretch(1, 1)
-            self.profeditortablayout.setColumnStretch(2, 1)
-            self.profeditortablayout.setColumnStretch(3, 2)
-            self.profeditortablayout.setColumnStretch(4, 3)
+            # Applying spacing preferences to grid layout]
+            colstretch = [5,1,1,2,3,3,5]
+            for i,s in enumerate(colstretch):
+                self.profeditortablayout.setColumnStretch(i, s)
             for i in range(0, 14):
                 self.profeditortablayout.setRowStretch(i, 1)
             self.profeditortablayout.setRowStretch(12, 4)
@@ -1029,30 +1195,17 @@ class RunSettings(QMainWindow):
         
         
 
-    #lookup table for originating centers
+    #lookup table for originating centers (WMO BUFR table)
     def buildcentertable(self):
-        self.allcenters = {"000":"       WMO Secretariat               ",
-                           "007":"       US NWS: NCEP                  ",
-                           "008":"       US NWS: NWSTG                 ",
-                           "009":"       US NWS: Other                 ",
-                           "051":"       Miami (RSMC)                  ",
-                           "052":"       Miami (RSMC) NHC              ",
-                           "053":"       MSC Monitoring                ",
-                           "054":"       Montreal (RSMC)               ",
-                           "055":"       San Francisco                 ",
-                           "056":"       ARINC Center                  ",
-                           "057":"       USAF: Global Weather Central  ",
-                           "058":"       USN: FNMOC                    ",
-                           "059":"       NOAA FSL                      ",
-                           "060":"       NCAR                          ",
-                           "061":"       Service ARGOS- Landover       ",
-                           "062":"       USN: NAVO                     ",
-                           "063":"       IRI: Climate and Society      ",
-                           "xxx":"       Center ID not recognized!     "}
-
-
-                           
-
+        self.allcenters = {}
+        self.allcenters['xxx'] = " Center ID not recognized! "
+        with open('data/regions/BUFR_centers.txt') as f:
+            for line in f.readlines():
+                cline = line.strip().split('\t')
+                num = int(cline[0])
+                name = cline[1]
+                self.allcenters[f'{num:03d}'] = name
+                
 
     # =============================================================================
     #         SLIDER CHANGE FUNCTION CALLS
