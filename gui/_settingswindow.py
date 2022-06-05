@@ -70,13 +70,21 @@ def setdefaultsettings():
     settingsdict["triggerfftratio"] = 0.8  # minimum signal to noise ratio to ID data
     settingsdict["triggersiglev"] = 70.  # minimum total signal level to receive data
     
+    settingsdict["minr400"] = 2.0  #minimum 400 Hz signal ratio to detect AXCTD pulse
+    settingsdict["mindr7500"] = 1.5  #minimum 7500 Hz signal ratio to detect AXCTD profile tone
+    
+    settingsdict["deadfreq"] = 3000 #quiet frequency used to calculate AXCTD signal ratios
+    settingsdict["mark_space_freqs"] = [400, 800] #bit 1/0 freqs (respectively) used for AXCTD demod
+    settingsdict['refreshrate'] = 2 #iterate AXCTD processer every X sec
+    settingsdict['usebandpass'] = False #use a 100-1200 Hz bandpasss filter instead of 1200 Hz lowpass filter
+    
     settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
     settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
     settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
     
     settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
-    settingsdict["tcoeff_axctd"] = [0, 1, 0,0]
-    settingsdict["ccoeff_axctd"] = [0, 1, 0,0]
+    settingsdict["tcoeff_axctd"] = [-0.053328, 0.994372, 0.0, 0.0]
+    settingsdict["ccoeff_axctd"] = [-0.0622192, 1.04584, 0.0, 0.0]
     
     #profeditorpreferences
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
@@ -105,10 +113,10 @@ def setdefaultsettings():
 
 #lists of settings broken down by data type (for settings file reading/writing)
 strsettings = ["platformid", "comport"] #settings saved as strings
-listsettings = ["tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"] #saved as lists of coefficients/parameters (each element is a float)
-floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "smoothlev", "profres", "maxstdev"] #saved as floats
-intsettings = ["originatingcenter", "gpsbaud", "fontsize"] #saved as ints
-boolsettings = ["autodtg", "autolocation", "autoid", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
+listsettings = ["mark_space_freqs", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"] #saved as lists of coefficients/parameters (each element is a float)
+floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "minr400", "mindr7500", "smoothlev", "profres", "maxstdev", "refreshrate"] #saved as floats
+intsettings = ["deadfreq", "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
+boolsettings = ["autodtg", "autolocation", "autoid", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
 
 
 class SettingNotRecognized(Exception):
@@ -293,6 +301,9 @@ class RunSettings(QMainWindow):
         self.label_minsigrat = "Minimum Signal Ratio (%): "
         self.label_trigsiglev = "Trigger Signal Level (dB): "
         self.label_trigsigrat = "Trigger Signal Ratio (%): "
+        self.label_minr400 = "Minimum R<sub>400 Hz</sub>: "
+        self.label_mindr7500 = "Minimum &Delta; R<sub>7500 Hz</sub>: "
+        
         self.fixtypes = ["Not Valid", "GPS", "DGPS", "PPS", "RTK", "Float RTK", "Estimated", "Manual Input", "Simulation"]
         
         
@@ -341,12 +352,32 @@ class RunSettings(QMainWindow):
         self.processortabwidgets["fftratio"].setValue(int(self.settingsdict["minfftratio"] * 100))
 
         self.processortabwidgets["triggersiglevlabel"].setText(
-            self.label_trigsiglev + str(np.round(self.settingsdict["triggersiglev"], 2)).ljust(4, '0'))  # 17
+            self.label_trigsiglev + str(np.round(self.settingsdict["triggersiglev"], 2)).ljust(4, '0'))
         self.processortabwidgets["triggersiglev"].setValue(int(self.settingsdict["triggersiglev"]*10))
 
         self.processortabwidgets["triggerratiolabel"].setText(
-            self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"] * 100)))  # 19
+            self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"] * 100))) 
         self.processortabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
+        
+        
+        
+        self.processortabwidgets["minr400label"].setText(
+            self.label_minr400 + str(np.round(self.settingsdict["minr400"],2)))
+        self.processortabwidgets["minr400"].setValue(int(self.settingsdict["minr400"] * 100))
+            
+        self.processortabwidgets["mindr7500label"].setText(
+            self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)))
+        self.processortabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
+        
+        print(f"Updating mindr7500 : {self.settingsdict['mindr7500']}")
+        print(self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"])) )
+        
+        self.processortabwidgets["deadfreq"].setValue(self.settingsdict["deadfreq"])
+        self.processortabwidgets["markfreq"].setValue(self.settingsdict["mark_space_freqs"][0])
+        self.processortabwidgets["spacefreq"].setValue(self.settingsdict["mark_space_freqs"][1])
+        self.processortabwidgets["refreshrate"].setValue(self.settingsdict["refreshrate"])
+        self.processortabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
+            
         
         tc = self.settingsdict["tcoeff_axbt"]
         self.axbtconverttabwidgets["F2Tb0"].setText(str(tc[0]))
@@ -433,7 +464,17 @@ class RunSettings(QMainWindow):
         self.settingsdict["triggersiglev"] = float(self.processortabwidgets["triggersiglev"].value())/10
         self.settingsdict["triggerfftratio"] = float(self.processortabwidgets["triggerratio"].value())/100
         
-        #T/Z coefficients and frequency ranges are recorded on every update to their respective fields
+        self.settingsdict['minr400'] = float(self.processortabwidgets['minr400'].value())/100
+        self.settingsdict['mindr7500'] = float(self.processortabwidgets['mindr7500'].value())/100
+        self.settingsdict['deadfreq'] = int(self.processortabwidgets['deadfreq'].value())
+        self.settingsdict['mark_space_freqs'] = [int(self.processortabwidgets['markfreq'].value()), int(self.processortabwidgets['spacefreq'].value())]
+        self.settingsdict['refreshrate'] = float(self.processortabwidgets['refreshrate'].value())
+        self.settingsdict['usebandpass'] = self.processortabwidgets['usebandpass'].isChecked()
+        
+        for ckey in ['minr400','mindr7500','deadfreq','mark_space_freqs','refreshrate','usebandpass']:
+            print(f"{ckey}: {self.settingsdict[ckey]}")
+        
+        #AXBT/AXCTD coefficients and frequency ranges are recorded on every update to their respective fields
 
         self.settingsdict["platformid"] = self.processortabwidgets["IDedit"].text()
 
@@ -507,6 +548,9 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["autosave"] = QCheckBox('Autosave raw data files when transitioning to profile editor') #14
             self.processortabwidgets["autosave"].setChecked(self.settingsdict["autosave"])
             
+            
+            
+            
             self.processortabwidgets["axbtsiglabel"] = QLabel("AXBT Signal Settings")
             self.processortabwidgets["fftwindowlabel"] = QLabel(self.label_fftwindow +str(self.settingsdict["fftwindow"]).ljust(4,'0')) #15
             self.processortabwidgets["fftwindow"] = QSlider(Qt.Horizontal) #16
@@ -544,7 +588,60 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["triggerratio"].setMinimum(0)
             self.processortabwidgets["triggerratio"].setMaximum(100)
             self.processortabwidgets["triggerratio"].valueChanged[int].connect(self.changetriggerratio)
+            
+            
+            
+            self.processortabwidgets["axctdsiglabel"] = QLabel("AXCTD Settings") #21
+            self.processortabwidgets["minr400label"] = QLabel(self.label_minr400 +str(self.settingsdict["minr400"]).ljust(4,'0')) #22
+            self.processortabwidgets["minr400"] = QSlider(Qt.Horizontal) #23
+            self.processortabwidgets["minr400"].setMinimum(0)
+            self.processortabwidgets["minr400"].setMaximum(500)
+            self.processortabwidgets["minr400"].setValue(int(self.settingsdict["minr400"] * 100))
+            self.processortabwidgets["minr400"].valueChanged[int].connect(self.changeminr400)
 
+            self.processortabwidgets["mindr7500label"] = QLabel(self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)).ljust(4,'0'))  #24
+            self.processortabwidgets["mindr7500"] = QSlider(Qt.Horizontal)  #25
+            self.processortabwidgets["mindr7500"].setMinimum(0)
+            self.processortabwidgets["mindr7500"].setMaximum(500)
+            self.processortabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
+            self.processortabwidgets["mindr7500"].valueChanged[int].connect(self.changemindr7500)
+            
+            
+            self.processortabwidgets["deadfreqlabel"] = QLabel("Quiet Frequency (Hz): ")  #26
+            self.processortabwidgets["deadfreq"] = QSpinBox()  #27
+            self.processortabwidgets["deadfreq"].setMinimum(1000)
+            self.processortabwidgets["deadfreq"].setMaximum(7000)
+            self.processortabwidgets["deadfreq"].setSingleStep(1)
+            self.processortabwidgets["deadfreq"].setValue(int(self.settingsdict["deadfreq"]))
+            
+            
+            self.processortabwidgets["markfreqlabel"] = QLabel("Mark (1) Bit Freq. (Hz): ")  #28
+            self.processortabwidgets["markfreq"] = QSpinBox()  #29
+            self.processortabwidgets["markfreq"].setMinimum(100)
+            self.processortabwidgets["markfreq"].setMaximum(1000)
+            self.processortabwidgets["markfreq"].setSingleStep(1)
+            self.processortabwidgets["markfreq"].setValue(int(self.settingsdict["mark_space_freqs"][0]))
+            
+            
+            self.processortabwidgets["spacefreqlabel"] = QLabel("Space (0) Bit Freq. (Hz): ")  #30
+            self.processortabwidgets["spacefreq"] = QSpinBox()  #31
+            self.processortabwidgets["spacefreq"].setMinimum(100)
+            self.processortabwidgets["spacefreq"].setMaximum(1000)
+            self.processortabwidgets["spacefreq"].setSingleStep(1)
+            self.processortabwidgets["spacefreq"].setValue(int(self.settingsdict["mark_space_freqs"][1]))
+            
+            
+            self.processortabwidgets["refreshratelabel"] = QLabel("Refresh Rate (sec): ")  #32
+            self.processortabwidgets["refreshrate"] = QDoubleSpinBox()  #33
+            self.processortabwidgets["refreshrate"].setMinimum(0.25)
+            self.processortabwidgets["refreshrate"].setMaximum(10)
+            self.processortabwidgets["refreshrate"].setSingleStep(0.05)
+            self.processortabwidgets["refreshrate"].setValue(np.round(self.settingsdict['refreshrate']*20)/20)
+            
+            self.processortabwidgets["usebandpass"] = QCheckBox('Use 100 Hz - 1200 Hz bandpass filter') 
+            self.processortabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
+            
+            
             # formatting widgets
             self.processortabwidgets["IDlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
@@ -553,19 +650,19 @@ class RunSettings(QMainWindow):
                            "IDedit", "filesavetypes", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw",
                            "dtgwarn", "renametab", "autosave", "axbtsiglabel", "fftwindowlabel", "fftwindow",
                            "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel",
-                           "triggersiglev","triggerratiolabel","triggerratio"]
+                           "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass"]
 
-            wcols   = [1, 1, 1, 1, 1, 2, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5, 5, 5, 5,  5,  5]
-            wrows   = [1, 2, 3, 4, 5, 5, 1, 2, 3, 4, 5, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1]
-            wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 4, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1,  1,  1]
+            wcols   = [1,1,1,1,1,2,4,4,4,4,4,1,1,1,5,5,5,5,5,5,5,5,5, 5, 5,7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7]
+            wrows   = [1,2,3,4,5,5,1,2,3,4,5,7,8,9,1,2,3,4,5,6,7,8,9,10,11,1,2,3,4,5,7,7,8,8,9,9,10,10,11]
+            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1,1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1]
+            wcolext = [2,2,2,2,1,1,1,1,1,1,1,4,4,4,1,1,1,1,1,1,1,1,1, 1, 1,2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.processortablayout.addWidget(self.processortabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
-            colstretch = [5,1,1,2,3,3,5]
+            colstretch = [5,1,1,2,5,3,5,2,1,5]
             for i,s in enumerate(colstretch):
                 self.processortablayout.setColumnStretch(i, s)
             for i in range(0,12):
@@ -811,15 +908,18 @@ class RunSettings(QMainWindow):
             self.axctdconverttabwidgets["t2zlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             self.axctdconverttabwidgets["Tconvlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             self.axctdconverttabwidgets["Cconvlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axctdconverttabwidgets["t2zeqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axctdconverttabwidgets["Tconveqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
+            self.axctdconverttabwidgets["Cconveqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             
 
             # should be XX entries
             widgetorder = ["t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "Tconvlabel", "Tconveqn", "Tconvb0", "Tconvb1", "Tconvb2", "Tconvb3", "Tconvs0", "Tconvs1", "Tconvs2", "Tconvs3",  "Cconvlabel", "Cconveqn", "Cconvb0", "Cconvb1", "Cconvb2", "Cconvb3", "Cconvs0", "Cconvs1", "Cconvs2", "Cconvs3"]
 
-            wcols   = [1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,4,5,5,5,5,7,7,7,7,7,7,8,8,8,8]
-            wrows   = [1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6]
-            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-            wcolext = [2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1]
+            wcols   = [1, 0,1,1,1,1,2,2,2,2,4, 0,4,4,4,4,5,5,5,5,7, 0,7,7,7,7,8,8,8,8]
+            wrows =   [1, 7,2,3,4,5,2,3,4,5,1, 8,2,3,4,5,2,3,4,5,1, 9,2,3,4,5,2,3,4,5]
+            wrext   = [1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1]
+            wcolext = [2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1]
 
             # adding user inputs
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
@@ -829,7 +929,7 @@ class RunSettings(QMainWindow):
             colstretches = [5,2,1,1,2,1,1,2,1,5]
             for i,s in enumerate(colstretches):
                 self.axctdconverttablayout.setColumnStretch(i, s)
-            rowstretches = [3,1,2,1,1,1,1,1,1,1,1,3]
+            rowstretches = [3,1,1,1,1,1,2,1,1,1,1,3]
             for i,s in enumerate(rowstretches):
                 self.axctdconverttablayout.setRowStretch(i, s)
                 
@@ -877,15 +977,7 @@ class RunSettings(QMainWindow):
             
         
         
-        
-        
-        
-        
-        
-        
             
-            
-
     # =============================================================================
     #     GPS COM PORT SELECTION TAB AND INPUTS HERE
     # =============================================================================
@@ -1196,6 +1288,7 @@ class RunSettings(QMainWindow):
         
 
     #lookup table for originating centers (WMO BUFR table)
+    #file contents from https://www.nco.ncep.noaa.gov/sib/jeff/CodeFlag_0_STDv25_LOC7.html
     def buildcentertable(self):
         self.allcenters = {}
         self.allcenters['xxx'] = " Center ID not recognized! "
@@ -1234,7 +1327,15 @@ class RunSettings(QMainWindow):
         self.settingsdict["triggerfftratio"] = float(value) / 100
         self.processortabwidgets["triggerratiolabel"].setText(self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"]*100)).ljust(4,'0'))
         
-
+        
+    def changeminr400(self, value):
+        self.settingsdict["minr400"] = float(value) / 100
+        self.processortabwidgets["minr400label"].setText(self.label_minr400 + str(np.round(self.settingsdict["minr400"],2)).ljust(4,'0'))
+        
+        
+    def changemindr7500(self, value):
+        self.settingsdict["mindr7500"] = float(value) / 100
+        self.processortabwidgets["mindr7500label"].setText(self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)).ljust(4,'0'))
     
         
 

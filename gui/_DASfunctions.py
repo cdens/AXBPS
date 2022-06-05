@@ -627,7 +627,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
     if probetype == "AXBT":
         self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
     elif probetype == "AXCTD":
-        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir)
+        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir, minR400=self.settingsdict['minr400'], mindR7500= self.settingsdict['mindr7500'], deadfreq= self.settingsdict['deadfreq'], mintimeperloop= self.settingsdict['refreshrate'], mark_space_freqs= self.settingsdict['mark_space_freqs'], use_bandpass= self.settingsdict['usebandpass'], zcoeffdefault=self.settingsdict['zcoeff_axctd'], tcoeffdefault= self.settingsdict['tcoeff_axctd'], ccoeffdefault= self.settingsdict['ccoeff_axctd'])
         
     
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
@@ -807,9 +807,9 @@ def updateUIinfo(self,tabID,data):
             
             #appending data to current tab's list, generating table entries
             if probetype == "AXBT":
-                curcolors, table_data = self.update_AXBT_DAS(plottabnum, data)
+                curcolors, table_data = self.update_AXBT_DAS(plottabnum, data, False)
             elif probetype == "AXCTD":
-                curcolors, table_data = self.update_AXCTD_DAS(plottabnum, data)
+                curcolors, table_data = self.update_AXCTD_DAS(plottabnum, data, False)
                 
             #updating table
             table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
@@ -832,7 +832,7 @@ def updateUIinfo(self,tabID,data):
     
         
         
-def update_AXBT_DAS(self, plottabnum, data):
+def update_AXBT_DAS(self, plottabnum, data, interval_override):
     #pulling data from list
     ctemp = data[0]
     cdepth = data[1]
@@ -861,7 +861,7 @@ def update_AXBT_DAS(self, plottabnum, data):
 
         #plot the most recent point
         cdt = dt.datetime.utcnow()
-        if self.alltabdata[plottabnum]["rawdata"]["istriggered"] and (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5:
+        if self.alltabdata[plottabnum]["rawdata"]["istriggered"] and ((cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5 or interval_override):
             try:
                 del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
             except IndexError:
@@ -886,7 +886,7 @@ def update_AXBT_DAS(self, plottabnum, data):
     
     
     
-def update_AXCTD_DAS(self, plottabnum, data):
+def update_AXCTD_DAS(self, plottabnum, data, interval_override):
     
     #data organization:
     # profile started:     [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
@@ -923,7 +923,7 @@ def update_AXCTD_DAS(self, plottabnum, data):
 
         #plot the most recent point
         cdt = dt.datetime.utcnow()
-        if (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5:
+        if (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5 or interval_override:
             try:
                 del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
                 del self.alltabdata[plottabnum]["ProcAxes"][1].lines[-1]
@@ -968,11 +968,12 @@ def updateUIfinal(self,tabID):
         timemodule.sleep(0.25)
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
+        #updating UI with interval_override=True so the plot will be updated to include the full profile
         probetype = self.alltabdata[plottabnum]["probetype"]
         if probetype == 'AXBT':
-            self.update_AXBT_DAS(plottabnum, [[],[],[],[],[],[]])
+            self.update_AXBT_DAS(plottabnum, [[],[],[],[],[],[]], True)
         elif probetype == 'AXCTD':
-            self.update_AXCTD_DAS(plottabnum, [[],[],[],[],[],[],[],[],[]])
+            self.update_AXCTD_DAS(plottabnum, [[],[],[],[],[],[],[],[],[]], True)
             
         if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]:
             self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].deleteLater()
