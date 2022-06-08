@@ -21,10 +21,6 @@ import numpy as np
 from datetime import date, datetime, timedelta
 import chardet
 
-from pykml import parser
-from pykml.factory import KML_ElementMaker as kml
-import lxml
-
 
 
 #read raw temperature/depth profile from LOGXX.DTA file
