@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -51,10 +51,12 @@ import lib.DAS.common_DAS_functions as cdf
 #         INITIALIZES VARIABLES, ACTIVATES RECEIVER OR OPENS AUDIO FILE
 # =============================================================================        
         
-        
-def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,probetype):
+#initialize variables common to all DAS tabs (AXCTD,AXBT,etc)
+def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhffreq,probetype):
     
-     
+    self.common_vars_init = False #prevents AXCTD settings update function from running until necessary variables are initialized
+    self.probetype = probetype
+    
     self.dll = dll # saves DLL/API library
     self.tabID = tabID #keeps track of which tab in GUI this thread corresponds to
     
@@ -111,7 +113,7 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,prob
     
         #pull receiver serial number, activate current receiver/establish contact
         self.serial = datasource[2:]
-        self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,self.serial)
+        self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,self.serial,vhffreq)
         
         # initialize audio stream data variables
         self.fs = cdf.get_fs(self.dll, self.sourcetype) #f_s depends on type of receiver connected
@@ -123,7 +125,11 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,prob
         wave.Wave_write.setsampwidth(self.wavfile,2)
         wave.Wave_write.setframerate(self.wavfile,self.f_s)
         wave.Wave_write.writeframes(self.wavfile,bytearray(self.audiostream))
+    
         
+    
+    self.common_vars_init = True
+    
         
         
 def wait_to_run(self):
@@ -146,7 +152,7 @@ def wait_to_run(self):
 # =============================================================================    
 
 
-def kill(self,reason):
+def kill(self,reason): #stop current thread
     #NOTE: function contains 0.3 seconds of sleep to prevent race conditions between the processor loop, callback function and main GUI event loop
     try:
         self.waittoterminate = True #keeps run method from terminating until kill process completes
@@ -185,12 +191,12 @@ def killaudiorecording(self):
     
     
 @pyqtSlot()
-def abort(self): #executed when user selects "Stop" button
+def abort(self): #executed when user selects "Stop" button (passed via pyqtSlot)
     self.kill(0) #tell processor to terminate with 0 (success) exit code
     
     
-@pyqtSlot(float)
-def changecurrentfrequency(self, newfreq): #update VHF frequency for WiNRADIO
+@pyqtSlot(float) #called from the DAS GUI via a pyqtSlot
+def changecurrentfrequency(self, newfreq): #update VHF frequency for radio receiver
     # change frequency- kill if failed
     try:
         status = self.change_receiver_freq(self.dll,self.sourcetype,self.hradio,newfreq)
@@ -207,11 +213,14 @@ def changethresholds(self, settings): #update data thresholds for FFT
     self.update_settings(settings)  
     
     
+#updating the settings for the current tab: this will write all settings sent from AXBPS to the DAS processor, which are defined by the settingstopull variable in gui/_DASfunctions.py
 def update_settings(self,settings):
-    for key in settings.keys():
+    for key in settings.keys(): 
         self.settings[key] = settings[key]
     if "fftwindow" in settings.keys(): #limit FFT window setting to 1 second
         self.settings['fftwindow'] = np.min([self.settings['fftwindow'], 1])
+    if self.probetype == 'AXCTD' and self.common_vars_init:
+        self.load_AXCTD_settings() #refresh variables for all AXCTD settings
     
     
     

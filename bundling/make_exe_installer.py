@@ -93,7 +93,7 @@ if __name__ == "__main__":
     print("Configuring environment/preparing to bundle AXBPS")
     specfile = "main.spec"
     specfilecontents = open(specfile,"r").read().strip()
-    issfile = "AXBPS_installer_setup.iss"
+    issfile = "axbps_installer_setup.iss"
     issfilecontents = open(issfile,"r").read().strip()
     
     os.chdir("..") #backing out of bundling folder

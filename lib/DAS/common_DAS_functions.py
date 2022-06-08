@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -79,7 +79,7 @@ def channelandfrequencylookup(value,direction):
         outval = 0
         correctedval = 0
     
-        return outval,correctedval
+    return outval,correctedval
         
         
         
@@ -162,7 +162,7 @@ class ReceiverTypeNotRecognized(Exception):
     
         
         
-def list_receivers(dll):
+def list_receivers(dll): #get a list of all radio receivers
     
     receivers = []
     rtypes = []
@@ -170,22 +170,23 @@ def list_receivers(dll):
     #add winradio receivers if DLL loaded (windows environment)
     if 'WR' in dll.keys():
         wr_receivers = wr.list_radios(dll['WR'])
-        receivers.extend()
+        receivers.extend(wr_receivers)
         rtypes.append('WR' for _ in wr_receivers)
     
     return receivers,rtypes
     
     
-def get_fs(dll,rtype):
+def get_fs(dll,rtype): #identify sampling frequency of demodulated data from receiver by type
     if rtype == 'WR': 
         f_s = 64000  #WiNRADIO sampling frequency is always 64 kHz
     else:
         raise ReceiverTypeNotRecognized(rtype)
     return f_s
     
-def activate_receiver(dll,rtype,serial):
+    
+def activate_receiver(dll,rtype,serial,vhffreq): #power on/configure radio receiver
     if rtype == 'WR':
-        hradio,status = wr.activate_receiver(dll['WR'], serial)
+        hradio,status = wr.activate_receiver(dll['WR'], serial, vhffreq,)
     else:
         raise ReceiverTypeNotRecognized(rtype)
         
@@ -193,7 +194,7 @@ def activate_receiver(dll,rtype,serial):
     
     
     
-def change_receiver_freq(dll,rtype,hradio,freq):
+def change_receiver_freq(dll,rtype,hradio,freq): #switch VHF frequency being demodulated
     if rtype == 'WR':
         status = wr.change_receiver_freq(dll['WR'],hradio,freq)
     else:
@@ -202,7 +203,7 @@ def change_receiver_freq(dll,rtype,hradio,freq):
     return status
     
     
-def check_connected(dll,rtype,hradio):
+def check_connected(dll,rtype,hradio): #verify that specified receiver is actively connected/on
     if rtype == 'WR':
         status = wr.check_receiver_connected(dll['WR'],hradio)
     else:
@@ -210,19 +211,9 @@ def check_connected(dll,rtype,hradio):
     
     return status
     
-    
-        
-def set_data_stream(dll,rtype,destination):
-    if rtype == 'WR':
-        status = wr.setup_receiver_stream(wrdll,destination)
-    else:
-        raise ReceiverTypeNotRecognized(rtype)
-    
-    return status
-    
         
     
-def stop_receiver(dll,rtype,hradio):
+def stop_receiver(dll,rtype,hradio): #redirect audio stream/callback to null and stop/power off receiver
     if rtype == 'WR':
         wr.stop_receiver(dll['WR'],hradio)
     else:
@@ -230,7 +221,7 @@ def stop_receiver(dll,rtype,hradio):
     
                 
     
-def initialize_receiver_callback(rtype, hradio, destination, tabID):
+def initialize_receiver_callback(rtype, hradio, destination, tabID): #specify callback function for audio stream 
     if rtype == 'WR':
         status = wr.setup_receiver_stream(dll['WR'],hradio,destination,tabID)
     else:

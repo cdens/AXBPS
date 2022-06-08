@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with ARES.  If not, see <https://www.gnu.org/licenses/>.
+#    along with AXBPS.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
 from platform import system as cursys
@@ -46,6 +46,8 @@ import gui._settingswindow as swin
 from ._globalfunctions import (addnewtab, whatTab, renametab, setnewtabcolor, closecurrenttab, savedataincurtab, postwarning, posterror, postwarning_option, closeEvent, parsestringinputs)
 
 
+
+#initializing the UI, setting default file paths, initializing the threadpool, and loading receiver DLL files
 def initUI(self):
 
     #setting window size
@@ -152,25 +154,25 @@ def initUI(self):
     
     #initializing GPS thread
     self.goodPosition = False
-    self.lat = 0.
+    self.lat = 0. #position
     self.lon = 0.
     self.datetime = datetime(1,1,1) #default date- January 1st, 0001 so default GPS time is outside valid window for use
-    self.bearing = 0.
-    self.qual = -1
-    self.nsat = -1
-    self.alt = 0.
-    self.sendGPS2settings = False
+    self.bearing = 0. #bearing calculated from previous positions
+    self.qual = -1 #GPS fix quality
+    self.nsat = -1 #number of satellites in contact
+    self.alt = 0. #altitude
+    self.sendGPS2settings = False #true when settings tab is open and a GPS is connected
     self.GPSthread = gps.GPSthread(self.settingsdict["comport"],self.settingsdict['gpsbaud'])
     self.GPSthread.signals.update.connect(self.updateGPSdata) #function located in this file after settingswindow update
     self.threadpool.start(self.GPSthread)
     
-    
+    #reason codes for profiles that don't have good data
     self.reason_code_strings = ["Good Profile", "No Signal", "Spotty/Intermittent", "Hung Probe/Early Start", "Isothermal", "Late Start", "Slow Falling", "Bottom Strike", "Climatology Mismatch", "Action Required/Reprocess"]
 
 
-    # loading WiNRADIO DLL API
+    # loading all radio receiver library files
     self.dll = {}
-    if cursys() == 'Windows':
+    if cursys() == 'Windows': #radio receivers with windows DLLs to load
         try:
             if calcsize("P")*8 == 32: #32-bit
                 self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_32.dll") #32-bit
@@ -199,18 +201,27 @@ def loaddata(self):
     self.climodata = {}
     self.bathymetrydata = {}
     
-    try:
+    # Climatology data are broken up into 6deg x 6deg 3D cubes per month and topography/bathymetry data are broken up into 1deg x 1deg 2D squares
+    #   > data/climo/Z.txt holds the depths associated with each climatology file
+    # The vals.txt files for climo and bathy data hold the lat/lon offets (in degrees) for each square. For example,
+    #    if bathy/vals.txt contains the values [0,0.25,0.5,0.75], then a bathymetry file for 38N,72E would have latitude
+    #    indices of [38,38.25,38.5,38.75] and longitude indices of [72,72.25,72.5,72.75] 
+    
+    #loading climatology indices
+    try: 
         self.climodata["vals"] = np.array([float(i) for i in open('data/climo/latlonoffsets.txt').read().strip().split(',') if i != ''])
         self.climodata["depth"] = np.array([float(i) for i in open('data/climo/Z.txt').read().strip().split(',') if i != ''])
     except:
         self.posterror("Unable to find/load climatology data")
     
-    try:
+    #loading bathymetry indices
+    try: 
         self.bathymetrydata["vals"] = np.array([float(i) for i in open('data/bathy/vals.txt').read().strip().split(',') if i != ''])
     except:
         self.posterror("Unable to find/load bathymetry data")  
-            
-    try:
+    
+    #loading regions shape file to identify name of ocean/sea/water where a profile was collected (for location plots)      
+    try: 
         self.landshp = shapereader.Reader('data/regions/GSHHS_i_L1.shp')
     except:
         self.posterror("Unable to read land area shape file (GSHHS_i_L1.shp)")
@@ -259,7 +270,7 @@ def buildmenu(self):
     openpreferences.triggered.connect(self.openpreferencesthread)
     FileMenu.addAction(openpreferences)
     
-    #GUI font size control- !!this requires that self.configureGuiFont() has already been run to set self.fontoptions, self.fonttitles, and self.fontindex
+    #GUI font size control- !! this requires that self.configureGuiFont() has already been run to set self.fontoptions, self.fonttitles, and self.fontindex
     self.fontMenu = QMenu("Font Size") #making menu, action group
     self.fontMenuActionGroup = QActionGroup(self,exclusive=True)
     
@@ -280,7 +291,7 @@ def buildmenu(self):
         if i == self.fontindex:
             curaction.setChecked(True)
         
-    self.fontMenuActionGroup.triggered.connect(self.changeGuiFont)
+    self.fontMenuActionGroup.triggered.connect(self.changeGuiFont) #connect function to change font if user selects it
     FileMenu.addMenu(self.fontMenu)
     
     
@@ -364,7 +375,7 @@ def changeGuiFont(self):
 #     PREFERENCES THREAD CONNECTION AND SLOT
 # =============================================================================
 
-#opening advanced preferences window
+#opening advanced preferences window (selected from top menu)
 def openpreferencesthread(self):
     if not self.preferencesopened: #if the window isn't opened in background- create a new window
         self.preferencesopened = True
@@ -390,8 +401,8 @@ def updatesettings(self,settingsdict):
     #save settings to file
     swin.writesettings(self.settingsfile, self.settingsdict)
     
-    #update fft settings for actively processing tabs
-    self.updatefftsettings()
+    #update DAS settings for actively processing tabs
+    self.updateDASsettings()
     
 
 #slot to update main GUI loop if the preferences window has been closed
@@ -414,7 +425,8 @@ def updateGPSsettings(self,comport,baudrate):
 #slot to receive (and immediately update) GPS port and baud rate
 @pyqtSlot(int,float,float,datetime,int,int,float)
 def updateGPSdata(self,isGood,lat,lon,gpsdatetime,nsat,qual,alt):
-    if isGood == 0:
+    
+    if isGood == 0: #data contains a valid GPS fix
         dlat = lat - self.lat #for bearing
         dlon = lon - self.lon
         
@@ -426,7 +438,7 @@ def updateGPSdata(self,isGood,lat,lon,gpsdatetime,nsat,qual,alt):
         self.alt = alt
         self.goodPosition = True
         
-        #add to the lat log
+        #add to the position log
         self.latlog.append(lat)
         self.lonlog.append(lon)
         self.altlog.append(alt)
@@ -441,12 +453,12 @@ def updateGPSdata(self,isGood,lat,lon,gpsdatetime,nsat,qual,alt):
         if self.preferencesopened: #only send GPS data to settings window if it's open
             self.settingsthread.refreshgpsdata(True, lat, lon, gpsdatetime, nsat, qual, alt)
             
-    else:
+    else: #data received doesn't contain a valid GPS fix
         self.goodPosition = False
         if self.preferencesopened and self.sendGPS2settings:
             self.settingsthread.refreshgpsdata(False, 0., 0., datetime(1,1,1), 0, 0, 0.)
-            self.sendGPS2settings = False
-            self.settingsthread.postGPSissue(isGood)
+            self.sendGPS2settings = False #stop sending GPS data to settings if the data is bad
+            self.settingsthread.postGPSissue(isGood) #opens a message in the settings window with cause of GPS issue
             
 
         

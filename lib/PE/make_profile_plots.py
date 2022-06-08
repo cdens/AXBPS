@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -20,6 +20,8 @@
 import lib.PE.geoplotfunctions as gplt
 import numpy as np
 from matplotlib.colors import ListedColormap
+
+
 
 #dtg: string drop ID (should be date in YYYYMMDDHHMM format)
 #rawdata/rawdepth = raw profile
@@ -49,7 +51,7 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
     ax.legend()
     ax.grid()
     
-    #setting up limits
+    #setting up axis limits
     y_max = 1000
     ytickvals = [0,100,200,400,600,800,1000]
     if axlimtype == 0:
@@ -91,6 +93,7 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
     
     
 
+#plots labelled profile location overlaid with filled bathymetry contours
 def makelocationplot(fig,ax,lat,lon,dtg,exportlon,exportlat,exportrelief,dcoord):
     
     
@@ -127,7 +130,7 @@ def makelocationplot(fig,ax,lat,lon,dtg,exportlon,exportlat,exportrelief,dcoord)
     cbar = fig.colorbar(c,ax=ax)
     cbar.set_label('Elevation (m)')
     
-    #scatter AXBT location
+    #scatter profile location
     if multipoints:
         for clat,clon in zip(lat,lon):
             ax.scatter(clon,clat,color='r',marker='x',linewidth=2) 

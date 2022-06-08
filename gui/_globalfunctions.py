@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with ARES.  If not, see <https://www.gnu.org/licenses/>.
+#    along with AXBPS.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
 from platform import system as cursys
@@ -73,7 +73,7 @@ def whatTab(self):
 def renametab(self):
     try:
         opentab = self.whatTab()
-        badcharlist = "[@!#$%^&*()<>?/\|}{~:]"
+        badcharlist = "[@!#$%^&*()<>?/\|}{~:]" #bad characters not allowed in tab names
         strcheck = re.compile(badcharlist)
         name, ok = QInputDialog.getText(self, 'Rename Current Tab', 'Enter new tab name:',QLineEdit.Normal,str(self.tabWidget.tabText(opentab)))
         if ok:
@@ -131,11 +131,11 @@ def closecurrenttab(self):
     try:
         opentab = self.whatTab()
         
-        reply = QMessageBox.question(self, 'Message',
+        reply = QMessageBox.question(self, 'Message', #ask user if they are sure (pop up message)
             "Are you sure to close the current tab?", QMessageBox.Yes | 
             QMessageBox.No, QMessageBox.No)
 
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.Yes: #user wants to close tab, continue
 
             #getting tab to close
             indextoclose = self.tabWidget.currentIndex()
@@ -150,7 +150,7 @@ def closecurrenttab(self):
                 else:
                     self.alltabdata[opentab]["processor"].abort()
 
-            #closing open figures in tab to prevent memory leak
+            #explicitly closing open figures in tab to prevent memory leak
             if self.alltabdata[opentab]["tabtype"] == "ProfileEditor":
                 plt.close(self.alltabdata[opentab]["LocFig"])
                 for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
@@ -221,24 +221,25 @@ def closeEvent(self, event):
         QMessageBox.No, QMessageBox.No)
     if reply == QMessageBox.Yes:
 
-        if self.preferencesopened:
+        if self.preferencesopened: #close the settings window
             self.settingsthread.close()
 
         #explicitly closing figures to clean up memory (should be redundant here but just in case)
         for ctab,_ in enumerate(self.alltabdata):
-            if self.alltabdata[ctab]["tabtype"] == "PE_p": #processed only
+            if self.alltabdata[ctab]["tabtype"] == "PE_p": #processed Profile Editor tab only
                 plt.close(self.alltabdata[ctab]["LocFig"])
                 for ckey in self.alltabdata[ctab]["ProfFigs"].keys():
                     plt.close(self.alltabdata[ctab]["ProfFigs"][ckey])
 
-            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS': #processed or unprocessed
+            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS': #processed or unprocessed DAS tab
                 plt.close(self.alltabdata[ctab]["ProcessorFig"])
 
-                #aborting all threads
+                #aborting all threads (stopping any active DAS processes)
                 if self.alltabdata[ctab]["isprocessing"]:
                     self.alltabdata[ctab]["processor"].abort()
 
-        event.accept()
+        event.accept() #close window
+        
         # delete all temporary files
         allfilesanddirs = listdir(self.systempdir)
         for cfile in allfilesanddirs:
@@ -247,7 +248,8 @@ def closeEvent(self, event):
                 cfileext = cfile[-3:]
                 if (cfilestart.lower() == 'temp' and cfileext.lower() == 'wav') or (cfilestart.lower() == 'sigd' and cfileext.lower() == 'txt'):
                     remove(self.systempdir + slash + cfile)
-    else:
+                    
+    else: #user selects no- don't close the program
         event.ignore() 
 
                 
@@ -256,7 +258,7 @@ def closeEvent(self, event):
         
         
         
-#class to customize nagivation toolbar in profile editor tab
+#class to customize nagivation toolbar in profile editor tab to control profile plots (pan/zoom/reset view)
 class CustomToolbar(NavigationToolbar):
     def __init__(self,canvas_,parent_):
         self.toolitems = (
@@ -330,7 +332,7 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
 
 
 
-        if checktime: #checking time
+        if checktime: #checking date and time
             if len(timestr) != 4:
                 self.postwarning('Invalid Time Format (must be HHMM)!')
                 isgood = False
@@ -445,7 +447,7 @@ def savedataincurtab(self):
     #this will be 'unknown' if the tab hasn't been processed but another check will prevent the function from trying to save a profile from an unprocessed tab
     probetype = self.alltabdata[opentab]["probetype"]
     
-    profheadername = ''
+    profheadername = '' #pulling date and time to use as default filename for the file saving prompt
     try:
         if self.alltabdata[opentab]["tabtype"] == "PE_p":
             profheadername = dt.datetime.strftime(self.alltabdata[opentab]["profdata"]["dropdatetime"],'%Y%m%d%H%M')
@@ -454,7 +456,8 @@ def savedataincurtab(self):
     except: #if it doesn't work, dont worry just use default drop filename
         pass
         
-    if profheadername == '' or profheadername.upper() == 'YYYYMMDDHHMM':
+    #if no date is provided, creating a new default save name based on the current time
+    if profheadername == '' or profheadername.upper() == 'YYYYMMDDHHMM': 
         csavedtg = dt.datetime.strftime(dt.datetime.utcnow(),'%Y%m%d%H%M')
         profheadername = f'{probetype}_profile_savedAt_{csavedtg}'
         
@@ -463,17 +466,17 @@ def savedataincurtab(self):
     
     #getting directory to save files from QFileDialog
     try:
-        outfileheader = str(QFileDialog.getSaveFileName(self, "Select directory/header for saved file(s)", defaultfilename, options=QFileDialog.DontUseNativeDialog))
+        outfileheader = str(QFileDialog.getSaveFileName(self, "Select directory/header for saved file(s)", defaultfilename, options=QFileDialog.DontUseNativeDialog)) #creating file save dialog box
         
-        #pull filename from returned info
+        #pull filename from returned info, parsed out- format is: ('path/to/filename.txt','Filetypes '*'')
         outfileheader = outfileheader.replace('(',' ').replace(')',' ').replace("'",' ').strip().split(',')[0].strip()
         
-        if outfileheader == '': #checking directory validity (if you hit cancel, outfileheader will evaluate to ')' )
-            QApplication.restoreOverrideCursor()
+        if outfileheader == '': #checking directory validity (if you hit cancel, outfileheader will evaluate to '' )
+            QApplication.restoreOverrideCursor() #cancel save
             return False
         else:
-            outdir,_  = path.split(outfileheader)
-            self.defaultfilewritedir = outdir
+            outdir,_  = path.split(outfileheader) #parse filename and file header
+            self.defaultfilewritedir = outdir #update default file saving directory
     except Exception:
         trace_error()
         self.posterror("Error raised in directory selection")
@@ -483,13 +486,13 @@ def savedataincurtab(self):
     try:
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
-        if self.alltabdata[opentab]["tabtype"] == "PE_p":
-            self.savePEfiles(opentab,outfileheader,probetype)
-        elif self.alltabdata[opentab]["tabtype"] == "DAS_p":
-            if self.alltabdata[opentab]["isprocessing"]:
+        if self.alltabdata[opentab]["tabtype"] == "PE_p": #profile editor tab
+            self.savePEfiles(opentab,outfileheader,probetype) #saving profile editor files
+        elif self.alltabdata[opentab]["tabtype"] == "DAS_p": #DAS tab
+            if self.alltabdata[opentab]["isprocessing"]: 
                 self.postwarning('You must stop processing the current tab before saving data!')
             else:
-                self.saveDASfiles(opentab,outfileheader,probetype)
+                self.saveDASfiles(opentab,outfileheader,probetype) #saving DAS files
         else:
             self.postwarning('You must process a profile before attempting to save data!')
             
@@ -517,7 +520,9 @@ def check_filename(self,original_file_header):
     pathname, original_file_name = path.split(original_file_header) #split into file header and file path
     filename = original_file_name
     fileheadersindir = [cf.split('.')[0] for cf in listdir(pathname)] #returns file headers (not inc. extension)
-    while any([filename == cf for cf in fileheadersindir]):
+    
+    #if duplicate file exists, append a unique number to the end of the file before saving it
+    while any([filename == cf for cf in fileheadersindir]): 
         new_file_num += 1
         filename = f"{original_file_name}_{new_file_num}"
     
@@ -583,7 +588,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     Temp. Coeff. 4   :  {tcoeff[3]}"""
 
 
-    # pulling data from inputs
+    # pulling date/time/position data from inputs to save
     latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
     lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
     profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
@@ -602,14 +607,14 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     filename = self.check_filename(outfileheader)
         
     
-    if self.settingsdict["savenvo_raw"] and goodmetadata:
+    if self.settingsdict["savenvo_raw"] and goodmetadata: #save NVO file
         try:
             io.writefinfile(filename+'.nvo', dropdatetime, lat, lon, 99, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
         except Exception:
             trace_error()
             self.posterror("Failed to save NVO file")
             
-    if self.settingsdict["saveedf_raw"] and goodmetadata:
+    if self.settingsdict["saveedf_raw"] and goodmetadata: #save EDF file
         try:
             #creating comment for data source and VHF channel/frequency (if applicable) used
             cdatasource = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
@@ -622,7 +627,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             trace_error()
             self.posterror("Failed to save EDF file")
 
-    if self.settingsdict["savewav_raw"]:
+    if self.settingsdict["savewav_raw"]: #save audio (WAV) file
         try:
             oldfile = self.tempdir + slash + 'tempwav_' + str(self.alltabdata[opentab]["tabnum"]) + '.WAV'
             newfile = filename + '.WAV'
@@ -644,7 +649,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             trace_error()
             self.posterror("Failed to save WAV file")
 
-    if self.settingsdict["savesig_raw"]:
+    if self.settingsdict["savesig_raw"]: #save signal data file
         try:
             oldfile = self.tempdir + slash + 'sigdata_' + str(self.alltabdata[opentab]["tabnum"]) + '.txt'
             newfile = filename + '.sigdata'
@@ -727,35 +732,35 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     dtg = dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M')
     filename = self.check_filename(outfileheader)
     
-    if self.settingsdict["saveedf_qc"]:
+    if self.settingsdict["saveedf_qc"]: #save EDF file
         try:
             io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=True)
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
     
-    if self.settingsdict["savefin_qc"]:
+    if self.settingsdict["savefin_qc"]: #save FIN (1m) file
         try:
             io.writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save FIN file")
             
-    if self.settingsdict["savejjvv_qc"]:
+    if self.settingsdict["savejjvv_qc"]: #save JJVV file (temperature profile only)
         try:
             io.writejjvvfile(filename+'.jjvv',temperature, depthT, dropdatetime, lat, lon, identifier, isbtmstrike)
         except Exception:
             trace_error()
             self.posterror("Failed to save JJVV file")
             
-    if self.settingsdict["savebufr_qc"]:
+    if self.settingsdict["savebufr_qc"]: #save WMO-formatted BUFR file
         try:
             io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save BUFR file")
             
-    if self.settingsdict["saveprof_qc"]:
+    if self.settingsdict["saveprof_qc"]: #save profile plot(s)
         try:
             #initializing both figures first so they will exist/can be closed if plotting code throws an error
             figT = plt.figure() 
@@ -788,7 +793,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
             plt.close('figT')
             plt.close('figS')
 
-    if self.settingsdict["saveloc_qc"]:
+    if self.settingsdict["saveloc_qc"]: #save position plot with bathymetry overlay
         try:
             figL = plt.figure()
             figL.clear()

@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -26,8 +26,8 @@ import scipy.interpolate as sint
 
 
 
-
-def runningsmooth(data,halfwindow):
+#apply a box smoothing filter to dataset with specified window length
+def runningsmooth(data,halfwindow): 
     
     #if the running filter is longer than the dataset, return an array with same length as dataset containing dataset mean
     if halfwindow*2+1 >= len(data): 
@@ -114,24 +114,24 @@ def getclimatologyprofile(lat,lon,month,climodata):
     
 
 #comparing current profile to climatology
-def comparetoclimo(temperature,depth,climotemps,climodepths,climotempfill,climodepthfill):
+def comparetoclimo(data,depth,climodatas,climodepths,climodatafill,climodepthfill):
     
-    climotemps[np.less_equal(climotemps,-8)] = np.nan
+    climodatas[np.less_equal(climodatas,-8)] = np.nan
     
     #interpolating climatology to match profile depths
-    intclimotemp = np.interp(depth,climodepths,climotemps)
+    intclimodata = np.interp(depth,climodepths,climodatas)
     
     #identifying and removing NaNs from dataset
-    isnandata = np.isnan(intclimotemp*temperature)
+    isnandata = np.isnan(intclimodata*data)
     
     if sum(isnandata) != len(isnandata): #if there are non-NaN datapoints
-        temperature = temperature[isnandata == 0]
-        intclimotemp = intclimotemp[isnandata == 0]
+        data = data[isnandata == 0]
+        intclimodata = intclimodata[isnandata == 0]
         depth = depth[isnandata == 0]
         
         #determining profile slopes
-        climoslope = np.diff(intclimotemp)/np.diff(depth)
-        profslope = np.diff(temperature)/np.diff(depth)
+        climoslope = np.diff(intclimodata)/np.diff(depth)
+        profslope = np.diff(data)/np.diff(depth)
         slopedepths = 0.5*depth[1:] + 0.5*depth[:-1]
         
         #comparing slopes:
@@ -142,7 +142,7 @@ def comparetoclimo(temperature,depth,climotemps,climodepths,climotempfill,climod
         if sum(ismismatch) != 0:
             climobottomcutoff = np.max(slopedepths[ismismatch])
             isabovecutoff = np.less_equal(depth,climobottomcutoff)
-            temperature = temperature[isabovecutoff == 1]
+            data = data[isabovecutoff == 1]
             depth = depth[isabovecutoff == 1]
         else:
             climobottomcutoff = np.nan
@@ -156,14 +156,14 @@ def comparetoclimo(temperature,depth,climotemps,climodepths,climotempfill,climod
         #check to see if climatology generally matches profile (is 90% of profile within climatology fill window?)
         isinclimo = []
         climopolylist = []
-        for i in range(len(climotempfill)):
-            climopolylist.append([climotempfill[i],climodepthfill[i]])
+        for i in range(len(climodatafill)):
+            climopolylist.append([climodatafill[i],climodepthfill[i]])
         climopolygon = Polygon(climopolylist)    
         
         depth[0] = 0.1
-        for i in range(len(temperature)):
+        for i in range(len(data)):
             if depth[i] <= maxd:
-                curpoint = Point(temperature[i], depth[i])
+                curpoint = Point(data[i], depth[i])
                 isinclimo.append(int(climopolygon.contains(curpoint)))
             
         minpctmatch = 0.5 #checks if prof matches climo: more than (minpctmatch*100) percent of profile must be within +/1 one standard deviation of climatology profile to be considered a match (0 <= minpctmatch <= 1)
@@ -176,7 +176,9 @@ def comparetoclimo(temperature,depth,climotemps,climodepths,climotempfill,climod
         matchclimo = 1
         climobottomcutoff = np.nan
         
+        
     return matchclimo,climobottomcutoff
+        
 
 
     

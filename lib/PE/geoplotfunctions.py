@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -25,7 +25,7 @@ from shapefile import Reader as shread
 import matplotlib.ticker as mticker
 
 
-
+#adjusts geographic axis limits to accomplish 1:1 scaling at the plot center for a Mercator projection
 def setgeoaxes(fig,ax,xrange,yrange,changeaxis):
     
     # set initial x and y axis limits
@@ -61,6 +61,8 @@ def setgeoaxes(fig,ax,xrange,yrange,changeaxis):
         ax.set_ylim(latrangenew)
 
 
+        
+#function formatters add degrees E/W/N/S for axis labels of location plots
 @mticker.FuncFormatter
 def major_lon_formatter(x, pos):
     if x >= 0 and x <= 180: #eastern hemisphere
@@ -87,6 +89,7 @@ def major_lat_formatter(y, pos):
     return f"{y}$^\circ${hem}" # set current tick label    
 
 
+#apply function formatters for latitude and longitude to say degrees E/W/N/S
 def setgeotick(ax):
     # ax.xaxis.set_major_locator(ticker.LogLocator(base=10, numticks=5))
     ax.xaxis.set_major_formatter(major_lon_formatter)

@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -24,7 +24,7 @@
 #   as this one, including the following functions:
 #   list_radios, activate_receiver, change_receiver_freq, setup_receiver_stream, and stop_receiver,
 #   and integrate those functions into the common_DAS_functions.py code, assigning a unique 2-letter 
-#   string identifier for that type of radio (cannot be AA, TT, or WR)
+#   string identifier for that type of radio (cannot be AA, TT, or any receiver identifiers like WR)
 #   Additionally, add callback functions that will update self.audiostream in the DAS_callbacks.py file
 
 
@@ -36,6 +36,14 @@ import time as timemodule
 
 from traceback import print_exc as trace_error
     
+
+#!!!!!!!!!!!!!!!!!!          README FOR INFO ON WINRADIO FUNCTIONS:             !!!!!!!!!!!!!!!!!!!!!!!!!
+#Any functions called below from the winradio DLL (e.g. wrdll.GetRadioList, wrdll.IsDeviceConnected, etc.)
+#are outlined in the WiNRADIO software development kit at https://winradio.com/home/g39wsb_sdk.htm
+#This includes the function names and their inputs and outputs. The input and output variables are C type
+#variables, which require the python ctypes module (imported above) to be initialized properly.
+
+
 # =============================================================================
 # LIST ALL CONNECTED WINRADIO RECEIVERS
 # =============================================================================
@@ -80,7 +88,7 @@ def list_radios(wrdll):
 # =============================================================================
 # CONTROL CONNECTED WINRADIO RECEIVERS
 # =============================================================================
-def activate_receiver(wrdll,serial,vhffreq):
+def activate_receiver(wrdll,serial,vhffreq): #turn on radio receiver
     
     startthread = 0
     hradio = 0
@@ -113,26 +121,32 @@ def activate_receiver(wrdll,serial,vhffreq):
             trace_error()
             startthread = 6
             
+            
+    #shut down the receiver if it was powered on but had a subsequent error
+    if hradio > 0 and startthread > 0:
+        stop_receiver(wrdll,hradio)
+    
+            
     return hradio, startthread
     
     
-def check_receiver_connected(wrdll,hradio):
+def check_receiver_connected(wrdll,hradio): #verify the device is connected
     return wrdll.IsDeviceConnected(hradio)
     
-def change_receiver_freq(wrdll,hradio,vhffreq):
+def change_receiver_freq(wrdll,hradio,vhffreq): #change VHF frequency for demodulation
     vhffreq_2WR = c_ulong(int(vhffreq * 1E6))
     status = wrdll.SetFrequency(hradio, vhffreq_2WR)
     return status
     
     
-def setup_receiver_stream(wrdll,hradio,destination,tabID):
+def setup_receiver_stream(wrdll,hradio,destination,tabID): #direct demodulated PCM data to a destination callback function
     status = wrdll.SetupStreams(hradio, None, None, destination, c_int(tabID))
     return status
     
     
-def stop_receiver(wrdll,hradio):
+def stop_receiver(wrdll,hradio): #power off/disconnect receiver
     wrdll.SetupStreams(hradio, None, None, None, None)
-    timemodule.sleep(0.3) #additional time after stream directed to null before closing wav file
+    timemodule.sleep(0.3) #additional time after stream directed to null before finishing function and allowing DAS to close audio file
     wrdll.CloseRadioDevice(hradio)
     
     

@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with ARES.  If not, see <https://www.gnu.org/licenses/>.
+#    along with AXBPS.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
 
@@ -23,7 +23,7 @@ import numpy as np
 def autoqc(rawdata,rawdepth,smoothlev,profres,maxdev,checkforgaps):
     
 
-    #Step 1: Find and remove gaps due to VHF interference kicking off early Mk21 start
+    #Step 1: Find and remove gaps due to VHF interference kicking off early Mk21 start (should be AXBT issue only)
     if checkforgaps:
         rawdepth,rawdata = removegaps(rawdepth,rawdata)
     

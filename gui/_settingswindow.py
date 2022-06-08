@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -237,7 +237,7 @@ class RunSettings(QMainWindow):
             #defining constants for labels called from multiple points
             self.defineconstants()
 
-            #building window/tabs
+            #building window/tabs (build one of each tab type)
             self.buildcentertable()
             self.makeprocessorsettingstab()  #processor settings
             self.makeaxbtconvertsettingstab() #AXBT conversion equation settings
@@ -259,7 +259,8 @@ class RunSettings(QMainWindow):
         p = self.palette()
         p.setColor(self.backgroundRole(), QColor(255, 255, 255))
         self.setPalette(p)
-
+        
+        vstr = open('version.txt').read().strip()
         if cursys() == 'Windows':
             myappid = 'AXBPS_v' + vstr  # arbitrary string
             windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -369,9 +370,6 @@ class RunSettings(QMainWindow):
             self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)))
         self.processortabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
         
-        print(f"Updating mindr7500 : {self.settingsdict['mindr7500']}")
-        print(self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"])) )
-        
         self.processortabwidgets["deadfreq"].setValue(self.settingsdict["deadfreq"])
         self.processortabwidgets["markfreq"].setValue(self.settingsdict["mark_space_freqs"][0])
         self.processortabwidgets["spacefreq"].setValue(self.settingsdict["mark_space_freqs"][1])
@@ -471,9 +469,6 @@ class RunSettings(QMainWindow):
         self.settingsdict['refreshrate'] = float(self.processortabwidgets['refreshrate'].value())
         self.settingsdict['usebandpass'] = self.processortabwidgets['usebandpass'].isChecked()
         
-        for ckey in ['minr400','mindr7500','deadfreq','mark_space_freqs','refreshrate','usebandpass']:
-            print(f"{ckey}: {self.settingsdict[ckey]}")
-        
         #AXBT/AXCTD coefficients and frequency ranges are recorded on every update to their respective fields
 
         self.settingsdict["platformid"] = self.processortabwidgets["IDedit"].text()
@@ -547,8 +542,6 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["renametab"].setChecked(self.settingsdict["renametabstodtg"])
             self.processortabwidgets["autosave"] = QCheckBox('Autosave raw data files when transitioning to profile editor') #14
             self.processortabwidgets["autosave"].setChecked(self.settingsdict["autosave"])
-            
-            
             
             
             self.processortabwidgets["axbtsiglabel"] = QLabel("AXBT Signal Settings")
@@ -652,12 +645,13 @@ class RunSettings(QMainWindow):
                            "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel",
                            "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass"]
 
+            #assigning column/row/column extension/row extension for each widget
             wcols   = [1,1,1,1,1,2,4,4,4,4,4,1,1,1,5,5,5,5,5,5,5,5,5, 5, 5,7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7]
             wrows   = [1,2,3,4,5,5,1,2,3,4,5,7,8,9,1,2,3,4,5,6,7,8,9,10,11,1,2,3,4,5,7,7,8,8,9,9,10,10,11]
             wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1,1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1]
             wcolext = [2,2,2,2,1,1,1,1,1,1,1,4,4,4,1,1,1,1,1,1,1,1,1, 1, 1,2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2]
 
-            # adding user inputs
+            #adding widgets to assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.processortablayout.addWidget(self.processortabwidgets[i], r, c, re, ce)
 
@@ -761,16 +755,16 @@ class RunSettings(QMainWindow):
             self.axbtconverttabwidgets["fhighlabel"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             
 
-            # should be XX entries
+            # should be 27 entries
             widgetorder = ["F2Tlabel", "F2Teqn", "F2Tb0", "F2Tb1", "F2Tb2", "F2Tb3", "F2Ts0", "F2Ts1", "F2Ts2", "F2Ts3", "t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "flimlabel", "flowlabel", "fhighlabel", "flow", "fhigh", "Tlowlabel", "Thighlabel"]
+            
+            #assigning column/row/column extension/row extension for each widget
+            wcols   = [1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,4,5,5,5,5,1,0 ,0 ,2 ,2 ,4 ,4 ]
+            wrows   = [1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6,9,10,11,10,11,10,11]
+            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,1 ]
+            wcolext = [2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,5,2 ,2 ,1 ,1 ,2 ,2 ]
 
-            wcols = [1,1,1,1,1,1,2,2,2,2,4,4,4,4,4,4,5,5,5,5,1,0,0,2,2,4,4]
-            wrows = [1,2,3,4,5,6,3,4,5,6,1,2,3,4,5,6,3,4,5,6,9,10,11,10,11,10,11]
-
-            wrext = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-            wcolext = [2,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,5,2,2,1,1,2,2]
-
-            # adding user inputs
+            #adding widgets to assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.axbtconverttablayout.addWidget(self.axbtconverttabwidgets[i], r, c, re, ce)
 
@@ -793,7 +787,7 @@ class RunSettings(QMainWindow):
             
             
             
-    def updateAXBTF2Teqn(self):
+    def updateAXBTF2Teqn(self): #updates frequency to temperature equation text beside input boxes
         
         try: #only updates if the values are numeric
             tc = [float(self.axbtconverttabwidgets["F2Tb0"].text()), float(self.axbtconverttabwidgets["F2Tb1"].text()), float(self.axbtconverttabwidgets["F2Tb2"].text()), float(self.axbtconverttabwidgets["F2Tb3"].text())]
@@ -803,7 +797,7 @@ class RunSettings(QMainWindow):
             pass
 
        
-    def updateAXBTt2zeqn(self):
+    def updateAXBTt2zeqn(self): #updates time elapsed to depth equation text beside input boxes
         
         try: #only updates if the values are numeric
             zc = [float(self.axbtconverttabwidgets["t2zb0"].text()), float(self.axbtconverttabwidgets["t2zb1"].text()), float(self.axbtconverttabwidgets["t2zb2"].text()), float(self.axbtconverttabwidgets["t2zb3"].text())]
@@ -813,7 +807,7 @@ class RunSettings(QMainWindow):
             pass
             
             
-    def updateflims_axbt(self):
+    def updateflims_axbt(self): #updates max temperature limits based on input frequency limits
         
         flims_axbt = [self.axbtconverttabwidgets["flow"].value(), self.axbtconverttabwidgets["fhigh"].value()]
         tc = self.settingsdict["tcoeff_axbt"]
@@ -913,15 +907,16 @@ class RunSettings(QMainWindow):
             self.axctdconverttabwidgets["Cconveqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             
 
-            # should be XX entries
+            # should be 30 entries
             widgetorder = ["t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "Tconvlabel", "Tconveqn", "Tconvb0", "Tconvb1", "Tconvb2", "Tconvb3", "Tconvs0", "Tconvs1", "Tconvs2", "Tconvs3",  "Cconvlabel", "Cconveqn", "Cconvb0", "Cconvb1", "Cconvb2", "Cconvb3", "Cconvs0", "Cconvs1", "Cconvs2", "Cconvs3"]
-
+            
+            #assigning column/row/column extension/row extension for each widget
             wcols   = [1, 0,1,1,1,1,2,2,2,2,4, 0,4,4,4,4,5,5,5,5,7, 0,7,7,7,7,8,8,8,8]
             wrows =   [1, 7,2,3,4,5,2,3,4,5,1, 8,2,3,4,5,2,3,4,5,1, 9,2,3,4,5,2,3,4,5]
             wrext   = [1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1]
             wcolext = [2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1]
 
-            # adding user inputs
+            #adding widgets to assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.axctdconverttablayout.addWidget(self.axctdconverttabwidgets[i], r, c, re, ce)
 
@@ -943,7 +938,7 @@ class RunSettings(QMainWindow):
             
     
        
-    def updateAXCTDt2zeqn(self):
+    def updateAXCTDt2zeqn(self): #update text for AXCTD time elapsed to depth conversion equation based on inputs
         
         try: #only updates if the values are numeric
             zc = [float(self.axctdconverttabwidgets["t2zb0"].text()), float(self.axctdconverttabwidgets["t2zb1"].text()), float(self.axctdconverttabwidgets["t2zb2"].text()), float(self.axctdconverttabwidgets["t2zb3"].text())]
@@ -954,7 +949,7 @@ class RunSettings(QMainWindow):
             
             
             
-    def updateAXCTDTconveqn(self):
+    def updateAXCTDTconveqn(self): #update text for AXCTD calibrated temperature conversion equation based on inputs
         
         try: #only updates if the values are numeric
             tc = [float(self.axctdconverttabwidgets["Tconvb0"].text()), float(self.axctdconverttabwidgets["Tconvb1"].text()), float(self.axctdconverttabwidgets["Tconvb2"].text()), float(self.axctdconverttabwidgets["Tconvb3"].text())]
@@ -966,7 +961,7 @@ class RunSettings(QMainWindow):
     
             
             
-    def updateAXCTDCconveqn(self):
+    def updateAXCTDCconveqn(self): #update text for AXCTD calibrated conductivity conversion equation based on inputs
         
         try: #only updates if the values are numeric
             cc = [float(self.axctdconverttabwidgets["Cconvb0"].text()), float(self.axctdconverttabwidgets["Cconvb1"].text()), float(self.axctdconverttabwidgets["Cconvb2"].text()), float(self.axctdconverttabwidgets["Cconvb3"].text())]
@@ -1049,13 +1044,14 @@ class RunSettings(QMainWindow):
             
             # should be 7 entries
             widgetorder = ["updateports", "gpsdate", "gpslat", "gpslon", "gpsnsat", "gpsqual", "gpsalt", "comporttitle","comport", "baudtitle", "baudrate"]
-
-            wcols = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]
-            wrows = [1, 6, 7, 8, 9, 10, 11, 2, 3, 4, 4]
-            wrext = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            
+            #assigning column/row/column extension/row extension for each widget
+            wcols   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2]
+            wrows   = [1, 6, 7, 8, 9,10,11, 2, 3, 4, 4]
+            wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
             wcolext = [1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1]
 
-            # adding user inputs
+            #adding widgets to assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.gpstablayout.addWidget(self.gpstabwidgets[i], r, c, re, ce)
 
@@ -1245,13 +1241,14 @@ class RunSettings(QMainWindow):
 
             # should be 18 entries
             widgetorder = ["climotitle", "useclimobottom", "comparetoclimo", "overlayclimo", "filesavetypes", "savefin_qc", "saveedf_qc", "savejjvv_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "othertitle", "useoceanbottom", "checkforgaps", "profreslabel", "profres","smoothlevlabel", "smoothlev", "maxstdevlabel", "maxstdev", "originatingcentername","originatingcenter"]
-
+            
+            #assigning column/row/column extension/row extension for each widget
             wcols   = [1, 1, 1, 1, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 5, 5, 5, 5, 5, 5,   1,  1]
             wrows   = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6, 7, 7, 8, 9, 2, 3, 5, 6, 9, 10, 11, 12]
             wrext   = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,   1,  1]
             wcolext = [2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1,   4,  3]
 
-            # adding user inputs
+            #applying widgets at assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
                 self.profeditortablayout.addWidget(self.profeditortabwidgets[i], r, c, re, ce)
 
@@ -1276,6 +1273,8 @@ class RunSettings(QMainWindow):
     # =============================================================================
     #         UPDATE BUFR FORMAT ORIGINATING CENTER ACCORDING TO TABLE
     # =============================================================================
+    
+    #updates string name of originating center based on current value in the spinbox
     def updateoriginatingcenter(self):
         self.settingsdict["originatingcenter"] = int(self.profeditortabwidgets["originatingcenter"].value())
         ctrkey = str(self.settingsdict["originatingcenter"]).zfill(3)
@@ -1286,7 +1285,6 @@ class RunSettings(QMainWindow):
         self.profeditortabwidgets["originatingcentername"].setText("Center " + ctrkey + ": " + curcentername)
         
         
-
     #lookup table for originating centers (WMO BUFR table)
     #file contents from https://www.nco.ncep.noaa.gov/sib/jeff/CodeFlag_0_STDv25_LOC7.html
     def buildcentertable(self):
@@ -1299,9 +1297,10 @@ class RunSettings(QMainWindow):
                 name = cline[1]
                 self.allcenters[f'{num:03d}'] = name
                 
+                
 
     # =============================================================================
-    #         SLIDER CHANGE FUNCTION CALLS
+    #         SLIDER CHANGE FUNCTION CALLS- UPDATE LABEL ABOVE EACH SLIDER
     # =============================================================================
     def changefftwindow(self, value):
         self.settingsdict["fftwindow"] = float(value) / 100
@@ -1342,12 +1341,12 @@ class RunSettings(QMainWindow):
     # =============================================================================
     #     TAB MANIPULATION OPTIONS, OTHER GENERAL FUNCTIONS
     # =============================================================================
-    def whatTab(self):
+    def whatTab(self): #gets selected tab
         currentIndex = self.tabWidget.currentIndex()
         return currentIndex
         
 
-    @staticmethod
+    @staticmethod #color configuration for background of settings window
     def setnewtabcolor(tab):
         p = QPalette()
         gradient = QLinearGradient(0, 0, 0, 400)
@@ -1365,7 +1364,7 @@ class RunSettings(QMainWindow):
         
 
     @staticmethod
-    def posterror(errortext):
+    def posterror(errortext): #error message
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
         msg.setText(errortext)
@@ -1376,7 +1375,7 @@ class RunSettings(QMainWindow):
         
         
 
-# SIGNAL SETUP HERE
+# SIGNAL SETUP HERE- signals passed between settings window and main GUI event loop
 class SettingsSignals(QObject):
     exported = pyqtSignal(dict)
     closed = pyqtSignal(bool)

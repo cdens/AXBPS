@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -36,7 +36,7 @@ from scipy.io import wavfile #for wav file reading
 #                         lagging box smooth filter                               #
 ###################################################################################
 
-def boxsmooth_lag(data,window,startind):
+def boxsmooth_lag(data,window,startind): #filter is lagging for realtime processing
     outdata = data.copy()
     
     for i in range(startind,len(data)):

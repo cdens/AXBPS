@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -79,6 +79,7 @@ class GPSthread(QRunnable):
         self.baudrate = baudrate
         self.keepGoing = True
         
+        #default parameters passed when not in contact with any satellites/no good fix obtained
         self.default_lat = 0
         self.default_lon = 0
         self.default_datetime = datetime(1,1,1)
@@ -213,7 +214,7 @@ class GPSthread(QRunnable):
                 self.signals.update.emit(2, 0, 0, datetime(1,1,1), 0, 0, 0)
             
                             
-    @pyqtSlot(str,int)
+    @pyqtSlot(str,int) #slot to update the serial port opened or baud rate used for NMEA stream
     def changeConfig(self,comport,baudrate):
         self.comport = comport
         self.baudrate = baudrate

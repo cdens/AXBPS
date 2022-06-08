@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -47,7 +47,7 @@ from ._PEfunctions import continuetoqc
 
             
 # =============================================================================
-#     SIGNAL PROCESSOR TAB AND INPUTS HERE
+#     DATA ACQUISITION SYSTEM TAB AND INPUTS HERE
 # =============================================================================
 def makenewprocessortab(self):     
     try:
@@ -179,7 +179,7 @@ def makenewprocessortab(self):
         wcolext   = [1,1,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1]
         
 
-        #adding user inputs
+        #adding widgets to assigned positions
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
             self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
             self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
@@ -209,7 +209,7 @@ def makenewprocessortab(self):
         self.posterror("Failed to build new processor tab")
     
     
-        
+#switching the probe type in the dropdown also adjusts the graph and table contents
 def probetypechange(self):
     opentab = self.whatTab()
     probetype = self.alltabdata[opentab]["tabwidgets"]["probetype"].currentText()
@@ -217,6 +217,7 @@ def probetypechange(self):
     self.prep_graph_and_table(probetype, opentab)
         
     
+#configure graph and table based on current probe type
 def prep_graph_and_table(self, probetype, plottabnum):
     
     #prep window to plot data
@@ -224,7 +225,7 @@ def prep_graph_and_table(self, probetype, plottabnum):
     self.alltabdata[plottabnum]["ProcAxes"][0].set_ylabel('Depth (m)', fontsize=12)
     self.alltabdata[plottabnum]["ProcAxes"][0].set_title('Data Received',fontweight="bold", fontsize=14)
     
-    if probetype == "AXCTD": #AXCTD conductivity plot
+    if probetype == "AXCTD": #AXCTD temperature and salinity plots
         self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Salinity (PSU)', fontsize=12)
         self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(True)
         self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("red") #temperature axis red
@@ -232,7 +233,7 @@ def prep_graph_and_table(self, probetype, plottabnum):
         self.alltabdata[plottabnum]["ProcAxes"][1].xaxis.label.set_color("blue") #conductivity axis blue
         self.alltabdata[plottabnum]["ProcAxes"][1].tick_params(axis='x', colors='blue')
         
-    else: 
+    else: #AXBT temperature plot only
         self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("black") #temperature axis black
         self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='black')
         self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(False)
@@ -248,14 +249,14 @@ def prep_graph_and_table(self, probetype, plottabnum):
     self.alltabdata[plottabnum]["tabwidgets"]["table"].verticalHeader().setVisible(False)
     self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff) #removes scroll bars
     
-    
+    #table columns
     if probetype == "AXBT":
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
     elif probetype == "AXCTD":
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz (dB)', 'R-7500 Hz (dB)', 'Depth (m)','Temp. (C)', 'Sal. (PSU)'))
         
     
-    for ii in range(0,6):
+    for ii in range(0,6): #building table
         self.alltabdata[plottabnum]["tabwidgets"]["tableheader"].setSectionResizeMode(ii, QHeaderView.Stretch)  
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setEditTriggers(QTableWidget.NoEditTriggers)
         
@@ -288,12 +289,13 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     if np.max(ctemps) > templims[1]:
         templims[1] = np.ceil(np.max(ctemps)/tcint)*tcint
     
+    #setting axis limits for temperature, depth
     self.alltabdata[plottabnum]["ProcAxes"][0].set_xlim(templims)
     self.alltabdata[plottabnum]["ProcAxes"][0].set_ylim(depthlims)
     self.alltabdata[plottabnum]["ProcAxes"][0].grid(visible=True, which='major', axis='both')
     self.alltabdata[plottabnum]["ProcAxes"][0].invert_yaxis() 
     
-    if probetype == "AXCTD":
+    if probetype == "AXCTD": #determining/setting axis limits for salinity as well for AXCTDs only
         if np.min(cpsal) < psallims[0]:
             psallims[0] = np.floor(np.min(cpsal)/tsint)*tsint
         if np.max(cpsal) > psallims[1]:
@@ -339,7 +341,7 @@ def datasourcerefresh(self):
         self.posterror("Failed to refresh available receivers")
         
         
-
+#triggered whenever user selects a new datasource (verifies if it is a receiver it isn't actively processing data)
 def datasourcechange(self):
     try:
         #only lets you change the data source if it isn't currently processing
@@ -373,7 +375,7 @@ def datasourcechange(self):
         self.posterror("Failed to change selected WiNRADIO receiver for current tab.")
         
         
-    
+#called when user changes channel and the frequency needs to be updated   
 #these options use a lookup table for VHF channel vs frequency
 def changefrequencytomatchchannel(self,newchannel):
     try:
@@ -390,7 +392,7 @@ def changefrequencytomatchchannel(self,newchannel):
         self.posterror("Frequency/channel mismatch (changing frequency to match channel)!")
         
         
-        
+#called when the user changes the VHF frequency and the channel needs to be updated
 #these options use a lookup table for VHF channel vs frequency
 def changechanneltomatchfrequency(self,newfrequency):
     try:
@@ -416,7 +418,8 @@ def changechanneltomatchfrequency(self,newfrequency):
         self.posterror("Frequency/channel mismatch (changing channel to match frequency)!")
         
         
-        
+#called regardless of channel or frequency being called, makes sure both values are correct
+#sends command to update radio receiver frequency if it's actively processing data
 def changechannelandfrequency(self,newchannel,newfrequency,opentab):
     try:
 
@@ -439,36 +442,47 @@ def changechannelandfrequency(self,newchannel,newfrequency,opentab):
         
         
 
-#update FFT thresholds/window setting
-def updatefftsettings(self):
+#update DAS settings for actively processing profile threads
+def updateDASsettings(self):
     try:
         
-        #pulling settings
-        newsettings = {}
-        settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
-        for csetting in settingstopull:
-            newsettings[csetting] = self.settingsdict[csetting]
+        #pulling settings from settingsdict into specialized dicts to be passed to DAS threads
+        newaxbtsettings = {}
+        axbtsettingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
+        newaxctdsettings = {}
+        axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"]
         
-        #updates fft settings for any active tabs
+        for csetting in axbtsettingstopull:
+            newaxbtsettings[csetting] = self.settingsdict[csetting]
+        for csetting in axctdsettingstopull:
+            newaxctdsettings[csetting] = self.settingsdict[csetting]
+            
+        
+        #updates DAS settings for any active tabs
         for ctab in range(len(self.alltabdata)): #dont want to iterate over tabs, need to edit alltabdata list
             if self.alltabdata[ctab]["isprocessing"]: 
-                self.alltabdata[ctab]["processor"].changethresholds(newsettings)
+                if self.alltabdata[ctab]['probetype'] == 'AXBT':
+                    self.alltabdata[ctab]["processor"].changethresholds(newaxbtsettings)
+                elif self.alltabdata[ctab]['probetype'] == 'AXCTD':
+                    self.alltabdata[ctab]["processor"].changethresholds(newaxctdsettings)
+                    
                 
     except Exception:
         trace_error()
-        self.posterror("Error updating FFT settings!")
+        self.posterror("Error updating DAS settings!")
         
         
         
-#starting signal processing thread
+#starting a DAS thread (triggered when user selects the start button)
 def startprocessor(self):
     try:
         opentab = self.whatTab()
-        if not self.alltabdata[opentab]["isprocessing"]:
+        if not self.alltabdata[opentab]["isprocessing"]: #button wont do anything if the tab is already processing data
             
-            status, datasource, newsource = self.prepprocessor(opentab)
+            #get the datasource, and call runprocessor to initialize the thread if the datasource is good
+            status, datasource, newsource = self.prepprocessor(opentab) 
             
-            if status:
+            if status: #initialize/run the probe processor thread
                 self.runprocessor(opentab, datasource, newsource)
                 self.alltabdata[opentab]["profileSaved"] = False
                 self.add_asterisk(opentab)
@@ -479,7 +493,7 @@ def startprocessor(self):
         
         
         
-        
+#prepprocessor gets the datasource to be used for processing. If the datasource is test or a receiver, it returns status=True and the program proceeds directly to initializing the processing thread. If it is an audio file, the function prompts the user to select the file and identifies the number of audio channels. If it is a single channel- status=True and runprocessor is called immediately. If there are multiple channels, status=False, runprocessor is not called, and a window is opened with a spinbox for the user to select which channel to process. Once the user has selected the channel and okay, that process will call the runprocessor function and initialize the DAS processing thread    
 def prepprocessor(self, opentab):
     datasource = self.alltabdata[opentab]["datasource"]
     #running processor here
@@ -515,13 +529,13 @@ def prepprocessor(self, opentab):
                 
             nchannels = file_info.getnchannels()
             if nchannels == 1:
-                datasource = f"AA-0001{fname}"
+                datasource = f"AA-0001{fname}" #only one channel, don't need to prompt user for channel number
             else:
-                if self.selectedChannel >= -1: #active tab already opened 
+                if self.selectedChannel >= -1: #active tab already opened, warn user and terminate function
                     self.postwarning("An audio channel selector dialog box has already been opened in another tab. Please close that box before processing an audio file with multiple channels in this tab.")
                     return False,"No","No"
                     
-                else:
+                else: #create a dialog box for the user to select the channel to process
                     self.audioChannelSelector = AudioWindow(nchannels, opentab, fname) #creating and connecting window
                     self.audioChannelSelector.signals.closed.connect(self.audioWindowClosed)
                     self.audioChannelSelector.show() #bring window to front
@@ -534,20 +548,20 @@ def prepprocessor(self, opentab):
             self.posterror("Failed to execute audio processor!")
             trace_error()
 
-    elif sourcetype != "TT":
+    elif sourcetype != "TT": #radio receiver selected as datasource
         
         #checks to make sure current receiver isn't busy
         for ctab in self.alltabdata:
             if ctab != opentab and self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == datasource:
                 self.posterror("This WINRADIO appears to currently be in use! Please stop any other active tabs using this device before proceeding.")
-                return False,"No"
+                return False,"No","No"
     
     #success            
     return True, datasource, sourcetype
     
     
     
-    
+#initialize DAS processor thread depending on selected probetype, start processor
 def runprocessor(self, opentab, datasource, sourcetype):
                 
     #gets current tab number
@@ -558,7 +572,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
     self.defaultprobe = probetype #default probe to display for DAS and PE tabs
     self.alltabdata[opentab]["probetype"] = probetype
     
-    #disabling datasource and probetype dropdown boxes
+    #disabling datasource and probetype dropdown boxes (once you start processing data you can't change these)
     self.alltabdata[opentab]["tabwidgets"]["datasource"].setEnabled(False)
     self.alltabdata[opentab]["tabwidgets"]["probetype"].setEnabled(False)
     
@@ -576,7 +590,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
         if sourcetype != 'AA': #but not if reprocessing from audio file
             autopopulate = True
     
-    else:
+    else: #start time already exists- the processor has been previously started and stopped. Recover old start time
         starttime = self.alltabdata[opentab]["rawdata"]["starttime"]
         
             
@@ -618,8 +632,12 @@ def runprocessor(self, opentab, datasource, sourcetype):
         datasource_toThread = sourcetype + datasource #append receiver ID (2 characters) and serial number
     
     
-    settings = {} #pulling settings
-    settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
+    settings = {} #pulling settings required for processor thread, dependent on probe type
+    if probetype == 'AXBT':
+        settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
+    elif probetype == 'AXCTD':
+        settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"]
+        
     for csetting in settingstopull:
         settings[csetting] = self.settingsdict[csetting]
     
@@ -627,26 +645,27 @@ def runprocessor(self, opentab, datasource, sourcetype):
     if probetype == "AXBT":
         self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
     elif probetype == "AXCTD":
-        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir, minR400=self.settingsdict['minr400'], mindR7500= self.settingsdict['mindr7500'], deadfreq= self.settingsdict['deadfreq'], mintimeperloop= self.settingsdict['refreshrate'], mark_space_freqs= self.settingsdict['mark_space_freqs'], use_bandpass= self.settingsdict['usebandpass'], zcoeffdefault=self.settingsdict['zcoeff_axctd'], tcoeffdefault= self.settingsdict['tcoeff_axctd'], ccoeffdefault= self.settingsdict['ccoeff_axctd'])
+        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir)
         
     
+        #connecting signals to GUI functions (e.g. updating the graph and table with new data)
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
     self.alltabdata[opentab]["processor"].signals.triggered.connect(self.triggerUI)
     self.alltabdata[opentab]["processor"].signals.terminated.connect(self.updateUIfinal)
 
     #connecting audio file-specific signal (to update progress bar on GUI)
-    if datasource[:2] == 'AA':
+    if sourcetype == 'AA':
         self.alltabdata[opentab]["processor"].signals.updateprogress.connect(self.updateaudioprogressbar)
     
-    #starting thread
+    #starting the current thread and noting that the current tab is processing data
     self.threadpool.start(self.alltabdata[opentab]["processor"])
     self.alltabdata[opentab]["isprocessing"] = True
     
     #the code is still running but data collection has at least been initialized. This allows self.savecurrenttab() to save raw data files
     self.alltabdata[opentab]["tabtype"] = "DAS_p"
     
-    #autopopulating fields if necessary
+    #autopopulating date/time/position/tail number fields if necessary
     if autopopulate:
         if self.settingsdict["autodtg"]:#populates date and time if requested
             curdatestr = str(starttime.year) + str(starttime.month).zfill(2) + str(starttime.day).zfill(2)
@@ -664,7 +683,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
             
     
         
-#aborting processor
+#aborting processor (triggered when user selects the STOP button)
 def stopprocessor(self):
     try:
         opentab = self.whatTab()
@@ -750,7 +769,6 @@ class AudioWindowSignals(QObject):
 @pyqtSlot(int, int, str)
 def audioWindowClosed(self, wasGood, opentab, datasource):
     if wasGood:
-        print(datasource)
         self.runprocessor(opentab, datasource, "AA")
     
     
@@ -768,7 +786,7 @@ def gettabnumfromID(self,tabID):
             
             
 #slot to notify main GUI that the thread has been triggered with AXBT data
-#event is only used for AXCTDs where there are multiple triggers (e.g. 400 Hz pulses, 7.5 kHz pulse)
+#event is only used for probes where there are multiple triggers (e.g. AXCTDs with 400 Hz pulses, 7.5 kHz pulse)
 @pyqtSlot(int,int,float)
 def triggerUI(self,tabID,event,eventtime):
     try:
@@ -805,7 +823,7 @@ def updateUIinfo(self,tabID,data):
             
             probetype = self.alltabdata[plottabnum]["probetype"]
             
-            #appending data to current tab's list, generating table entries
+            #appending data to current tab's list, plotting, generating table entries (probe type dependent)
             if probetype == "AXBT":
                 curcolors, table_data = self.update_AXBT_DAS(plottabnum, data, False)
             elif probetype == "AXCTD":
@@ -833,7 +851,8 @@ def updateUIinfo(self,tabID,data):
         
         
 def update_AXBT_DAS(self, plottabnum, data, interval_override):
-    #pulling data from list
+    
+    #pulling data from list- organized as [temperature, depth, frequency, Sp, Rp, time]
     ctemp = data[0]
     cdepth = data[1]
     cfreq = data[2]
@@ -852,7 +871,7 @@ def update_AXBT_DAS(self, plottabnum, data, interval_override):
     table_data = []
         
     #only appending a datapoint if depths are different
-    if cdepth != lastdepth:
+    if cdepth != lastdepth or interval_override:
         #writing data to tab dictionary
         self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"],ctime)
         self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"],cdepth)
@@ -870,7 +889,8 @@ def update_AXBT_DAS(self, plottabnum, data, interval_override):
             self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='k')
             self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
             self.alltabdata[plottabnum]["date_plot_updated"] = cdt
-
+            
+            
         #coloring new cell based on whether or not it has good data
         if np.isnan(cdepth):
             ctemp = cdepth = cfreq = '------'
@@ -888,9 +908,7 @@ def update_AXBT_DAS(self, plottabnum, data, interval_override):
     
 def update_AXCTD_DAS(self, plottabnum, data, interval_override):
     
-    #data organization:
-    # profile started:     [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds]
-    # profile not started: [self.triggerstatus, ctimes[-1], r400[-1], r7500[-1]]
+    #data organization: [self.triggerstatus, ctimes, r400, r7500, cdepths, ctemps, cconds, cpsals, cframes]
     
     #pulling data from list
     triggerstatus = data[0]
@@ -900,7 +918,7 @@ def update_AXCTD_DAS(self, plottabnum, data, interval_override):
     newdepth = data[4]
     newtemp = data[5]
     newcond = data[6]
-    newpsal = data[7]
+    newpsal = data[7] #calculated in AXCTD Processor thread using GSW toolbox TEOS-10 equations
     newframe = data[8]
         
     
@@ -927,16 +945,14 @@ def update_AXCTD_DAS(self, plottabnum, data, interval_override):
             try:
                 del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
                 del self.alltabdata[plottabnum]["ProcAxes"][1].lines[-1]
-            except IndexError:
+            except IndexError: #if nothing has been plotted, trying to delete the lines from the plot raises IndexError
                 pass
                 
+            #plotting and updating
             self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='r')
             self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["salinity"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
             self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
             self.alltabdata[plottabnum]["date_plot_updated"] = cdt
-            
-    else:
-        newsal = [np.NaN] * len(newtemp)
             
 
     #coloring new cells based on whether or not it has good data, prepping data to append to table
@@ -969,13 +985,14 @@ def updateUIfinal(self,tabID):
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         #updating UI with interval_override=True so the plot will be updated to include the full profile
+        #blank lists means that no new data will be appended but existing data will be plotted
         probetype = self.alltabdata[plottabnum]["probetype"]
         if probetype == 'AXBT':
             self.update_AXBT_DAS(plottabnum, [[],[],[],[],[],[]], True)
         elif probetype == 'AXCTD':
             self.update_AXCTD_DAS(plottabnum, [[],[],[],[],[],[],[],[],[]], True)
             
-        if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]:
+        if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]: #delete the audio progress bar if it exists
             self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].deleteLater()
 
     except Exception:
@@ -990,19 +1007,19 @@ def failedWRmessage(self,tabID,messagenum):
     try:
         plottabnum = self.gettabnumfromID(tabID)
         if messagenum == 1:
-            self.posterror("Failed to connect to specified WiNRADIO!")
+            self.posterror("Failed to connect to specified radio receiver!")
         elif messagenum == 2:
-            self.posterror("Failed to power on specified WiNRADIO!")
+            self.posterror("Failed to power on specified radio receiver!")
         elif messagenum == 3:
-            self.posterror("Failed to initialize demodulator for specified WiNRADIO!")
+            self.posterror("Failed to initialize demodulator for specified radio receiver!")
         elif messagenum == 4:
-            self.posterror("Failed to set VHF frequency for specified WiNRADIO!")
+            self.posterror("Failed to set VHF frequency for specified radio receiver!")
         elif messagenum == 5:
-            self.postwarning("Failed to adjust volume on the specified WiNRADIO!")
+            self.postwarning("Failed to adjust volume on the specified radio receiver!")
         elif messagenum == 6:
-            self.posterror("Error configuring the current WiNRADIO device!")
+            self.posterror("Error configuring the current radio receiver!")
         elif messagenum == 7:
-            self.posterror("Failed to configure the WiNRADIO audio stream!")
+            self.posterror("Failed to configure the radio receiver audio stream!")
         elif messagenum == 8:
             self.posterror("Contact lost with receiver! Please ensure device is connected and powered on!")
         elif messagenum == 9:
@@ -1115,7 +1132,7 @@ def processprofile(self):
             self.postwarning("No valid signal was identified in this profile! Please reprocess from the .wav file with lower minimum signal thresholds to generate a valid profile.")
             return
         
-        #delete Processor profile canvas (since it isn't in the tabwidgets sub-dict)
+        #delete Processor profile canvas (widget with the profile plot) since it isn't in the tabwidgets sub-dict
         self.alltabdata[opentab]["ProcessorCanvas"].deleteLater()
         
         

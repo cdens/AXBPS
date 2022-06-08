@@ -42,6 +42,6 @@ pip install Shapely-1.6.4.post2-cp3x-cp3xm-win(32 or _amd64).whl
 
 ## Data Dependencies and Additional Information
 
-AXBPS also requires driver and data files in the data folder and test files in the testdata folder. Due to size constraints, these are not included in the repository but are instead available in a compressed folder at http://mmmfire.whoi.edu/ares/. 
+AXBPS also requires driver and data files in the data folder and test files in the testdata folder. Due to size constraints, these are not included in the repository. They will soon be available at an updated webpage for AXBPS, which is coming soon!
 
 This website also hosts a the user manual with details on where to move these folders within the AXBPS repository, how to use the AXBPS, operating principles, and a bundled version of AXBPS (with PyInstaller) and executable installer file for Windows 10 x64. 

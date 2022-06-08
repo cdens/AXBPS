@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -360,12 +360,12 @@ def binListToHex(binary):
     hex_str = ''
     for s,e in zip(prof_starts, prof_ends):
         cbinnum = binListToInt(binary[s:e])
-        if cbinnum <= 9:
+        if cbinnum <= 9: #convert decimal integer to hex digit
             cstr = str(cbinnum)
         else:
             cstr = letters[cbinnum-10]
             
-        hex_str = hex_str + cstr
+        hex_str += cstr #append current hex digit to hex string
         
     return hex_str
     

@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -51,7 +51,7 @@ class AXCTDProcessor(QRunnable):
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, triggerstatus, firstpointtime, firstpulsetime,
-        settings, slash, tempdir, minR400=2.0, mindR7500=1.5, deadfreq=3000, mintimeperloop=2, triggerrange=[30,-1], mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, zcoeffdefault=[0.72, 2.76124, -0.000238007, 0], tcoeffdefault=[0,1,0,0], ccoeffdefault=[0,1,0,0], *args,**kwargs):
+        settings, slash, tempdir, *args,**kwargs):
         
         super(AXCTDProcessor, self).__init__()
 
@@ -73,10 +73,14 @@ class AXCTDProcessor(QRunnable):
         self.linesperquartersec = 6
                 
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,'AXCTD')
+        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,vhffreq,'AXCTD')
         
         #initializing AXCTD processor specific vars
-        self.initialize_AXCTD_vars(minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass, zcoeffdefault, tcoeffdefault, ccoeffdefault)
+        self.initialize_AXCTD_vars()
+        
+        #loads variables for AXCTD settings- must be called after initialize_common_vars which writes settings to self.settings
+        self.load_AXCTD_settings()
+        
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()
@@ -88,19 +92,10 @@ class AXCTDProcessor(QRunnable):
             
             
             
-    def initialize_AXCTD_vars(self,minR400, mindR7500, deadfreq, mintimeperloop, triggerrange, mark_space_freqs, bitrate, bit_inset, phase_error, use_bandpass, zcoeffdefault, tcoeffdefault, ccoeffdefault):
+    def initialize_AXCTD_vars(self):
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)        
         self.keepgoing = True  # signal connections
         self.waittoterminate = False #whether to pause on termination of run loop for kill process to complete
-                
-        self.minR400 = minR400 #threshold to ID first 400 Hz pulse
-        self.mindR7500 = mindR7500 #threshold to ID profile start by 7.5 kHz tone
-        self.deadfreq = deadfreq #frequency to use as "data-less" control to normalize signal levels
-        self.minpointsperloop = int(mintimeperloop*self.f_s) #how many PCM datapoints AXCTDprocessor handles per loop
-        
-        #index 0: earliest time AXBT will trigger after 400 Hz pulse in seconds (default 30 sec)
-        #index 1: time AXCTD will autotrigger without 7.5kHz signal (set to -1 to never trigger profile)
-        self.triggerrange = triggerrange
         
         self.past_headers = False #when false, program may try to read header data
         self.header1_read = False #notes when each header has been successfully read, to stop trying
@@ -112,9 +107,6 @@ class AXCTDProcessor(QRunnable):
         self.metadata['counter_found_2'] = [False] * 72
         self.metadata['counter_found_3'] = [False] * 72
         self.tempLUT = parse.read_temp_LUT('lib/DAS/temp_LUT.txt')
-        self.zcoeff = zcoeffdefault
-        self.tcoeff = tcoeffdefault
-        self.ccoeff = ccoeffdefault
         
         #store powers at different frequencies used to ID profile start
         self.p400 = np.array([])
@@ -140,7 +132,6 @@ class AXCTDProcessor(QRunnable):
                         
         self.mean7500pwr = np.NaN
         
-
         if self.isfromaudio or self.isfromtest:            
             self.numpoints = len(self.audiostream)
         
@@ -154,26 +145,19 @@ class AXCTDProcessor(QRunnable):
         self.demod_Npad = 50 #how many points to pad on either side of demodulation window (must be larger than window length for low-pass filter in demodulation function)
         self.next_demod_ind = 0
         
-        #demodulator configuration
-        self.f1 = mark_space_freqs[0] # bit 1 (mark) = 400 Hz
-        self.f2 = mark_space_freqs[1] # bit 0 (space) = 800 Hz
+        self.high_bit_scale = 1.5 #scale factor for high frequency bit to correct for higher power at low frequencies (will be adjusted to optimize demodulation after reading first header data)
+        
+        #optional adjustment- make these settings adjustable via AXBPS GUI (shouldn't be necessary though)
+        bitrate=800
+        bit_inset=1
+        phase_error=25
         self.bitrate = bitrate #symbol rate = 800 Hz
         self.bit_inset = bit_inset #number of points after/before zero crossing where bit identification starts/ends
         self.phase_error = phase_error
         N = int(np.round(self.f_s/self.bitrate*(1 - self.phase_error/100))) #length of PCM for bit power test
         self.Npcm = N - 2*self.bit_inset
-        self.trig1 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f1 #trig term for power calculation
-        self.trig2 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f2
         
-        #filter to be applied to PCM data before demodulation
-        if use_bandpass:
-            self.sos_filter = signal.butter(6, [100,1200], btype='bandpass', fs=self.f_s, output='sos') #low pass
-        else:
-            self.sos_filter = signal.butter(6, 1200, btype='lowpass', fs=self.f_s, output='sos') #low pass
-    
-        
-        self.high_bit_scale = 1.5 #scale factor for high frequency bit to correct for higher power at low frequencies (will be adjusted to optimize demodulation after reading first header data)
-        
+        #buffers
         self.binary_buffer = [] #buffer for demodulated binary data not organized into frames
         self.binary_buffer_inds = [] #pcm indices for each bit start point (used to calculate observation times during frame parsing)
         self.binary_buffer_conf = [] #confidence ratios: used for demodulation debugging/improvement
@@ -181,16 +165,60 @@ class AXCTDProcessor(QRunnable):
         self.r7500_buffer = [] #holds 7500 Hz sig lev ratios corresponding to each bit
         
         
+        #-1: not processing, 0: no pulses, 1: found pulse, 2: active profile parsing
+        self.status = -1 
+        
+        
+        
+    #pulls AXCTD settings from dict format into variables attached to AXCTD_Processor class
+    def load_AXCTD_settings(self):
+        
+        #Default settings for processor (tcoeffdefault and ccoeffdefault may vary with AXCTD used)
+        # minR400=2.0, mindR7500=1.5, deadfreq=3000, mintimeperloop=2, triggerrange=[30,-1], 
+        # mark_space_freqs=[400,800], bitrate=800, bit_inset=1, phase_error=25, use_bandpass=False, 
+        # zcoeffdefault=[0.72, 2.76124, -0.000238007, 0], tcoeffdefault=[0,1,0,0], ccoeffdefault=[0,1,0,0]
+        
+        #settings pulled from AXBPS GUI and passed to AXCTD_Processor threads
+        # settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"]
+        
+        self.minpointsperloop = int(self.settings['refreshrate']*self.f_s) #how many PCM datapoints AXCTDprocessor handles per loop
+        
+        #signal to noise ratio settings
+        self.minR400 = self.settings['minr400'] #threshold to ID first 400 Hz pulse
+        self.mindR7500 = self.settings['mindr7500'] #threshold to ID profile start by 7.5 kHz tone
+        self.deadfreq = self.settings['deadfreq'] #frequency to use as "data-less" control to normalize signal levels
+        
+        #default depth/temperature/conductivity conversion coefficients
+        self.zcoeff = self.settings['zcoeff_axctd']
+        self.tcoeff = self.settings['tcoeff_axctd']
+        self.ccoeff = self.settings['ccoeff_axctd']
+        
+        #demodulator configuration
+        self.f1 = self.settings['mark_space_freqs'][0] # bit 1 (mark) = 400 Hz
+        self.f2 = self.settings['mark_space_freqs'][1] # bit 0 (space) = 800 Hz
+        
+        #recalculating trig terms
+        self.trig1 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f1 #trig term for power calculation
+        self.trig2 = 2*np.pi*np.arange(0,self.Npcm)/self.f_s*self.f2
+        
+        #index 0: earliest time AXBT will trigger after 400 Hz pulse in seconds (default 30 sec)
+        #index 1: time AXCTD will autotrigger without 7.5kHz signal (set to -1 to never trigger profile)
+        triggerrange = [30,-1] #TODO: Add a setting for this in AXBPS GUI 
+        self.triggerrange = triggerrange
+        
+        #filter to be applied to PCM data before demodulation
+        if self.settings['usebandpass']:
+            self.sos_filter = signal.butter(6, [100,1200], btype='bandpass', fs=self.f_s, output='sos') #low pass
+        else:
+            self.sos_filter = signal.butter(6, 1200, btype='lowpass', fs=self.f_s, output='sos') #low pass
+            
         #trig terms for power calculations
         self.theta400 = 2*np.pi*np.arange(0,self.N_power)/self.f_s*400 #400 Hz (main pulse)
         self.theta7500 = 2*np.pi*np.arange(0,self.N_power)/self.f_s*7500 #400 Hz (main pulse)
         self.thetadead = 2*np.pi*np.arange(0,self.N_power)/self.f_s*self.deadfreq #400 Hz (main pulse)
         
-        #-1: not processing, 0: no pulses, 1: found pulse, 2: active profile parsing
-        self.status = -1 
-            
-            
-            
+        
+        
         
     @pyqtSlot()
     def run(self):
@@ -345,8 +373,8 @@ class AXCTDProcessor(QRunnable):
             
             
     
-    
-    def iterate_AXCTD_process(self, e):
+    #this function is called once per loop of the AXCTD DAS and demodulates/parses as much data as is available in the respective buffers of PCM data and unparsed bits, returning a list of data to the AXCTD_Processor loop to be passed via pyqtSignal back to the GUI for plotting and inclusion with the raw temperature and salinity profiles
+    def iterate_AXCTD_process(self, e): 
 
         #getting signal levels at 400 Hz, 7500 Hz, and dead frequency
         #we don't have to calculate all three every time but need to calculate at least two of them every
@@ -460,7 +488,7 @@ class AXCTDProcessor(QRunnable):
             p3headerstartpcm = self.firstpulse400 + int(self.f_s*20) #same margins as header 2
             p3headerendpcm =  self.firstpulse400 + int(self.f_s*24.5)
             
-            #establishing signal amplitudes based on first header to improve demodulation
+            #establishing signal amplitude ratio cutoff based on first header to improve demodulation
             if firstbin <= p1headerstartpcm and lastbin >= p1headerendpcm and not self.header1_read: 
                 
                 #determining binary data start/end index (adding extra 0.5 sec of data if available)

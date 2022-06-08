@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -14,7 +14,7 @@
 #    GNU General Public License for more details.
 #
 #    You should have received a copy of the GNU General Public License
-#    along with ARES.  If not, see <https://www.gnu.org/licenses/>.
+#    along with AXBPS.  If not, see <https://www.gnu.org/licenses/>.
 # =============================================================================
 
 
@@ -213,13 +213,13 @@ def checkdatainputs_editorinput(self):
             checktime = True
             
         #EDF/FIN/JJVV includes logic to handle partially missing data fields (e.g. lat/lon)
-        elif ftype == 2:
+        elif ftype == 2: #EDF
             data,fdropdatetime,flat,flon = io.readedffile(logfile)
             
-        elif ftype == 3: #assumes .txt are fin/nvo format
+        elif ftype == 3: #FIN/NVO- assumes .txt are fin/nvo format
             data,fdropdatetime,flat,flon,_ = io.readfinfile(logfile,hasSal=hasSal)
             
-        elif ftype == 4:
+        elif ftype == 4: #JJVV
             try: #year is important if jjvv file
                 year = int(profdatestr[:4])
             except:
@@ -251,22 +251,32 @@ def checkdatainputs_editorinput(self):
         trace_error()
         success = False
         errormsg = 'Failed to read selected data file!'
-            
-    if ftype and success:
+    
+        
+    #read lat/lon/date/time from inputs, supplement file data if files didn't contain that information
+    if ftype and success: 
             
         try:
             isgood,ilat,ilon,idropdatetime,identifier = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, identifier, checkcoords, checktime, True)
             
-            if np.isnan(flat*flon):
+            #pulling latitude/longitude
+            if np.isnan(flat*flon): #use user input (file position bad)
                 lat = ilat
                 lon = ilon
-            else:
+                if np.isnan(ilat*ilon): #file position is bad and user input position is bad
+                    success = False
+                    warningmsg = "Profile does not contain drop position, please specify position with user inputs"
+            else: #use file position
                 lat = flat
                 lon = flon
                 
-            if not fdropdatetime:
+            #pulling drop date/time
+            if not fdropdatetime: #use user input (file date/time bad)
                 dropdatetime = idropdatetime
-            else:
+                if idropdatetime <= datetime(1900,1,1): #bad drop date/time in file and user input
+                    success = False
+                    warningmsg = "Profile does not contain drop date/time, please specify date/time with user inputs"
+            else: #use file date/time
                 dropdatetime = fdropdatetime
                 
         except:
@@ -278,7 +288,7 @@ def checkdatainputs_editorinput(self):
         QApplication.restoreOverrideCursor()
         if errormsg:
             self.posterror(errormsg)
-        elif warningmsg:
+        if warningmsg:
             self.postwarning(warningmsg)
         return
         
@@ -302,7 +312,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         
         probetype = probetype.upper()
         
-        #concatenates profile if depths stop increasing
+        #concatenates raw profile if depths stop increasing (this shouldn't happen but in case of errors)
         negind = np.argwhere(np.diff(rawdata['depth']) < 0)
         if len(negind) > 0: #if depths do decrease at some point, truncate the profile there
             cutoff = negind[0][0] + 1
@@ -360,6 +370,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         del self.alltabdata[opentab]["tabwidgets"]
         QObjectCleanupHandler().add(self.alltabdata[opentab]["tablayout"])
         
+        #updating tab layout with new (empty) QGridLayout
         self.alltabdata[opentab]["tablayout"] = QGridLayout()
         self.alltabdata[opentab]["tab"].setLayout(self.alltabdata[opentab]["tablayout"]) 
         self.alltabdata[opentab]["tablayout"].setSpacing(10)
@@ -368,20 +379,23 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         self.alltabdata[opentab]["PlotTabWidget"] = QTabWidget()
         self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["PlotTabWidget"],0,0,14,1)
         
-        self.alltabdata[opentab]["plotWidgets"] = {} #initialize dicts to store T/S/U/V widgets and layouts
+        #initialize dicts to store T/S/U/V widgets and layouts
+        self.alltabdata[opentab]["plotWidgets"] = {} 
         self.alltabdata[opentab]["plotLayouts"] = {}
         self.alltabdata[opentab]["ProfFigs"] = {}     
         self.alltabdata[opentab]["ProfCanvases"] = {}     
         self.alltabdata[opentab]["ProfAxes"] = {}     
-
-        if probetype == "AXBT": #determining which plots to build
+        
+        #determining what variables to plot depending on probe type
+        if probetype == "AXBT": 
             params = ["Temperature"]
             params_short = ["T"]
         elif probetype == "AXCTD":
             params = ["Temperature", "Salinity"]
             params_short = ["T","S"]
         
-        
+            
+        #plotting profile in a separate tab for each parameter (e.g. temperature, salinity for AXCTD) 
         for cparam,cid in zip(params, params_short):
             
             #adding temperature tab
@@ -409,6 +423,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             for row,rstr in enumerate(rowstretch):
                 self.alltabdata[opentab]["plotLayouts"][cid].setRowStretch(row,rstr)
         
+        
         #location figure
         self.alltabdata[opentab]["LocFig"] = plt.figure()
         self.alltabdata[opentab]["LocCanvas"] = FigureCanvas(self.alltabdata[opentab]["LocFig"]) 
@@ -421,7 +436,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         self.alltabdata[opentab]["LocToolbar"] = CustomToolbar(self.alltabdata[opentab]["LocCanvas"], self) 
         self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["LocToolbar"],12,3,1,3)
 
-        #Create widgets for UI populated with test example
+        #Create widgets for UI 
         self.alltabdata[opentab]["tabwidgets"] = {}
         
         #first column: profile editor functions:
@@ -465,7 +480,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         self.alltabdata[opentab]["tabwidgets"]["runqc"].clicked.connect(self.runqc) 
         
         
-        #Second column: profile information
+        #profile information text
         self.alltabdata[opentab]["tabwidgets"]["proftxt"] = QLabel(' ')#12
         self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"] = QCheckBox('Bottom Strike?') #13
         self.alltabdata[opentab]["tabwidgets"]["rcodetitle"] = QLabel('Profile Quality:') #14
@@ -489,12 +504,13 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         #should be 15 entries
         widgetorder = ["toggleclimooverlay", "addpoint", "removepoint", "removerange", "sfccorrectiontitle", "sfccorrection", "maxdepthtitle", "maxdepth", "depthdelaytitle", "depthdelay", "runqc", "proftxt", "isbottomstrike", "rcodetitle", "rcode", "saveprof"]
         
+        #positioning for all widgets
         wrows     = [3,4,4,5,6,6,7,7,8,8,9,5,3,3,4,9]
         wcols     = [2,2,3,2,2,3,2,3,2,3,2,5,6,5,5,5]
         wrext     = [1,1,1,1,1,1,1,1,1,1,1,4,1,1,1,1]
         wcolext   = [2,1,1,2,1,1,1,1,1,1,2,2,1,1,2,2]
         
-        #adding user inputs
+        #adding widgets in defined positions
         for i,r,c,re,ce in zip(widgetorder,wrows,wcols,wrext,wcolext):
             self.alltabdata[opentab]["tabwidgets"][i].setFont(self.labelfont)
             self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"][i],r,c,re,ce)
@@ -530,12 +546,10 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             if probetype == 'AXCTD':
                 self.alltabdata[opentab]["climohandle"]["S"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["S"], rawsalinity, rawdepth, salinity, depthS, dtg, climodatafill=climopsalfill, climodepthfill=climodepthfill, datacolor='g', datalabel = 'Salinity (PSU)', matchclimo=matchclimo, axlimtype=0)
                 
-                
-            #tightening layout to maximize space
+            #tightening layout of plots to maximize space
             for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
                 self.alltabdata[opentab]["ProfFigs"][ckey].set_tight_layout(True)    
-            
-            
+                
             #adding location plot
             profplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
             self.alltabdata[opentab]["ProfCanvases"]["T"].draw() #update figure canvases
@@ -642,7 +656,7 @@ def runqc(self):
             salinity = salinity[isbelowmaxdepth]
             depthS = depthS[isbelowmaxdepth]
 
-            # writing values to alltabs structure: prof temps, and matchclimo
+        # writing values to alltabs structure: prof temps, and matchclimo
         self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
         self.alltabdata[opentab]["profdata"]["depthT_plot"] = depthT
         self.alltabdata[opentab]["profdata"]["temperature_plot"] = temperature
@@ -758,6 +772,7 @@ def updateprofeditplots(self):
     probetype = self.alltabdata[opentab]["probetype"].upper()
 
     try:
+        #pulling data to plot for QCed profile
         tempplot = self.alltabdata[opentab]["profdata"]["temperature_plot"]
         depthTplot = self.alltabdata[opentab]["profdata"]["depthT_plot"]
         npoints = len(tempplot)
@@ -782,6 +797,7 @@ def updateprofeditplots(self):
                 self.alltabdata[opentab]["ProfAxes"]["S"].plot(psalplot, depthSplot, 'g', linewidth=2, label='QC')
                 self.alltabdata[opentab]["ProfCanvases"]["S"].draw()
             
+        #noting that profile hasn't been saved and adding asterisk to tab name to display that for the user
         self.alltabdata[opentab]["profileSaved"] = False
         self.add_asterisk(opentab)
 
@@ -790,7 +806,7 @@ def updateprofeditplots(self):
         self.posterror("Failed to update profile editor plots!")
 
         
-        
+#returns text description of profile (e.g. corrections, position, number of datapoints)
 def generateprofiledescription(self,opentab,numpoints):
     try:
         sfcdepth = self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].value()
@@ -845,7 +861,7 @@ def get_open_subfigure(self):
     
 
         
-#add point on profile
+#add selected point on profile
 def addpoint(self):
     opentab = self.whatTab()
     csfig = self.get_open_subfigure()
@@ -861,7 +877,7 @@ def addpoint(self):
             
             
         
-#remove point on profile
+#remove selected point on profile
 def removepoint(self):
     opentab = self.whatTab()
     csfig = self.get_open_subfigure()
@@ -893,12 +909,12 @@ def removerange(self):
             self.posterror("Failed to remove range")
             
             
-
+#function is called whenever user depresses mouse button to remove a range of points, records x/y position of mouse click
 def on_press_spike(self,event):
     self.y1_spike = event.ydata #gets first depth argument
     
     
-        
+#function called whenever user releases mouse after clicking, records x/y position of mouse click
 #update profile with selected point to add or remove
 def on_release(self,event):
 
@@ -962,7 +978,6 @@ def on_release(self,event):
             depthplot = depthplot[goodvals]
                 
         #replace values in profile
-        
         if csfig == 'T':
             self.alltabdata[opentab]["profdata"]["depthT_qc"] = depthplot
             self.alltabdata[opentab]["profdata"]["temperature_qc"] = dataplot

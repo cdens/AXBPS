@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -64,7 +64,7 @@ class AXBTProcessor(QRunnable):
         self.freqs = []
         
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,'AXBT')
+        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,vhffreq,'AXBT')
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()

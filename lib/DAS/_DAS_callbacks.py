@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -20,7 +20,7 @@
 # This file holds all callback functions for radio receivers.
 #
 # Callbacks must append data to self.audiostream (and remove data from the beginning 
-#   of the buffer for AXBTs only) and write to the 
+#   of the buffer for AXBTs only) and write incoming data to the wav file
 
 
 import wave #WAV file writing

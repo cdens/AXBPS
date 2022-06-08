@@ -1,5 +1,5 @@
 # =============================================================================
-#     Author: LTJG Casey R. Densmore, 12FEB2022
+#     Author: Casey R. Densmore, 12FEB2022
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System (AXBPS)
 #
@@ -58,7 +58,7 @@ def readlogfile(logfile):
             
     
     
-    
+#code to parse a variety of date formats to python datetime variable
 def parse_date(line):
     day = month = year = False #initializing
     
@@ -104,7 +104,7 @@ def parse_date(line):
     
     
     
-        
+#parsing a variety of lats/lons into valid floats with N and E positive
 def parse_lat_lon(line):
     line = line.strip().lower() #sanitizing
     
@@ -233,7 +233,7 @@ def writeedffile(edffile,dropdatetime,lat,lon,data,comments,QC=False):
     with open(edffile,'w') as f_out:
     
         #writing header, date and time, drop # (bad value)
-        f_out.write("// This is an Air-Expendable Probe EXPORT DATA FILE  (EDF)\n")
+        f_out.write("// This is an air-launched probe EXPORT DATA FILE  (EDF)\n")
         f_out.write("// File generated with the Airborne eXpendable Buoy Processing System (AXBPS)\n")
         f_out.write(f"Date of Launch:  {datetime.strftime(dropdatetime,'%m/%d/%y')}\n")
         f_out.write(f"Time of Launch:  {datetime.strftime(dropdatetime,'%H:%M:%S')}\n")
@@ -299,7 +299,7 @@ def writeedffile(edffile,dropdatetime,lat,lon,data,comments,QC=False):
     
     
     
-#read data from JJVV file (AXBT only)
+#read data from JJVV file (AXBT and/or temperature data only)
 def readjjvvfile(jjvvfile):
     with open(jjvvfile,'r') as f_in:
 
@@ -386,7 +386,7 @@ def readjjvvfile(jjvvfile):
 
 
 
-#write data to JJVV file (AXBT only)
+#write data to JJVV file (AXBT/temperature only)
 def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike):
     
     #open file for writing
