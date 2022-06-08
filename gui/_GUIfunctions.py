@@ -272,7 +272,8 @@ def buildmenu(self):
     
     #GUI font size control- !! this requires that self.configureGuiFont() has already been run to set self.fontoptions, self.fonttitles, and self.fontindex
     self.fontMenu = QMenu("Font Size") #making menu, action group
-    self.fontMenuActionGroup = QActionGroup(self,exclusive=True)
+    self.fontMenuActionGroup = QActionGroup(self)
+    self.fontMenuActionGroup.setExclusive(True)
     
     try: #getting current option (defaults to size=14 if option fails)
         self.fontindex = self.fontoptions.index(self.settingsdict["fontsize"])
