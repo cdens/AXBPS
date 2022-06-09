@@ -253,7 +253,7 @@ def prep_graph_and_table(self, probetype, plottabnum):
     if probetype == "AXBT":
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
     elif probetype == "AXCTD":
-        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz (dB)', 'R-7500 Hz (dB)', 'Depth (m)','Temp. (C)', 'Sal. (PSU)'))
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz', 'R-7500 Hz', 'Depth (m)','Temp. (C)', 'Sal. (PSU)'))
         
     
     for ii in range(0,6): #building table
