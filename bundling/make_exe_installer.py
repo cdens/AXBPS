@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 # Build script for AXBPS
 
-import os, shutil
+import os, shutil, sys
 from platform import system as cursys
 
 
@@ -73,7 +73,7 @@ def run_pyinstaller(specfile,slash):
     
     #copying PyQt5 bin files over to current (bundling) directory
     for cbinfile in os.listdir(pyqtpath):
-        copystuff(pyqtpath + cbinfile, cbinfile)
+        copystuff(pyqtpath + cbinfile, cbinfile, slash)
     
     
     
@@ -98,9 +98,7 @@ if __name__ == "__main__":
         slash = '\\'
     else:
         slash = '/'
-        
-    pythonpath = 
-    
+            
     #reading main.spec and AXBPS iss config files
     print("Configuring environment/preparing to bundle AXBPS")
     specfile = "main.spec"
@@ -156,7 +154,7 @@ if __name__ == "__main__":
     all_items = os.listdir(bundledir)
     for item in all_items:
         if item != 'data':
-            deletestuff(bundledir + slash + data)
+            deletestuff(bundledir + slash + item)
     
     
     
