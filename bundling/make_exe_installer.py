@@ -65,6 +65,16 @@ def run_pyinstaller(specfile,slash):
     
     movestuff("main.exe","AXBPS.exe") #rename main.exe to AXBPS.exe
     
+    #find full path to python site-packages to get path to PyQt5 bin files
+    for pypath in sys.path:
+        if 'site-packages' in pypath:
+            break
+    pyqtpath = pypath + slash + 'PyQt5' + slash + 'Qt' + slash + 'bin' + slash
+    
+    #copying PyQt5 bin files over to current (bundling) directory
+    for cbinfile in os.listdir(pyqtpath):
+        copystuff(pyqtpath + cbinfile, cbinfile)
+    
     
     
 #creates configuration file and runs Inno Script Setup
@@ -88,6 +98,8 @@ if __name__ == "__main__":
         slash = '\\'
     else:
         slash = '/'
+        
+    pythonpath = 
     
     #reading main.spec and AXBPS iss config files
     print("Configuring environment/preparing to bundle AXBPS")
@@ -129,6 +141,7 @@ if __name__ == "__main__":
     run_pyinstaller(specfile,slash)
     os.chdir("..")
     
+    
     print("Running Inno Script Setup/Generating executable installer")
     #writing iss config file
     replacevars = ["{{AXBPSPATH}}","{{AXBPSVERSION}}","{{AXBPSINSTALLERFILENAME}}"]
@@ -139,8 +152,11 @@ if __name__ == "__main__":
         f.write(issfilecontents)
     run_iss(issfile, AXBPS_installer_filename, slash)
     
-    #deleting build folder
-    deletestuff(bundledir)
+    #deleting everything in build folder except for data
+    all_items = os.listdir(bundledir)
+    for item in all_items:
+        if item != 'data':
+            deletestuff(bundledir + slash + data)
     
     
     
