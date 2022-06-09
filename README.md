@@ -14,6 +14,12 @@ The Airborne eXpendable Buoy Processing System (AXBPS) Data Acquisition System i
 The Airborne eXpendable Buoy Processing System (AXBPS) Profile Editing System is meant to enable users to quality control AXBT temperature-depth profiles and AXCTD temperature- and salinity-depth profiles, guided by an automated quality control algorithm and further aided by climatology and bathymetry data for the region of interest to reduce the background oceanographic knowledge necessary on the part of the user. 
 
 
+
+## Additional information and standalone installer
+
+More information about AXBPS, including a user manual and publications, is available at [http://mmmfire.whoi.edu/axbps/](http://mmmfire.whoi.edu/axbps/). This webpage also hosts an executable installer for a standalone version of AXBPS that does not requires to install python base or any other dependencies (packaged with PyInstaller). 
+
+
 ## Platform Support
 AXBPS is currently only fully functional in Windows as there is currently
 no driver support for WiNRADIO G39WSBE Receivers in Linux or MacOS. All functionalities other than realtime data processing (e.g. audio file reprocessing, profile quality control) are available for Windows, Linux, and MacOS.
@@ -42,6 +48,6 @@ pip install Shapely-1.6.4.post2-cp3x-cp3xm-win(32 or _amd64).whl
 
 ## Data Dependencies and Additional Information
 
-AXBPS also requires driver and data files in the data folder and test files in the testdata folder. Due to size constraints, these are not included in the repository. These files are available online at [http://mmmfire.whoi.edu/ares/](http://mmmfire.whoi.edu/ares/)
+AXBPS also requires driver and data files in the data folder and test files in the testdata folder. Due to size constraints, these are not included in the repository. These files are available online at [http://mmmfire.whoi.edu/axbps/](http://mmmfire.whoi.edu/axbps/)
 
 This website also hosts a the user manual with details on where to move these folders within the AXBPS repository, how to use the AXBPS, operating principles, and a bundled version of AXBPS (with PyInstaller) and executable installer file for Windows 10 x64. 
