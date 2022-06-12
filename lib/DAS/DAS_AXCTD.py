@@ -142,7 +142,7 @@ class AXCTDProcessor(QRunnable):
         self.d_pcm = int(np.round(self.f_s/self.f_s_power)) #how many points apart to sample power
         
         self.demod_buffer = np.array([]) #buffer (list) for demodulating PCM data
-        self.demod_Npad = 50 #how many points to pad on either side of demodulation window (must be larger than window length for low-pass filter in demodulation function)
+        self.demod_Npad = 100 #how many points to pad on either side of demodulation window (must be larger than window length for low-pass filter in demodulation function)
         self.next_demod_ind = 0
         
         self.high_bit_scale = 1.5 #scale factor for high frequency bit to correct for higher power at low frequencies (will be adjusted to optimize demodulation after reading first header data)

@@ -108,7 +108,7 @@ def makenewprocessortab(self):
         if len(receiver_options) > 0:
             isnotbusy = [True]*len(receiver_options)
             for iii,serialnum in enumerate(receiver_options):
-                for ctab in self.alltabdata:
+                for ctab,_ in enumerate(self.alltabdata):
                     if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
                         isnotbusy[iii] = False
             if sum(isnotbusy) > 0:
@@ -353,7 +353,7 @@ def datasourcechange(self):
         #checks to see if selection is busy
         woption = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
         if woption != "Audio" and woption != "Test":
-            for ctab in self.alltabdata:
+            for ctab,_ in enumerate(self.alltabdata):
                 if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == woption:
                     isbusy = True
 
@@ -426,7 +426,7 @@ def changechannelandfrequency(self,newchannel,newfrequency,opentab):
         curdatasource = self.alltabdata[opentab]["datasource"]
         
         # sets all tabs with the current receiver to the same channel/freq
-        for ctab in self.alltabdata:
+        for ctab,_ in enumerate(self.alltabdata):
             #changes channel+frequency values for all tabs set to current data source
             if self.alltabdata[ctab]["datasource"] == curdatasource:
                 self.alltabdata[ctab]["tabwidgets"]["vhfchannel"].setValue(int(newchannel))
@@ -551,7 +551,7 @@ def prepprocessor(self, opentab):
     elif sourcetype != "TT": #radio receiver selected as datasource
         
         #checks to make sure current receiver isn't busy
-        for ctab in self.alltabdata:
+        for ctab,_ in enumerate(self.alltabdata):
             if ctab != opentab and self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == datasource:
                 self.posterror("This WINRADIO appears to currently be in use! Please stop any other active tabs using this device before proceeding.")
                 return False,"No","No"
