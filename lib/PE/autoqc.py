@@ -84,7 +84,7 @@ def rundespiker(rawdepth,rawdata,maxdev):
     data_despike = np.array([])
     depth_despike = np.array([])
     
-    depthwin = 5 #range of spiker is +/- 5 meters
+    depthwin = 30 #range of spiker is +/- 5 meters
     maxdepth = np.max(rawdepth)
     
     for n,cdepth in enumerate(rawdepth):

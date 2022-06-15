@@ -186,6 +186,7 @@ class AXCTDProcessor(QRunnable):
         #signal to noise ratio settings
         self.minR400 = self.settings['minr400'] #threshold to ID first 400 Hz pulse
         self.mindR7500 = self.settings['mindr7500'] #threshold to ID profile start by 7.5 kHz tone
+        self.mindR7500_inprof = self.mindR7500/2 #threshold of 7.5 kHz tone power for good profile datapoint
         self.deadfreq = self.settings['deadfreq'] #frequency to use as "data-less" control to normalize signal levels
         
         #default depth/temperature/conductivity conversion coefficients
@@ -600,6 +601,28 @@ class AXCTDProcessor(QRunnable):
             psals = np.round(psals,2)
             r400 = np.round(self.r400_buffer,2)
             r7500 = np.round(self.r7500_buffer,2)
+            
+            nP = len(temps)
+            r400 = r400[:nP:32] #subsampling
+            r7500 = r7500[:nP:32] #subsampling
+            
+            #in case array lengths are off by 1 or so, drop a datapoint
+            if nP > len(r400):
+                nP = len(r400)
+                times = times[:nP]
+                depths = depths[:nP]
+                temps = temps[:nP]
+                conds = conds[:nP]
+                psals = psals[:nP]
+            elif nP < len(r400):
+                r400 = r400[:nP]
+                r7500 = r7500[:nP]
+            
+            for i,p in enumerate(r7500):
+                if p < self.mindR7500_inprof:
+                    temps[i] = np.NaN
+                    conds[i] = np.NaN
+                    psals[i] = np.NaN
             
             #removing parsed data from binary buffer
             self.binary_buffer = self.binary_buffer[next_buffer_ind:]

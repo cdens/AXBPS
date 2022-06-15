@@ -596,18 +596,21 @@ def runqc(self):
         oceandepth = self.alltabdata[opentab]["profdata"]["oceandepth"]
         
         probetype = self.alltabdata[opentab]["probetype"].upper()
+        check_for_gaps = self.settingsdict["checkforgaps"]
+        
         if probetype == "AXCTD":
             rawsalinity = self.alltabdata[opentab]["profdata"]["salinity_raw"]
             climopsalfill = self.alltabdata[opentab]["profdata"]["climopsalfill"]
             rawdepthS = rawdepthT.copy()
+            check_for_gaps = False
             
         try:
             # running QC, comparing to climo
-            temperature, depthT = qc.autoqc(rawtemperature, rawdepthT, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
+            temperature, depthT = qc.autoqc(rawtemperature, rawdepthT, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
             
             #running for salinity as well
             if probetype == "AXCTD":
-                salinity, depthS = qc.autoqc(rawsalinity, rawdepthS, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], self.settingsdict["checkforgaps"])
+                salinity, depthS = qc.autoqc(rawsalinity, rawdepthS, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
                 
             if self.settingsdict["comparetoclimo"] and climodepths.size != 0:
                 matchclimo, climobottomcutoff = oci.comparetoclimo(temperature, depthT, climotemps, climodepths,climotempfill,climodepthfill)

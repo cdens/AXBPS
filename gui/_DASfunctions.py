@@ -959,12 +959,12 @@ def update_AXCTD_DAS(self, plottabnum, data, interval_override):
     curcolor = []
     table_data = []
     for (ctime, cr400, cr7500, cdepth, ctemp, cpsal) in zip(newtime, newr400, newr7500, newdepth, newtemp, newpsal):
-        if triggerstatus <= 1:
+        if triggerstatus <= 1 or np.isnan(ctemp*cpsal):
             ctemp = cpsal = cdepth = '------'
-            if triggerstatus: #must = 1, therefore in 400 Hz pulse detection phase
+            if triggerstatus == 1: #must = 1, therefore in 400 Hz pulse detection phase
                 curcolor.append(QColor(204, 220, 255)) #light blue
             else: #nothing detected yet
-                curcolor.append(QColor(200, 200, 200)) #light gray
+                curcolor.append(QColor(200, 200, 200)) #light gray (less than 1 or greater than 1 with interference)
         else: #active profile collection
             curcolor.append(QColor(204, 255, 220)) #light green
         
