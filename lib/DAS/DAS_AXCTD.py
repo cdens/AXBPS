@@ -242,7 +242,7 @@ class AXCTDProcessor(QRunnable):
                 from lib.DAS._DAS_callbacks import wr_axctd_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = cdf.initialize_receiver_callback(rtype, hradio, updateaudiobuffer, tabID)
+                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, updateaudiobuffer, self.tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:

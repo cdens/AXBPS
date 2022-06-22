@@ -84,35 +84,14 @@ def makenewprocessortab(self):
         #and add new buttons and other widgets
         self.alltabdata[opentab]["tabwidgets"] = {}
                 
-        #Getting necessary data
-        if self.dll != 0:
-            receiver_options, rtypes = list_receivers(self.dll)
-        else:
-            receiver_options = rtypes = []
-            
-        self.alltabdata[opentab]["datasource_options"] = ['Test','Audio']
-        self.alltabdata[opentab]["sourcetypes"] = ['TT','AA']
-        for op,rtype in zip(receiver_options,rtypes):
-            self.alltabdata[opentab]["datasource_options"].append(op)
-            self.alltabdata[opentab]["sourcetypes"].append(rtype)
-
         #making widgets
         self.alltabdata[opentab]["tabwidgets"]["datasourcetitle"] = QLabel('Data Source:') #1
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"] = QPushButton('Refresh')  # 2
         self.alltabdata[opentab]["tabwidgets"]["refreshdataoptions"].clicked.connect(self.datasourcerefresh)
         self.alltabdata[opentab]["tabwidgets"]["datasource"] = QComboBox() #3
-        for op in self.alltabdata[opentab]["datasource_options"]: #add all options (test, audio, receivers)
-            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(op) 
         
-        #default receiver selection if 1+ receivers are connected and not actively processing
-        if len(receiver_options) > 0:
-            isnotbusy = [True]*len(receiver_options)
-            for iii,serialnum in enumerate(receiver_options):
-                for ctab,_ in enumerate(self.alltabdata):
-                    if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
-                        isnotbusy[iii] = False
-            if sum(isnotbusy) > 0:
-                self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(np.where(isnotbusy)[0][0]+2)
+        #updating datasource dropbox
+        self.datasourcerefresh()
         
         #connect datasource dropdown to changer function, pull current datasource
         self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
@@ -322,23 +301,46 @@ def datasourcerefresh(self):
         # only lets you change the WINRADIO if the current tab isn't already processing
         if not self.alltabdata[opentab]["isprocessing"]:
             self.alltabdata[opentab]["tabwidgets"]["datasource"].clear()
-            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Test')
-            self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem('Audio')
+            
             # Getting necessary data
             if self.dll != 0:
-                receiver_options = list_receivers(self.dll)
+                receiver_options, rtypes = list_receivers(self.dll)
             else:
-                receiver_options = []
-            for wr in receiver_options:
-                self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(wr)  # ADD COLOR OPTION
-            self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndexChanged.connect(self.datasourcechange)
+                receiver_options = rtypes = []
+            
+            self.alltabdata[opentab]["datasource_options"] = ['Test','Audio']
+            self.alltabdata[opentab]["sourcetypes"] = ['TT','AA']
+            for op,rtype in zip(receiver_options,rtypes):
+                self.alltabdata[opentab]["datasource_options"].append(op)
+                self.alltabdata[opentab]["sourcetypes"].append(rtype)
+            
+            for op in self.alltabdata[opentab]["datasource_options"]: #add all options (test, audio, receivers)
+                self.alltabdata[opentab]["tabwidgets"]["datasource"].addItem(op) 
+                
+            
+            #default receiver selection if 1+ receivers are connected and not actively processing
+            if len(receiver_options) > 0:
+                isnotbusy = [True]*len(receiver_options)
+                for iii,serialnum in enumerate(receiver_options):
+                    for ctab,_ in enumerate(self.alltabdata):
+                        if ctab != opentab and  self.alltabdata[ctab]["isprocessing"] and self.alltabdata[ctab]["datasource"] == serialnum:
+                            isnotbusy[iii] = False
+                if sum(isnotbusy) > 0:
+                    self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(np.where(isnotbusy)[0][0]+2)
+                    
+                    
             self.alltabdata[opentab]["datasource"] = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
-
+            
         else:
             self.postwarning("You cannot refresh input devices while processing. Please click STOP to discontinue processing before refreshing device list")
     except Exception:
         trace_error()
         self.posterror("Failed to refresh available receivers")
+        
+        
+        
+        
+        
         
         
 #triggered whenever user selects a new datasource (verifies if it is a receiver it isn't actively processing data)
@@ -373,6 +375,7 @@ def datasourcechange(self):
     except Exception:
         trace_error()
         self.posterror("Failed to change selected WiNRADIO receiver for current tab.")
+        
         
         
 #called when user changes channel and the frequency needs to be updated   

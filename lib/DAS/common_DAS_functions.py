@@ -171,7 +171,7 @@ def list_receivers(dll): #get a list of all radio receivers
     if 'WR' in dll.keys():
         wr_receivers = wr.list_radios(dll['WR'])
         receivers.extend(wr_receivers)
-        rtypes.append('WR' for _ in wr_receivers)
+        rtypes.extend(['WR' for _ in wr_receivers])
     
     return receivers,rtypes
     
@@ -221,7 +221,7 @@ def stop_receiver(dll,rtype,hradio): #redirect audio stream/callback to null and
     
                 
     
-def initialize_receiver_callback(rtype, hradio, destination, tabID): #specify callback function for audio stream 
+def initialize_receiver_callback(dll, rtype, hradio, destination, tabID): #specify callback function for audio stream 
     if rtype == 'WR':
         status = wr.setup_receiver_stream(dll['WR'],hradio,destination,tabID)
     else:

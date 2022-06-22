@@ -116,7 +116,7 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhff
         self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,self.serial,vhffreq)
         
         # initialize audio stream data variables
-        self.fs = cdf.get_fs(self.dll, self.sourcetype) #f_s depends on type of receiver connected
+        self.f_s = cdf.get_fs(self.dll, self.sourcetype) #f_s depends on type of receiver connected
         self.audiostream = [0] * 2 * self.f_s #initializes the buffer with 2 seconds of zeros
 
         #setup WAV file to write (if audio or test, source file is copied instead)
