@@ -127,7 +127,6 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhff
         wave.Wave_write.writeframes(self.wavfile,bytearray(self.audiostream))
     
         
-    
     self.common_vars_init = True
     
         

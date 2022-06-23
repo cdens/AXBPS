@@ -125,9 +125,9 @@ def activate_receiver(wrdll,serial,vhffreq): #turn on radio receiver
     #shut down the receiver if it was powered on but had a subsequent error
     if hradio > 0 and startthread > 0:
         stop_receiver(wrdll,hradio)
-    
             
     return hradio, startthread
+    
     
     
 def check_receiver_connected(wrdll,hradio): #verify the device is connected

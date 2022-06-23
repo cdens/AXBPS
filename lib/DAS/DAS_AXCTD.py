@@ -40,6 +40,8 @@ class AXCTDProcessor(QRunnable):
     
     #importing methods common to all AXBT/AXCTD processing threads
     from ._processor_functions import (initialize_common_vars, wait_to_run, kill, killaudiorecording, abort, changecurrentfrequency, changethresholds, update_settings)
+    from ._DAS_callbacks import define_callbacks
+    
     #kill: terminates the thread and emits an error message if necessary
     #killaudiorecording: stops appending PCM data to the audio file (if the file is too large)
     #abort: pyqtslot for the GUI (user STOP button) to terminate the process
@@ -84,6 +86,7 @@ class AXCTDProcessor(QRunnable):
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()
+        
                 
         if self.threadstatus: 
             self.keepgoing = False
@@ -227,6 +230,9 @@ class AXCTDProcessor(QRunnable):
         #waits for self.threadstatus to change to 100 (indicating __init__ finished) before proceeding
         self.wait_to_run()
         
+        #defining radio receiver callbacks within scope with access to self variable
+        wr_axbt_callback, wr_axctd_callback = self.define_callbacks()
+        
         #writing basic info about source to sigdata file
         if self.isfromaudio or self.isfromtest:
             cursource = self.audiofile
@@ -242,7 +248,7 @@ class AXCTDProcessor(QRunnable):
                 from lib.DAS._DAS_callbacks import wr_axctd_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, updateaudiobuffer, self.tabID)
+                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, wr_axctd_callback, self.tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:
