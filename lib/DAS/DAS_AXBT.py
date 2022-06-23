@@ -93,7 +93,7 @@ class AXBTProcessor(QRunnable):
             
             #Declaring the callbuck function to update the audio buffer (importing from DAS_callbacks)
             if self.sourcetype == 'WR': #callback for winradio
-                from lib.DAS._DAS_callbacks import wr_axbt_callback as updateaudiobuffer
+                # from lib.DAS._DAS_callbacks import wr_axbt_callback as updateaudiobuffer
                 
                 # initializes audio callback function
                 status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, wr_axbt_callback, self.tabID)
