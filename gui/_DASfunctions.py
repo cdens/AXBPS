@@ -453,7 +453,7 @@ def updateDASsettings(self):
         newaxbtsettings = {}
         axbtsettingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
         newaxctdsettings = {}
-        axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"]
+        axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
         
         for csetting in axbtsettingstopull:
             newaxbtsettings[csetting] = self.settingsdict[csetting]
@@ -639,7 +639,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
     if probetype == 'AXBT':
         settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
     elif probetype == 'AXCTD':
-        settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"]
+        settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
         
     for csetting in settingstopull:
         settings[csetting] = self.settingsdict[csetting]

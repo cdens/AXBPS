@@ -188,6 +188,7 @@ class AXCTDProcessor(QRunnable):
         
         #signal to noise ratio settings
         self.minR400 = self.settings['minr400'] #threshold to ID first 400 Hz pulse
+        self.minR400_inprof = self.settings['minr400']/2 #threshold of 400 Hz signal in profile for good data
         self.mindR7500 = self.settings['mindr7500'] #threshold to ID profile start by 7.5 kHz tone
         self.mindR7500_inprof = self.mindR7500/2 #threshold of 7.5 kHz tone power for good profile datapoint
         self.deadfreq = self.settings['deadfreq'] #frequency to use as "data-less" control to normalize signal levels
@@ -196,6 +197,10 @@ class AXCTDProcessor(QRunnable):
         self.zcoeff = self.settings['zcoeff_axctd']
         self.tcoeff = self.settings['tcoeff_axctd']
         self.ccoeff = self.settings['ccoeff_axctd']
+        
+        #max ranges for good temperature and salinity values
+        self.tlims = self.settings['tlims_axctd']
+        self.slims = self.settings['slims_axctd']
         
         #demodulator configuration
         self.f1 = self.settings['mark_space_freqs'][0] # bit 1 (mark) = 400 Hz
@@ -231,7 +236,7 @@ class AXCTDProcessor(QRunnable):
         self.wait_to_run()
         
         #defining radio receiver callbacks within scope with access to self variable
-        wr_axbt_callback, wr_axctd_callback = self.define_callbacks()
+        receiver_callback = self.define_callbacks("AXCTD", self.sourcetype)
         
         #writing basic info about source to sigdata file
         if self.isfromaudio or self.isfromtest:
@@ -248,7 +253,7 @@ class AXCTDProcessor(QRunnable):
                 # from lib.DAS._DAS_callbacks import wr_axctd_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, wr_axctd_callback, self.tabID)
+                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, receiver_callback, self.tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:
@@ -597,44 +602,30 @@ class AXCTDProcessor(QRunnable):
             binbufftimes = (np.asarray(self.binary_buffer_inds) - self.profstartind)/self.f_s
                 
             #parsing data into frames
-            hexframes,times,depths,temps,conds,psals,next_buffer_ind = parse.parse_bitstream_to_profile(self.binary_buffer, binbufftimes, self.r7500_buffer, self.tempLUT, self.tcoeff, self.ccoeff, self.zcoeff)
-            
+            hexframes, times, depths, temps, conds, psals, r400, r7500, next_buffer_ind = parse.parse_bitstream_to_profile(self.binary_buffer, binbufftimes, self.r400_buffer, self.r7500_buffer, self.tempLUT, self.tcoeff, self.ccoeff, self.zcoeff)
+                        
             #rounding data and appending to lists
             times = np.round(np.asarray(times) + self.firstpointtime, 2)
             depths = np.round(depths,2)
             temps = np.round(temps,2)
             conds = np.round(conds,2)
             psals = np.round(psals,2)
-            r400 = np.round(self.r400_buffer,2)
-            r7500 = np.round(self.r7500_buffer,2)
+            r400 = np.round(r400,2)
+            r7500 = np.round(r7500,2)
             
-            nP = len(temps)
-            r400 = r400[:nP:32] #subsampling
-            r7500 = r7500[:nP:32] #subsampling
-            
-            #in case array lengths are off by 1 or so, drop a datapoint
-            if nP > len(r400):
-                nP = len(r400)
-                times = times[:nP]
-                depths = depths[:nP]
-                temps = temps[:nP]
-                conds = conds[:nP]
-                psals = psals[:nP]
-            elif nP < len(r400):
-                r400 = r400[:nP]
-                r7500 = r7500[:nP]
-            
+            #if R400, dR7500, temp, or psal are outside of preset bounds, exclude datapoint
             for i,p in enumerate(r7500):
-                if p < self.mindR7500_inprof:
+                if p < self.mindR7500_inprof or r400[i] < self.minR400_inprof or temps[i] < self.tlims[0] or temps[i] > self.tlims[1] or psals[i] < self.slims[0] or psals[i] > self.slims[1]:
                     temps[i] = np.NaN
                     conds[i] = np.NaN
                     psals[i] = np.NaN
+                    
             
             #removing parsed data from binary buffer
             self.binary_buffer = self.binary_buffer[next_buffer_ind:]
             self.binary_buffer_inds = self.binary_buffer_inds[next_buffer_ind:]
+            self.r400_buffer = self.r400_buffer[next_buffer_ind:]
             self.r7500_buffer = self.r7500_buffer[next_buffer_ind:]
-            
             
         else:
             

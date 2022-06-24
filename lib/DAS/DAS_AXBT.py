@@ -86,7 +86,7 @@ class AXBTProcessor(QRunnable):
         self.wait_to_run()
         
         #defining radio receiver callbacks within scope with access to self variable
-        wr_axbt_callback, wr_axctd_callback = self.define_callbacks()
+        receiver_callback = self.define_callbacks("AXBT", self.sourcetype)
 
         
         try:
@@ -96,7 +96,7 @@ class AXBTProcessor(QRunnable):
                 # from lib.DAS._DAS_callbacks import wr_axbt_callback as updateaudiobuffer
                 
                 # initializes audio callback function
-                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, wr_axbt_callback, self.tabID)
+                status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, receiver_callback, self.tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
                 else:

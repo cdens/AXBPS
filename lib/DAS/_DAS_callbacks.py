@@ -35,62 +35,74 @@ c_char_p, c_void_p, POINTER, c_int16, cast, CFUNCTYPE)
 # =============================================================================
 
 
-def define_callbacks(self):
+def define_callbacks(self, probetype, sourcetype):
+    
+    if sourcetype == 'WR': #WiNRADIO receiver callbacks by probe type 
+        
+        if probetype == "AXBT":
 
-    #AXBT
-    @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
-    def wr_axbt_callback(streampointer_int, bufferpointer_int, size, samplerate):
-        
-        try:
-            self.numcontacts += 1 #note that the buffer has been pulled again
-            bufferlength = int(size / 2)
-            bufferpointer = cast(bufferpointer_int, POINTER(c_int16 * bufferlength))
-            bufferdata = bufferpointer.contents
-            self.f_s = samplerate
-            self.nframes += bufferlength
-            self.audiostream.extend(bufferdata[:]) #append data to end
-            del self.audiostream[:bufferlength] #remove data from start
-            
-            #recording to wav file: this terminates if the file exceeds a certain length
-            if self.isrecordingaudio and self.nframes > self.maxsavedframes:
-                self.isrecordingaudio = False
-                self.killaudiorecording()
-            elif self.isrecordingaudio:
-                wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+            #AXBT
+            @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
+            def receiver_callback(streampointer_int, bufferpointer_int, size, samplerate):
                 
-        except Exception: #error handling for callback
-            trace_error()  
-            self.kill(10)
+                try:
+                    self.numcontacts += 1 #note that the buffer has been pulled again
+                    bufferlength = int(size / 2)
+                    bufferpointer = cast(bufferpointer_int, POINTER(c_int16 * bufferlength))
+                    bufferdata = bufferpointer.contents
+                    self.f_s = samplerate
+                    self.nframes += bufferlength
+                    self.audiostream.extend(bufferdata[:]) #append data to end
+                    del self.audiostream[:bufferlength] #remove data from start
+                    
+                    #recording to wav file: this terminates if the file exceeds a certain length
+                    if self.isrecordingaudio and self.nframes > self.maxsavedframes:
+                        self.isrecordingaudio = False
+                        self.killaudiorecording()
+                    elif self.isrecordingaudio:
+                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+                        
+                except Exception: #error handling for callback
+                    trace_error()  
+                    self.kill(10)
+                    
+                    
         
+        elif probetype == "AXCTD":
             
-            
-    #AXCTD
-    @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
-    def wr_axctd_callback(streampointer_int, bufferpointer_int, size, samplerate):
-        
-        try:
-            self.numcontacts += 1 #note that the buffer has been pulled again
-            bufferlength = int(size / 2)
-            bufferpointer = cast(bufferpointer_int, POINTER(c_int16 * bufferlength))
-            bufferdata = bufferpointer.contents
-            self.f_s = samplerate
-            self.nframes += bufferlength
-            self.audiostream.extend(bufferdata[:]) #append data to end
-            #dont delete data from start, the AXCTD Processor thread will handle this as it is processed
-            
-            #recording to wav file: this terminates if the file exceeds a certain length
-            if self.isrecordingaudio and self.nframes > self.maxsavedframes:
-                self.isrecordingaudio = False
-                self.killaudiorecording()
-            elif self.isrecordingaudio:
-                wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+            #AXCTD
+            @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
+            def receiver_callback(streampointer_int, bufferpointer_int, size, samplerate):
                 
-        except Exception: #error handling for callback
-            trace_error()  
-            self.kill(10)
+                try:
+                    self.numcontacts += 1 #note that the buffer has been pulled again
+                    bufferlength = int(size / 2)
+                    bufferpointer = cast(bufferpointer_int, POINTER(c_int16 * bufferlength))
+                    bufferdata = bufferpointer.contents
+                    self.f_s = samplerate
+                    self.nframes += bufferlength
+                    self.audiostream.extend(bufferdata[:]) #append data to end
+                    #dont delete data from start, the AXCTD Processor thread will handle this as it is processed
+                    
+                    #recording to wav file: this terminates if the file exceeds a certain length
+                    if self.isrecordingaudio and self.nframes > self.maxsavedframes:
+                        self.isrecordingaudio = False
+                        self.killaudiorecording()
+                    elif self.isrecordingaudio:
+                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+                        
+                except Exception: #error handling for callback
+                    trace_error()  
+                    self.kill(10)
+                    
+                    
+        else: #probe type not recognized
+            receiver_callback = None
+            
+    else: #not a recognized receiver (test, audio, or error)
+        receiver_callback = None
         
-        
-    return wr_axbt_callback, wr_axctd_callback
+    return receiver_callback
         
         
         

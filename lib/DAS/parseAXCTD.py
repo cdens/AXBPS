@@ -45,7 +45,7 @@ except ImportError:
 ###################################################################################
 
 # hexframes,times,depths,temps,conds,psals,next_buffer_ind = parse.parse_bitstream_to_profile(self.binary_buffer, binbufftimes, self.r7500_buffer, self.masks)
-def parse_bitstream_to_profile(bitstream, times, r7500, tempLUT, tcoeff, ccoeff, zcoeff):
+def parse_bitstream_to_profile(bitstream, times, r400_in, r7500_in, tempLUT, tcoeff, ccoeff, zcoeff):
     
     hexframes = [] # hexadecimal representation of frame
     proftime = [] #time (post-profile start) corresponding to each ob
@@ -53,6 +53,8 @@ def parse_bitstream_to_profile(bitstream, times, r7500, tempLUT, tcoeff, ccoeff,
     T = [] #temperature
     C = [] #conductivity
     S = [] #salinity
+    r400 = []
+    r7500 = []
     
     #initializing fields for loop
     s = 0 #starting bit
@@ -70,7 +72,7 @@ def parse_bitstream_to_profile(bitstream, times, r7500, tempLUT, tcoeff, ccoeff,
         frame = bitstream[s:s+32]
         
         #verifying that frame meets requirements, otherwise increasing start bit and rechecking
-        if frame[0:2] != [1, 0] or not check_crc(frame) or not r7500[s] > 0:
+        if frame[0:2] != [1, 0] or not check_crc(frame) or not r7500_in[s] > 0:
             s += 1
             
         else: #good profile point
@@ -88,10 +90,13 @@ def parse_bitstream_to_profile(bitstream, times, r7500, tempLUT, tcoeff, ccoeff,
             C.append(cC)
             S.append(cS)
             
+            r400.append(r400_in[s])
+            r7500.append(r7500_in[s])
+            
             s += 32 #increase start bit by 32 to search for next frame
 
     # End parse bitstream
-    return hexframes, proftime, z, T, C, S, s
+    return hexframes, proftime, z, T, C, S, r400, r7500, s
     
 
     

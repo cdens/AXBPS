@@ -85,6 +85,8 @@ def setdefaultsettings():
     settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
     settingsdict["tcoeff_axctd"] = [-0.053328, 0.994372, 0.0, 0.0]
     settingsdict["ccoeff_axctd"] = [-0.0622192, 1.04584, 0.0, 0.0]
+    settingsdict["tlims_axctd"] = [-4,35]
+    settingsdict["slims_axctd"] = [25,45]
     
     #profeditorpreferences
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
@@ -113,7 +115,7 @@ def setdefaultsettings():
 
 #lists of settings broken down by data type (for settings file reading/writing)
 strsettings = ["platformid", "comport"] #settings saved as strings
-listsettings = ["mark_space_freqs", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd"] #saved as lists of coefficients/parameters (each element is a float)
+listsettings = ["mark_space_freqs", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd","tlims_axctd","slims_axctd"] #saved as lists of coefficients/parameters (each element is a float)
 floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "minr400", "mindr7500", "smoothlev", "profres", "maxstdev", "refreshrate"] #saved as floats
 intsettings = ["deadfreq", "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
 boolsettings = ["autodtg", "autolocation", "autoid", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
@@ -416,6 +418,14 @@ class RunSettings(QMainWindow):
         self.axctdconverttabwidgets["Cconvb2"].setText(str(cc[2]))
         self.axctdconverttabwidgets["Cconvb3"].setText(str(cc[3]))
         self.updateAXCTDCconveqn()
+        
+        tlims_axctd = self.settingsdict["tlims_axctd"]
+        self.axctdconverttabwidgets["tlow"].setValue(np.round(tlims_axctd[0],1))
+        self.axctdconverttabwidgets["thigh"].setValue(np.round(tlims_axctd[1],1))
+        
+        slims_axctd = self.settingsdict["slims_axctd"]
+        self.axctdconverttabwidgets["slow"].setValue(np.round(slims_axctd[0],1))
+        self.axctdconverttabwidgets["shigh"].setValue(np.round(slims_axctd[1],1))
 
         self.profeditortabwidgets["useclimobottom"].setChecked(self.settingsdict["useclimobottom"])
         self.profeditortabwidgets["comparetoclimo"].setChecked(self.settingsdict["comparetoclimo"])
@@ -470,6 +480,8 @@ class RunSettings(QMainWindow):
         self.settingsdict['usebandpass'] = self.processortabwidgets['usebandpass'].isChecked()
         
         #AXBT/AXCTD coefficients and frequency ranges are recorded on every update to their respective fields
+        self.settingsdict["tlims_axctd"] = [self.axctdconverttabwidgets["tlow"].value(), self.axctdconverttabwidgets["thigh"].value()]
+        self.settingsdict["slims_axctd"] = [self.axctdconverttabwidgets["slow"].value(), self.axctdconverttabwidgets["shigh"].value()]
 
         self.settingsdict["platformid"] = self.processortabwidgets["IDedit"].text()
 
@@ -906,15 +918,51 @@ class RunSettings(QMainWindow):
             self.axctdconverttabwidgets["Tconveqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             self.axctdconverttabwidgets["Cconveqn"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
             
+            
+            
+            tlims_axctd = self.settingsdict["tlims_axctd"]
+            self.axctdconverttabwidgets["tlimlabel"] = QLabel('Temperature Limits:') #31
+            self.axctdconverttabwidgets["tlowlabel"] = QLabel('Minimum Temperature (\xB0C):') #32
+            self.axctdconverttabwidgets["thighlabel"] = QLabel('Maximum Temperature (\xB0C):') #33
+            
+            self.axctdconverttabwidgets["tlow"] = QDoubleSpinBox() #34
+            self.axctdconverttabwidgets["tlow"].setMinimum(-10)
+            self.axctdconverttabwidgets["tlow"].setMaximum(99)
+            self.axctdconverttabwidgets["tlow"].setSingleStep(0.1)
+            self.axctdconverttabwidgets["tlow"].setValue(tlims_axctd[0])
+            self.axctdconverttabwidgets["thigh"] = QDoubleSpinBox() #35
+            self.axctdconverttabwidgets["thigh"].setMinimum(-9)
+            self.axctdconverttabwidgets["thigh"].setMaximum(100)
+            self.axctdconverttabwidgets["thigh"].setSingleStep(0.1)
+            self.axctdconverttabwidgets["thigh"].setValue(tlims_axctd[1])
+            
+            
+            slims_axctd = self.settingsdict["slims_axctd"]
+            self.axctdconverttabwidgets["slimlabel"] = QLabel('Salinity Limits:') #36
+            self.axctdconverttabwidgets["slowlabel"] = QLabel('Minimum Salinity (\xB0C):') #37
+            self.axctdconverttabwidgets["shighlabel"] = QLabel('Maximum Salinity (\xB0C):') #38
+            
+            self.axctdconverttabwidgets["slow"] = QDoubleSpinBox() #39
+            self.axctdconverttabwidgets["slow"].setMinimum(0)
+            self.axctdconverttabwidgets["slow"].setMaximum(30)
+            self.axctdconverttabwidgets["slow"].setSingleStep(0.1)
+            self.axctdconverttabwidgets["slow"].setValue(slims_axctd[0])
+            self.axctdconverttabwidgets["shigh"] = QDoubleSpinBox() #40
+            self.axctdconverttabwidgets["shigh"].setMinimum(1)
+            self.axctdconverttabwidgets["shigh"].setMaximum(80)
+            self.axctdconverttabwidgets["shigh"].setSingleStep(0.1)
+            self.axctdconverttabwidgets["shigh"].setValue(slims_axctd[1])
+            
+            
 
             # should be 30 entries
-            widgetorder = ["t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "Tconvlabel", "Tconveqn", "Tconvb0", "Tconvb1", "Tconvb2", "Tconvb3", "Tconvs0", "Tconvs1", "Tconvs2", "Tconvs3",  "Cconvlabel", "Cconveqn", "Cconvb0", "Cconvb1", "Cconvb2", "Cconvb3", "Cconvs0", "Cconvs1", "Cconvs2", "Cconvs3"]
+            widgetorder = ["t2zlabel", "t2zeqn", "t2zb0","t2zb1", "t2zb2", "t2zb3", "t2zs0", "t2zs1", "t2zs2", "t2zs3", "Tconvlabel", "Tconveqn", "Tconvb0", "Tconvb1", "Tconvb2", "Tconvb3", "Tconvs0", "Tconvs1", "Tconvs2", "Tconvs3",  "Cconvlabel", "Cconveqn", "Cconvb0", "Cconvb1", "Cconvb2", "Cconvb3", "Cconvs0", "Cconvs1", "Cconvs2", "Cconvs3", "tlimlabel", "tlowlabel", "thighlabel", "tlow", "thigh", "slimlabel", "slowlabel", "shighlabel", "slow", "shigh"]
             
             #assigning column/row/column extension/row extension for each widget
-            wcols   = [1, 0,1,1,1,1,2,2,2,2,4, 0,4,4,4,4,5,5,5,5,7, 0,7,7,7,7,8,8,8,8]
-            wrows =   [1, 7,2,3,4,5,2,3,4,5,1, 8,2,3,4,5,2,3,4,5,1, 9,2,3,4,5,2,3,4,5]
-            wrext   = [1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1]
-            wcolext = [2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1]
+            wcols   = [1, 0,1,1,1,1,2,2,2,2,4, 0,4,4,4,4,5,5,5,5,7, 0,7,7,7,7,8,8,8,8, 1, 1, 1, 2, 2, 7, 7, 7, 8, 8]
+            wrows =   [1, 7,2,3,4,5,2,3,4,5,1, 8,2,3,4,5,2,3,4,5,1, 9,2,3,4,5,2,3,4,5,11,12,13,12,13,11,12,13,12,13]
+            wrext   = [1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            wcolext = [2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1,2,10,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 
             #adding widgets to assigned locations
             for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
@@ -924,7 +972,7 @@ class RunSettings(QMainWindow):
             colstretches = [5,2,1,1,2,1,1,2,1,5]
             for i,s in enumerate(colstretches):
                 self.axctdconverttablayout.setColumnStretch(i, s)
-            rowstretches = [3,1,1,1,1,1,2,1,1,1,1,3]
+            rowstretches = [3,1,1,1,1,1,2,1,1,1,1,1,1,1,3]
             for i,s in enumerate(rowstretches):
                 self.axctdconverttablayout.setRowStretch(i, s)
                 
