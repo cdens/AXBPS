@@ -81,8 +81,8 @@ def list_radios(wrdll):
         winradioserials.append(currentserial)
 
     #TEST- print autopopulated info for all receivers
-    for i,cradio in enumerate(radiolistarray):
-        print(f"#{i}: serial={cradio.szSerNum}, product={cradio.szProdName}, size={cradio.bLength}")
+    #for i,cradio in enumerate(radiolistarray):
+    #    print(f"#{i}: serial={cradio.szSerNum}, product={cradio.szProdName}, size={cradio.bLength}")
         
     return winradioserials
 
