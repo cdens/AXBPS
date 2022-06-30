@@ -25,7 +25,7 @@ from traceback import print_exc as trace_error
 from datetime import datetime
 
 if cursys() == 'Windows':
-    from ctypes import windll
+    from ctypes import windll, RTLD_GLOBAL
     
 from tempfile import gettempdir
 
@@ -175,9 +175,9 @@ def initUI(self):
     if cursys() == 'Windows': #radio receivers with windows DLLs to load
         try:
             if calcsize("P")*8 == 32: #32-bit
-                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_32.dll") #32-bit
+                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_32.dll", winmode=RTLD_GLOBAL) #32-bit
             elif calcsize("P")*8 == 64: #64-bit
-                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_64.dll") #64-bit
+                self.dll['WR'] = windll.LoadLibrary("data/WRG39WSBAPI_64.dll", winmode=RTLD_GLOBAL) #64-bit
             else:
                 self.postwarning("WiNRADIO driver not loaded (unrecognized system architecture: "+str(calcsize("P")*8)+")!")
         except:
