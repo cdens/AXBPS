@@ -584,7 +584,8 @@ class AXCTDProcessor(QRunnable):
                     self.zcoeff = self.metadata['zcoeff']
             
                     
-                    
+        pass_empty = False
+        
         if self.status == 2: #parsing bitstream into frames and calculating updated profile data
             
             self.past_headers = True
@@ -613,13 +614,52 @@ class AXCTDProcessor(QRunnable):
             r400 = np.round(r400,2)
             r7500 = np.round(r7500,2)
             
+            
+            is_good = [True] * len(times)
+            
             #if R400, dR7500, temp, or psal are outside of preset bounds, exclude datapoint
             for i,p in enumerate(r7500):
                 if p < self.mindR7500_inprof or r400[i] < self.minR400_inprof or temps[i] < self.tlims[0] or temps[i] > self.tlims[1] or psals[i] < self.slims[0] or psals[i] > self.slims[1]:
-                    temps[i] = np.NaN
-                    conds[i] = np.NaN
-                    psals[i] = np.NaN
+                    is_good[i] = False
                     
+            times = times[is_good]
+            depths = depths[is_good]
+            temps = temps[is_good]
+            conds = conds[is_good]
+            psals = psals[is_good]
+            r400 = r400[is_good]
+            r7500 = r7500[is_good]
+            
+            
+            
+            #identifying and removing spikes
+            if len(temps) > 0:
+                is_good = [True] * len(times)
+                
+                #median and percentile value based thresholds
+                thresh = 10
+                pct_offset = 35
+                T_median = np.percentile(temps,50)
+                T_low_diff_thresh = T_median - thresh*(T_median - np.percentile(temps,50-pct_offset))
+                T_high_diff_thresh = T_median + thresh*(np.percentile(temps,50+pct_offset) - T_median)
+                S_median = np.percentile(psals,50)
+                S_low_diff_thresh = S_median - thresh*(S_median - np.percentile(psals,50-pct_offset))
+                S_high_diff_thresh = S_median + thresh*(np.percentile(psals,50+pct_offset) - S_median)
+                for i,_ in enumerate(r7500):
+                    if temps[i] < T_low_diff_thresh or temps[i] > T_high_diff_thresh or psals[i] < S_low_diff_thresh or psals[i] > S_high_diff_thresh:
+                        is_good[i] = False
+                        
+                times = times[is_good]
+                depths = depths[is_good]
+                temps = temps[is_good]
+                conds = conds[is_good]
+                psals = psals[is_good]
+                r400 = r400[is_good]
+                r7500 = r7500[is_good]
+            else:
+                pass_empty = True
+                
+            
             
             #removing parsed data from binary buffer
             self.binary_buffer = self.binary_buffer[next_buffer_ind:]
@@ -627,7 +667,7 @@ class AXCTDProcessor(QRunnable):
             self.r400_buffer = self.r400_buffer[next_buffer_ind:]
             self.r7500_buffer = self.r7500_buffer[next_buffer_ind:]
             
-        else:
+        if self.status < 2 or pass_empty:
             
             times = [np.round(self.power_inds[-1]/self.f_s,2)]
             r400 = [np.round(self.r400[-1],2)]

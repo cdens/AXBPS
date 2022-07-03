@@ -38,7 +38,7 @@ import wave
 from gsw import SP_from_C #conductivity-to-salinity conversion
 
 import lib.DAS.DAS_AXBT as das_axbt 
-import lib.DAS.DAS_AXCTD as das_axctd #TODO!!! SWITCH BACK FROM TEST TO NORMAL INPUT
+import lib.DAS.DAS_AXCTD as das_axctd
 from lib.DAS.common_DAS_functions import channelandfrequencylookup, list_receivers
 import lib.GPS_COM_interaction as gps
 
@@ -256,7 +256,7 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     cpsal = np.array([27])
     if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
         cdepths = self.alltabdata[plottabnum]["rawdata"]["depth"]
-        ctemps = self.alltabdata[plottabnum]["rawdata"]["depth"]
+        ctemps = self.alltabdata[plottabnum]["rawdata"]["temperature"]
         if probetype == "AXCTD":
             cpsal = self.alltabdata[plottabnum]["rawdata"]["salinity"]
     
