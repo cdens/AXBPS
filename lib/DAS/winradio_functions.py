@@ -65,7 +65,8 @@ def list_radios(wrdll):
     # creating array of RADIO_INFO2 structures to load info from GetRadioList() command
     radiolistarray = (RADIO_INFO2 * 50)()
     radiolistpointer = pointer(radiolistarray)
-    radiolistsize = getsizeof(radiolistarray)
+    # radiolistsize = getsizeof(radiolistarray)
+    radiolistsize = 1000 #fix for serial issue
     radiolistinfosize = c_int(0)
     radiolistinfosizepointer = pointer(radiolistinfosize)
 
