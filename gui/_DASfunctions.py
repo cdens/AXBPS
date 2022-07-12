@@ -264,9 +264,9 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     if np.max(cdepths) > depthlims[1]:
         depthlims[1] = np.ceil(np.max(cdepths)/depthint)*depthint
     if np.min(ctemps) < templims[0]:
-        templims[0] = np.floor(np.min(ctemps)/tcint)*tcint
+        templims[0] = np.floor(np.min(ctemps)/tsint)*tsint
     if np.max(ctemps) > templims[1]:
-        templims[1] = np.ceil(np.max(ctemps)/tcint)*tcint
+        templims[1] = np.ceil(np.max(ctemps)/tsint)*tsint
     
     #setting axis limits for temperature, depth
     self.alltabdata[plottabnum]["ProcAxes"][0].set_xlim(templims)
