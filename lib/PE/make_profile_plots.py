@@ -30,7 +30,7 @@ from matplotlib.colors import ListedColormap
 #datacolor/datalabel = color of QC profile and x axis label (raw prof color is black)
 #matchclimo: if False: display climo mismatch text in bottom corner
 #axlimtype: 0 -> custom limits based on data, 1 -> default temperature, 2 -> default salinity
-def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None, climodepthfill=None, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=True, axlimtype=0):
+def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None, climodepthfill=None, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=True, axlimtype=0, y_max=1000):
     
     #plotting climatology
     if climodatafill is not None:
@@ -52,9 +52,8 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
     ax.grid()
     
     #setting up axis limits
-    y_max = 1000
     ytickvals = [0,100,200,400,600,800,1000]
-    if axlimtype == 0:
+    if axlimtype == 0 and len(data) > 0:
         xmin = np.min(data)
         xmax = np.max(data)
         if climodatafill is not None:
@@ -70,7 +69,11 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
         else:
             xcut = 0.1
         x_range = [np.floor(xmin/xcut)*xcut, np.ceil(xmax/xcut)*xcut]
-    elif axlimtype == 1:
+        
+    elif len(data) == 0: #axlimtype = 0 but no good data
+        axlimtype = 1 #use default temp axes instead
+    
+    if axlimtype == 1:
         x_range = [-3, 32]
     elif axlimtype == 2:
         x_range = [32,40]

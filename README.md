@@ -28,7 +28,7 @@ To obtain full (including realtime processing) support in Linux or MacOS, AXBPS 
 
 
 ## Python requirements/dependencies
-This program was developed in Python 3.8, with the GUI built using PyQt5.
+This program is supported by Python versions >= 3.8, with the GUI built using PyQt5.
 
 	
 ### Installing Dependencies:

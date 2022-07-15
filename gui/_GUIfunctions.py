@@ -90,6 +90,9 @@ def initUI(self):
     self.tabIDs = []
     self.alltabdata = []
     
+    #tab tracking
+    self.totaltabs = -1
+    
     #probe options
     self.probetypes = ["AXBT","AXCTD"]
     self.defaultprobe = "AXBT"
@@ -125,11 +128,8 @@ def initUI(self):
 
     #track whether preferences tab is opened
     self.preferencesopened = False
-
-    #tab tracking
-    self.totaltabs = 0
-    # self.tabnumbers = []
-
+    
+    
     # creating threadpool
     self.threadpool = QThreadPool()
     self.threadpool.setMaxThreadCount(7)
@@ -175,9 +175,9 @@ def initUI(self):
     if cursys() == 'Windows': #radio receivers with windows DLLs to load
         try:
             if calcsize("P")*8 == 32: #32-bit
-                self.dll['WR'] = ctypes.WinDLL("data/WRG39WSBAPI_32.dll", winmode=ctypes.RTLD_GLOBAL) #32-bit
+                self.dll['WR'] = ctypes.WinDLL("data/WRG39WSBAPI_32.dll")#, winmode=ctypes.RTLD_GLOBAL) #32-bit
             elif calcsize("P")*8 == 64: #64-bit
-                self.dll['WR'] = ctypes.WinDLL("data/WRG39WSBAPI_64.dll", winmode=ctypes.RTLD_GLOBAL) #64-bit
+                self.dll['WR'] = ctypes.WinDLL("data/WRG39WSBAPI_64.dll")#, winmode=ctypes.RTLD_GLOBAL) #64-bit
             else:
                 self.postwarning("WiNRADIO driver not loaded (unrecognized system architecture: "+str(calcsize("P")*8)+")!")
         except:
