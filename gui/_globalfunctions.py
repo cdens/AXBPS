@@ -538,7 +538,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     
     if probetype.upper() == 'AXCTD':
         hasSal = True
-        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"]}
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["salinity"]}
         metadata = self.alltabdata[opentab]["processor"].metadata
         coeffs = {}
@@ -571,7 +571,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     
     else:
         hasSal = False
-        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature':self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None}
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature':self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency': self.alltabdata[opentab]["rawdata"]["frequency"]}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frequency (Hz):': self.alltabdata[opentab]["rawdata"]["frequency"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"]}
         zcoeff = self.settingsdict["zcoeff_axbt"]
         tcoeff = self.settingsdict["tcoeff_axbt"]
@@ -593,6 +593,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
     profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
     timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+    identifier = self.alltabdata[opentab]["tabwidgets"]["idedit"].text().replace(' ','_') #no spaces allowed
     
     #parse inputs to valid data (ignore identifier)
     isgood, lat, lon, dropdatetime, _ = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, 'no-ID', True, True, False)
@@ -606,6 +607,27 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
         
     filename = self.check_filename(outfileheader)
         
+    
+    
+    if self.settingsdict["savedta_raw"] and goodmetadata: #save NVO file
+        try:
+            io.writelogfile(filename+'.DTA', dropdatetime, rawdata['depth'], rawdata['temperature'], rawdata['frequency'], rawdata['time'], probetype.upper())
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save DTA file")
+            
+    
+            
+    if self.settingsdict["savedat_raw"] and goodmetadata: #save NVO file
+        try:
+            #TODO: headerstart, tailnum, missionnum
+            missionnum = self.settingsdict['missionid']
+            headerstart = "****0000000000****\nSOFX01 KWBC 000000\n"
+            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save DAT file")
+    
     
     if self.settingsdict["savenvo_raw"] and goodmetadata: #save NVO file
         try:
@@ -752,6 +774,17 @@ def savePEfiles(self,opentab,outfileheader,probetype):
         except Exception:
             trace_error()
             self.posterror("Failed to save JJVV file")
+            
+        
+    if self.settingsdict["savedat_qc"]: #save DAT file
+        try:
+            #TODO: headerstart
+            missionnum = self.settingsdict['missionid']
+            headerstart = "****0000000000****\nSOFX01 KWBC 000000\n"
+            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, depth1m, temperature1m, salinity=salinity1m)
+        except Exception:
+            trace_error()
+            self.posterror("Failed to save DAT file")
             
     if self.settingsdict["savebufr_qc"]: #save WMO-formatted BUFR file
         try:

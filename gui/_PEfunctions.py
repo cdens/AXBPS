@@ -128,8 +128,8 @@ def makenewproftab(self):
 def selectdatafile(self):
     try:
         fname,ok = QFileDialog.getOpenFileName(self, 'Open file',self.defaultfilereaddir,
-        "Source Data Files (*.EDF *.Edf *.edf *.edf *.NVO *.Nvo *.nvo *.FIN *.Fin *.fin *.TXT *.Txt *.txt *.DTA *.Dta *.dta *.JJVV *.Jjvv *.jjvv)","",self.fileoptions)
-         
+        "Source Data Files (*.DAT *.Dat *.dat *.EDF *.Edf *.edf *.NVO *.Nvo *.nvo *.FIN *.Fin *.fin *.TXT *.Txt *.txt *.DTA *.Dta *.dta *.JJVV *.Jjvv *.jjvv)","",self.fileoptions)
+        
         if ok:
             opentab = self.whatTab()
             self.alltabdata[opentab]["tabwidgets"]["logedit"].setText(fname)
@@ -183,15 +183,17 @@ def checkdatainputs_editorinput(self):
             ftype = 3
         elif logfile[-5:].lower() == '.jjvv':
             ftype = 4
+        elif logfile[-4:].lower() == '.dat':
+            ftype = 5
             
     if not ftype:
         success = False
-        warningmsg = 'Invalid Data File Format (must be .dta,.edf,.nvo,.fin, or .jjvv)!'
+        warningmsg = 'Invalid Data File Format (must be .dta,.dat,.edf,.nvo,.fin, or .jjvv)!'
         
     elif hasSal and ftype in [1,4]: #can't process AXCTD data from LOG or JJVV files
         success = False
         warningmsg = 'AXCTD profiles cannot be LOG or JJVV format!'
-
+        
         
     #initializing lat/lon/datetime variables    
     lon = np.NaN
@@ -207,33 +209,37 @@ def checkdatainputs_editorinput(self):
     #read profile data
     try:
         #if LOG.DTA file, read profile data and get datetime/position from user
-        if ftype == 1:
+        if success and ftype == 1:
             rawtemperature,rawdepth = io.readlogfile(logfile)
-            checkcoords = True
-            checktime = True
+            checkcoords = True 
+            checktime = True #don't trust DTA date/time as it may be MK21 generated and poss. wrong
             
         #EDF/FIN/JJVV includes logic to handle partially missing data fields (e.g. lat/lon)
-        elif ftype == 2: #EDF
+        elif success and ftype == 2: #EDF
             data,fdropdatetime,flat,flon = io.readedffile(logfile)
             
-        elif ftype == 3: #FIN/NVO- assumes .txt are fin/nvo format
+        elif success and ftype == 3: #FIN/NVO- assumes .txt are fin/nvo format
             data,fdropdatetime,flat,flon,_ = io.readfinfile(logfile,hasSal=hasSal)
             
-        elif ftype == 4: #JJVV
+        elif success and ftype == 4: #JJVV
             try: #year is important if jjvv file
                 year = int(profdatestr[:4])
             except:
                 year = datetime.utcnow().year #defaults to current year if date not input in UI
             rawtemperature,rawdepth,fdropdatetime,flat,flon,identifier = io.readjjvvfile(logfile)
             
-        if ftype in [2,3]: #pulling z/T/S(?) from file output for EDF/FIN/NVO files
+        #dropdatetime,lat,lon,depth,temperature,salinity
+        elif success and ftype == 5: #DAT
+            fdropdatetime,flat,flon,data = io.readdatfile(logfile)
+            
+        if success and ftype in [2,3,5]: #pulling z/T/S(?) from file output for EDF/FIN/NVO/DAT files
             rawtemperature = data["temperature"]
             rawdepth = data["depth"]
             if hasSal:
                 rawsalinity = data["salinity"]
-                                
+        
         #finding and removing NaNs from profile
-        if ftype > 0:
+        if success and ftype > 0:
             if hasSal:
                 notnanind = ~np.isnan(rawtemperature*rawdepth*rawsalinity)
             else:
@@ -245,7 +251,7 @@ def checkdatainputs_editorinput(self):
                 
             if len(rawdata['depth']) == 0:
                 success = False
-                warningmsg = 'This file does not contain any valid profile data. Please select a different file!'
+                warningmsg = f'This file does not contain any valid {probetype.upper()} profile data. Please select a different file or probe type!'
             
     except Exception:
         trace_error()

@@ -51,6 +51,35 @@ def readlogfile(logfile):
     
     return [temperature,depth]
     
+    
+    
+    
+def writelogfile(logfile, dropdatetime, depth, tempC, frequency, time, probetype):
+    
+    header = f""" Probe Type = {probetype}     
+       Date = {dropdatetime:%Y/%m/%d}
+       Time = {dropdatetime:%H:%M:%S}
+ 
+    Time     Depth    Frequency    (C)       (F) 
+    """
+    
+    with open(logfile,'w') as f_out:
+        f_out.write(header + "\n")
+        
+        for (ct,cf,cd,cT) in zip(time,frequency,depth,tempC):
+            
+            if np.isnan(cf*cT*cd) or cf <= 0: #invalid point
+                cline = f'{ct:7.1f}{-10:10.1f}{0:11.1f}    ******    ******'
+                
+            else: #valid data point
+                cTf = cT*9/5 + 32 #degF
+                cline = f'{ct:7.1f}{cd:10.1f}{cf:11.1f}{cT:10.2f}{cTf:10.2f}'
+                
+            f_out.write(cline + "\n")
+        
+        
+        
+    
             
     
     
@@ -130,6 +159,87 @@ def parse_lat_lon(line):
     
     
     
+    
+    
+    
+def readdatfile(datfile):
+    
+    data = {'temperature':[], 'salinity':[], 'depth':[]} #initializing data lists
+    
+    with open(datfile) as f_in:
+        
+        for i,cline in enumerate(f_in): 
+            cline = [i for i in cline.strip().split(' ') if len(i) > 0] #space delimited
+            
+            if i < 3: #first 3 lines are trash
+                pass
+            elif i == 3: #header
+                dtgstr = cline[0]+cline[1]
+                if len(dtgstr) == 12:
+                    dtgformat = '%Y%m%d%H%M%S'
+                else:
+                    dtgformat = '%Y%m%d%H%M' #correct to best guess of format
+                    dtgstr = dtgstr[:10]
+                    
+                dropdatetime = datetime.strptime(dtgstr,dtgformat)
+                lat = float(cline[2])
+                lon = float(cline[3])
+            
+            else:
+                if len(cline) > 1:
+                    data['depth'].append(float(cline[0]))
+                    data['temperature'].append(float(cline[1]))
+                    
+                    try: #try/except so dat format is compatible with z/T columns only
+                        cpsal = float(cline[2])
+                    except IndexError:
+                        cpsal = np.NaN
+                        
+                    if cpsal >= 0:
+                        data['salinity'].append(cpsal)
+                    else:
+                        data['salinity'].append(np.NaN)
+        
+    
+    for cfield in ['depth','temperature','salinity']:  
+        data[cfield] = np.asarray(data[cfield])   
+        
+    return dropdatetime,lat,lon,data
+    
+    
+    
+    
+#TODO: understand format of 1st 4 lines -> what is second time, what is 12, what are first two lines for?
+# ****0000005762****
+# SOFX01 KWBC 172308
+
+# 20210817 225634  17.230  -79.962 N43RF AL072021 12 2021-229-23:08:29
+    
+def writedatfile(datfile,dropdatetime,lat,lon,headerstart,tailnum,missionnum,depth,temperature,salinity=None):
+    
+    with open(datfile,'w') as f_out:
+        
+        header = headerstart + f"\n{dropdatetime:%Y%m%d} {dropdatetime:%H%M%S} {lat:7.3f} {lon:8.3f} {tailnum} {missionnum} 12 {datetime.utcnow():%Y-%j-%H:%M:%S}\n"
+        
+        f_out.write(header)
+        
+        if salinity is None:
+            salinity = [np.NaN]*len(depth)
+        if len(salinity) != len(depth): #now salinity is definitely a list, can call len on it
+            salinity = [np.NaN]*len(depth)
+            
+        salinity = [-9.99 if np.isnan(i) else i for i in salinity] #replace any NaNs with negative value
+        
+        for (cd,cT,cS) in zip(depth,temperature,salinity):
+            if not np.isnan(cd):
+                f_out.write(f'\n{cd:6.1f}{cT:6.2f}{cS:6.2f}\n')
+    
+        f_out.write('\n\n') #ends with two more empty lines
+    
+    
+    
+    
+    
 
     
 def readedffile(edffile):
@@ -138,7 +248,7 @@ def readedffile(edffile):
     
     lon = lat = day = month = year = hour = minute = second = False #variables will be returned as 0 if unsuccessfully parsed
     
-    data = {'depth':[],'temperature':[],'salinity':[]} #initializing each data field as None so if it isn't none upon function completion the user knows the file had a match for that field
+    data = {'depth':[],'temperature':[],'salinity':[]} #initializing each data field as [] so if it isn't empty upon function completion the user knows the file had a match for that field
     
     fields = ['depth','temperature','salinity']
     fieldcolumns = [0,1,-1]
