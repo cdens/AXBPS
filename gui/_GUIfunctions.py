@@ -94,7 +94,7 @@ def initUI(self):
     self.totaltabs = -1
     
     #probe options
-    self.probetypes = ["AXBT","AXCTD"]
+    self.probetypes = ["AXBT","AXCTD", "AXCP"]
     self.defaultprobe = "AXBT"
     
     #loading default program settings

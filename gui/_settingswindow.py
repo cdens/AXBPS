@@ -51,47 +51,62 @@ def setdefaultsettings():
     
     settingsdict = {}
     
-    # processor preferences
+    # DAS preferences
     settingsdict["autodtg"] = True  # auto determine profile date/time as system date/time on clicking "START"
     settingsdict["autolocation"] = True #auto determine location with GPS
     settingsdict["autoid"] = True #autopopulate platform ID
     settingsdict["platformid"] = 'NNNNN'
     settingsdict["missionid"] = 'UNKNOWN1'
+    
     settingsdict["savedta_raw"] = False
     settingsdict["savedat_raw"] = False
     settingsdict["savenvo_raw"] = False
     settingsdict["saveedf_raw"] = True
     settingsdict["savewav_raw"] = True
     settingsdict["savesig_raw"] = False
+    
     settingsdict["dtgwarn"] = True  # warn user if entered dtg is more than 12 hours old or after current system time (in future)
     settingsdict["renametabstodtg"] = True  # auto rename tab to dtg when loading profile editor
     settingsdict["autosave"] = False  # automatically save raw data before opening profile editor (otherwise brings up prompt asking if want to save)
+    
+    #AXBT data acquisition
     settingsdict["fftwindow"] = 0.3  # window to run FFT (in seconds)
     settingsdict["minfftratio"] = 0.42  # minimum signal to noise ratio to ID data
     settingsdict["minsiglev"] = 58.  # minimum total signal level to receive data
-
     settingsdict["triggerfftratio"] = 0.8  # minimum signal to noise ratio to ID data
     settingsdict["triggersiglev"] = 70.  # minimum total signal level to receive data
     
+    #AXCTD data acquisition
     settingsdict["minr400"] = 2.0  #minimum 400 Hz signal ratio to detect AXCTD pulse
     settingsdict["mindr7500"] = 1.5  #minimum 7500 Hz signal ratio to detect AXCTD profile tone
-    
     settingsdict["deadfreq"] = 3000 #quiet frequency used to calculate AXCTD signal ratios
     settingsdict["mark_space_freqs"] = [400, 800] #bit 1/0 freqs (respectively) used for AXCTD demod
     settingsdict['refreshrate'] = 2 #iterate AXCTD processer every X sec
     settingsdict['usebandpass'] = False #use a 100-1200 Hz bandpasss filter instead of 1200 Hz lowpass filter
     
+    #AXCP data acquisition
+    settingsdict['cprefreshrate'] = 1.0 #AXCP refresh rate (seconds)
+    settingsdict['axcpquality'] = 1 #processing quality-> 1=best, 3=worst
+    settingsdict['spindowndetectrt'] = 1 #realtime spindown detection and profile termination (1 or 0)
+    settingsdict['cptempmode'] = 1 #whether or not to use FFT for AXCP temperature calculation
+    settingsdict['cpfftwindow'] = 1 #FFT window length for AXCP (must be <= refreshrateaxcp)
+    settingsdict['revcoil'] = 0 #whether coil is reversed on AXCP
+    settingsdict['maglat'] = 20 #default latitude for AXCP Fh/Fz/declination calculations
+    settingsdict['maglon'] = -80 #default longitude for AXCP Fh/Fz/declination calculations
+    
+    #AXBT conversions
     settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
     settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
     settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
     
+    #AXCTD conversions
     settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
     settingsdict["tcoeff_axctd"] = [-0.053328, 0.994372, 0.0, 0.0]
     settingsdict["ccoeff_axctd"] = [-0.0622192, 1.04584, 0.0, 0.0]
     settingsdict["tlims_axctd"] = [-4,35]
     settingsdict["slims_axctd"] = [25,45]
     
-    #profeditorpreferences
+    #Profile Editor preferences
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
     settingsdict["overlayclimo"] = True  # overlay the climatology on the plot
     settingsdict["comparetoclimo"] = True  # check for climatology mismatch and display result on plot
@@ -108,10 +123,12 @@ def setdefaultsettings():
     settingsdict["profres"] = 1. #profile minimum vertical resolution (m)
     settingsdict["maxstdev"] = 1.5 #profile standard deviation coefficient for despiker (autoQC)
     settingsdict["originatingcenter"] = 62 #BUFR table code for NAVO
-
+    
+    #GPS settings
     settingsdict["comport"] = 'n' #default com port is none
     settingsdict["gpsbaud"] = 4800 #baud rate for GPS- default to 4800
     
+    #general 
     settingsdict["fontsize"] = 14 #font size for general UI
     
     return settingsdict
@@ -120,9 +137,9 @@ def setdefaultsettings():
 #lists of settings broken down by data type (for settings file reading/writing)
 strsettings = ["platformid", "missionid", "comport"] #settings saved as strings
 listsettings = ["mark_space_freqs", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd","tlims_axctd","slims_axctd"] #saved as lists of coefficients/parameters (each element is a float)
-floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "minr400", "mindr7500", "smoothlev", "profres", "maxstdev", "refreshrate"] #saved as floats
-intsettings = ["deadfreq", "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
-boolsettings = ["autodtg", "autolocation", "autoid", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "savedat_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
+floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "minr400", "mindr7500", "smoothlev", "profres", "maxstdev", "refreshrate", 'cprefreshrate', 'cpfftwindow', 'maglat', 'maglon'] #saved as floats
+intsettings = ["deadfreq", 'axcpquality', "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
+boolsettings = ["autodtg", "autolocation", "autoid", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", 'spindowndetectrt', 'cptempmode', 'revcoil', "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "savedat_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
 
 
 class SettingNotRecognized(Exception):
@@ -384,6 +401,15 @@ class RunSettings(QMainWindow):
         self.processortabwidgets["refreshrate"].setValue(self.settingsdict["refreshrate"])
         self.processortabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
             
+        self.processortabwidgets['cprefreshrate'].setValue(self.settingsdict['cprefreshrate'])
+        self.processortabwidgets['axcpquality'].setCurrentIndex(self.settingsdict['axcpquality']-1)
+        self.processortabwidgets['spindowndetectrt'].setChecked(self.settingsdict['spindowndetectrt'])
+        self.processortabwidgets['cptempmode'].setChecked(self.settingsdict['cptempmode'] )
+        self.processortabwidgets['cpfftwindow'].setValue(self.settingsdict['cpfftwindow'])
+        self.processortabwidgets['revcoil'].setChecked(self.settingsdict['revcoil'])
+        self.processortabwidgets['maglat'].setValue(self.settingsdict['maglat'])
+        self.processortabwidgets['maglon'].setValue(self.settingsdict['maglon'])
+        
         
         tc = self.settingsdict["tcoeff_axbt"]
         self.axbtconverttabwidgets["F2Tb0"].setText(str(tc[0]))
@@ -488,6 +514,16 @@ class RunSettings(QMainWindow):
         self.settingsdict['mark_space_freqs'] = [int(self.processortabwidgets['markfreq'].value()), int(self.processortabwidgets['spacefreq'].value())]
         self.settingsdict['refreshrate'] = float(self.processortabwidgets['refreshrate'].value())
         self.settingsdict['usebandpass'] = self.processortabwidgets['usebandpass'].isChecked()
+        
+        self.settingsdict['cprefreshrate'] = float(self.processortabwidgets['cprefreshrate'].value())
+        self.settingsdict['axcpquality'] = self.processortabwidgets['axcpquality'].currentIndex() + 1
+        self.settingsdict['spindowndetectrt'] = self.processortabwidgets['spindowndetectrt'].isChecked()
+        self.settingsdict['cptempmode'] = self.processortabwidgets['cptempmode'].isChecked()
+        self.settingsdict['cpfftwindow'] = float(self.processortabwidgets['cpfftwindow'].value())
+        self.settingsdict['revcoil'] = self.processortabwidgets['revcoil'].isChecked()
+        self.settingsdict['maglat'] = float(self.processortabwidgets['maglat'].value())
+        self.settingsdict['maglon'] = float(self.processortabwidgets['maglon'].value())
+
         
         #AXBT/AXCTD coefficients and frequency ranges are recorded on every update to their respective fields
         self.settingsdict["tlims_axctd"] = [self.axctdconverttabwidgets["tlow"].value(), self.axctdconverttabwidgets["thigh"].value()]
@@ -665,17 +701,64 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
             
             
+            self.processortabwidgets["axcpsiglabel"] = QLabel("AXCP Settings")
+            
+            self.processortabwidgets["cprefreshratelabel"] = QLabel("Refresh Rate (sec): ")  #38
+            self.processortabwidgets["cprefreshrate"] = QDoubleSpinBox()  #39
+            self.processortabwidgets["cprefreshrate"].setMinimum(0.25)
+            self.processortabwidgets["cprefreshrate"].setMaximum(10)
+            self.processortabwidgets["cprefreshrate"].setSingleStep(0.05)
+            self.processortabwidgets["cprefreshrate"].setValue(np.round(self.settingsdict['cprefreshrate']*20)/20)
+            
+            self.processortabwidgets["axcpqualitylabel"] = QLabel("Profile Quality: ")  #38
+            self.processortabwidgets["axcpquality"] = QComboBox()
+            for option in ["Highest","Moderate","Lowest"]:
+                self.processortabwidgets["axcpquality"].addItem(option)
+            self.processortabwidgets["axcpquality"].setCurrentIndex(self.settingsdict["axcpquality"]-1)
+                
+            self.processortabwidgets["spindowndetectrt"] = QCheckBox('Realtime AXCP spindown detection') #40
+            self.processortabwidgets["spindowndetectrt"].setChecked(self.settingsdict["spindowndetectrt"])
+            
+            self.processortabwidgets["cptempmode"] = QCheckBox('AXCP FFT Temperature ID') #40
+            self.processortabwidgets["cptempmode"].setChecked(self.settingsdict["cptempmode"])
+            self.processortabwidgets["cpfftwindowlabel"] = QLabel("AXCP FFT Window (sec): ")
+            self.processortabwidgets["cpfftwindow"] = QDoubleSpinBox()  #39
+            self.processortabwidgets["cpfftwindow"].setMinimum(0.25)
+            self.processortabwidgets["cpfftwindow"].setMaximum(5)
+            self.processortabwidgets["cpfftwindow"].setSingleStep(0.05)
+            self.processortabwidgets["cpfftwindow"].setValue(np.round(self.settingsdict['cpfftwindow']*20)/20)
+            
+            self.processortabwidgets["revcoil"] = QCheckBox('Reversed AXCP Coil') #40
+            self.processortabwidgets["revcoil"].setChecked(self.settingsdict["revcoil"])
+            
+            self.processortabwidgets["maglatlabel"] = QLabel("Default Latitude (N > 0)")
+            self.processortabwidgets["maglat"] = QDoubleSpinBox()  #39
+            self.processortabwidgets["maglat"].setMinimum(-90)
+            self.processortabwidgets["maglat"].setMaximum(90)
+            self.processortabwidgets["maglat"].setSingleStep(0.25)
+            self.processortabwidgets["maglat"].setValue(np.round(self.settingsdict['maglat']*4)/4)
+            
+            self.processortabwidgets["maglonlabel"] = QLabel("Default Longitude (E > 0)")
+            self.processortabwidgets["maglon"] = QDoubleSpinBox()  #39
+            self.processortabwidgets["maglon"].setMinimum(-180)
+            self.processortabwidgets["maglon"].setMaximum(180)
+            self.processortabwidgets["maglon"].setSingleStep(0.25)
+            self.processortabwidgets["maglon"].setValue(np.round(self.settingsdict['maglon']*4)/4)
+            
+            
+            
+            
             # formatting widgets
             self.processortabwidgets["IDlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
             # should be 24 entries
-            widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel", "IDedit", "missionlabel", "missionid", "filesavetypes", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw", "dtgwarn", "renametab", "autosave", "axbtsiglabel", "fftwindowlabel", "fftwindow", "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel", "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass"]
+            widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel", "IDedit", "missionlabel", "missionid", "filesavetypes", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw", "dtgwarn", "renametab", "autosave", "axbtsiglabel", "fftwindowlabel", "fftwindow", "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel", "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass", "axcpsiglabel", "cprefreshratelabel", "cprefreshrate", "axcpqualitylabel", "axcpquality", "spindowndetectrt", "cptempmode", "cpfftwindowlabel", "cpfftwindow", "revcoil", "maglatlabel", "maglat", "maglonlabel", "maglon"]
 
             #assigning column/row/column extension/row extension for each widget
-            wcols   = [1,1,1,1,1,2,1,2,4,4,4,4,4,4,4,1, 1, 1,5,5,5,5,5,5,5,5,5, 5, 5, 7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7]
-            wrows   = [1,2,3,4,5,5,6,6,1,2,3,4,5,6,7,9,10,11,1,2,3,4,5,6,7,8, 9,10,11,1,2,3,4,5,7,7,8,8,9,9,10,10,11]
-            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1,1,1,1,1,1,1,1,1,1, 1, 1, 1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1]
-            wcolext = [2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,4, 4, 4,1,1,1,1,1,1,1,1,1, 1, 1, 2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2]
+            wcols   = [1,1,1,1,1,2,1,2,4,4,4,4,4,4,4,1, 1, 1,5,5,5,5,5,5,5,5,5, 5, 5, 7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7, 10,10,11,10,11,10,10,10,11,10,10,11,10,11]
+            wrows   = [1,2,3,4,5,5,6,6,1,2,3,4,5,6,7,9,10,11,1,2,3,4,5,6,7,8, 9,10,11,1,2,3,4,5,7,7,8,8,9,9,10,10,11, 1, 2, 2, 3, 3, 4, 5, 6, 6, 7, 9, 9,10,10]
+            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1,1,1,1,1,1,1,1,1,1, 1, 1, 1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            wcolext = [2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,4, 4, 4,1,1,1,1,1,1,1,1,1, 1, 1, 2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1]
             
 
             #adding widgets to assigned locations
@@ -683,7 +766,7 @@ class RunSettings(QMainWindow):
                 self.processortablayout.addWidget(self.processortabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
-            colstretch = [5,1,1,2,5,3,5,2,1,5]
+            colstretch = [5,1,1,2,5,3,5,2,1,5,2,1,5]
             for i,s in enumerate(colstretch):
                 self.processortablayout.setColumnStretch(i, s)
             for i in range(0,12):

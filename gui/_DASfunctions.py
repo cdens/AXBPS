@@ -454,11 +454,15 @@ def updateDASsettings(self):
         axbtsettingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
         newaxctdsettings = {}
         axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
+        newaxcpsettings = {}
+        axcpsettingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil', 'maglat', 'maglon']
         
         for csetting in axbtsettingstopull:
             newaxbtsettings[csetting] = self.settingsdict[csetting]
         for csetting in axctdsettingstopull:
             newaxctdsettings[csetting] = self.settingsdict[csetting]
+        for csetting in axcpsettingstopull:
+            newaxcpsettings[csetting] = self.settingsdict[csetting]
             
         
         #updates DAS settings for any active tabs
@@ -468,6 +472,8 @@ def updateDASsettings(self):
                     self.alltabdata[ctab]["processor"].changethresholds(newaxbtsettings)
                 elif self.alltabdata[ctab]['probetype'] == 'AXCTD':
                     self.alltabdata[ctab]["processor"].changethresholds(newaxctdsettings)
+                elif self.alltabdata[ctab]['probetype'] == 'AXCP':
+                    self.alltabdata[ctab]["processor"].changethresholds(newaxcpsettings)
                     
                 
     except Exception:
