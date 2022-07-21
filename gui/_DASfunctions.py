@@ -141,6 +141,10 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tabwidgets"]["idtitle"] = QLabel('Platform ID/Tail#: ') #19
         self.alltabdata[opentab]["tabwidgets"]["idedit"] = QLineEdit(self.settingsdict["platformid"]) #20
         
+        #for AXCP processing
+        self.alltabdata[opentab]["tabwidgets"]["updatedropposition"] = QPushButton('Update Position') 
+        self.alltabdata[opentab]["tabwidgets"]["updatedropposition"].clicked.connect(self.updatedropposition)
+        
         #formatting widgets
         self.alltabdata[opentab]["tabwidgets"]["channeltitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.alltabdata[opentab]["tabwidgets"]["freqtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -151,11 +155,11 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         
         #should be 19 entries 
-        widgetorder = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing", "processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle", "lonedit", "idtitle", "idedit"]
-        wrows     = [1,1,2,3,3,4,5,4,5,6,6,7,6,1,1,2,2,3,3,4,4,5,5]
-        wcols     = [3,4,3,3,4,3,3,4,4,3,4,6,6,6,7,6,7,6,7,6,7,6,7]
-        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-        wcolext   = [1,1,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1]
+        widgetorder = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing", "processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle", "lonedit", "idtitle", "idedit", "updatedropposition"]
+        wrows     = [1,1,2,3,3,4,5,4,5,6,6,7,6,1,1,2,2,3,3,4,4,5,5,7]
+        wcols     = [3,4,3,3,4,3,3,4,4,3,4,6,6,6,7,6,7,6,7,6,7,6,7,3]
+        wrext     = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        wcolext   = [1,1,2,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,2]
         
 
         #adding widgets to assigned positions
@@ -168,8 +172,9 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tablayout"].addWidget(self.alltabdata[opentab]["tabwidgets"]["table"],9,2,2,7)
         self.alltabdata[opentab]["tabwidgets"]["tableheader"] = self.alltabdata[opentab]["tabwidgets"]["table"].horizontalHeader() 
         self.alltabdata[opentab]["tabwidgets"]["tableheader"].setFont(self.labelfont)
-    
-        #calling function to format graph and table based on probe type #TODO
+        
+        #calling function to format graph and table based on probe type 
+        #makes button visible or not visible based on this as well
         self.prep_graph_and_table(self.alltabdata[opentab]["probetype"], opentab)
 
         #adjusting stretch factors for all rows/columns
@@ -199,23 +204,38 @@ def probetypechange(self):
 #configure graph and table based on current probe type
 def prep_graph_and_table(self, probetype, plottabnum):
     
+    #button visibility for AXCP position update
+    if probetype.upper() == "AXCP":
+        self.alltabdata[plottabnum]["tabwidgets"]["updatedropposition"].setVisible(True)
+    else:
+        self.alltabdata[plottabnum]["tabwidgets"]["updatedropposition"].setVisible(False)
+    
     #prep window to plot data
     self.alltabdata[plottabnum]["ProcAxes"][0].set_xlabel('Temperature ($^\circ$C)', fontsize=12)
     self.alltabdata[plottabnum]["ProcAxes"][0].set_ylabel('Depth (m)', fontsize=12)
     self.alltabdata[plottabnum]["ProcAxes"][0].set_title('Data Received',fontweight="bold", fontsize=14)
     
-    if probetype == "AXCTD": #AXCTD temperature and salinity plots
-        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Salinity (PSU)', fontsize=12)
-        self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(True)
-        self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("red") #temperature axis red
-        self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='red')
-        self.alltabdata[plottabnum]["ProcAxes"][1].xaxis.label.set_color("blue") #conductivity axis blue
-        self.alltabdata[plottabnum]["ProcAxes"][1].tick_params(axis='x', colors='blue')
-        
-    else: #AXBT temperature plot only
+    if probetype == "AXBT":#AXBT temperature plot only
         self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("black") #temperature axis black
         self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='black')
         self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(False)
+        
+    else:
+    
+        if probetype == "AXCTD": #AXCTD temperature and salinity plots
+            self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Salinity (PSU)', fontsize=12)
+            xcolor = "blue"
+        elif probetype == "AXCP":
+            self.alltabdata[plottabnum]["ProcAxes"][1].set_xlabel('Current (m/s)', fontsize=12)
+            xcolor = "black"
+            
+        self.alltabdata[plottabnum]["ProcAxes"][1].set_visible(True)
+        self.alltabdata[plottabnum]["ProcAxes"][0].xaxis.label.set_color("red") #temperature axis red
+        self.alltabdata[plottabnum]["ProcAxes"][0].tick_params(axis='x', colors='red')
+        self.alltabdata[plottabnum]["ProcAxes"][1].xaxis.label.set_color(xcolor) #salinity/current axis blue
+        self.alltabdata[plottabnum]["ProcAxes"][1].tick_params(axis='x', colors=xcolor)
+        
+        
         
     self.config_graph_ticks_lims(plottabnum, probetype)
     self.alltabdata[plottabnum]["ProcessorFig"].set_tight_layout(True)
@@ -233,6 +253,8 @@ def prep_graph_and_table(self, probetype, plottabnum):
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Fp (Hz)', 'Sp (dB)', 'Rp (%)' ,'Depth (m)','Temp (C)'))
     elif probetype == "AXCTD":
         self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'R-400 Hz', 'R-7500 Hz', 'Depth (m)','Temp. (C)', 'Sal. (PSU)'))
+    elif probetype == "AXCP":
+        self.alltabdata[plottabnum]["tabwidgets"]["table"].setHorizontalHeaderLabels(('Time (s)', 'Rotation (Hz)',  'Depth (m)','Temp. (C)', 'U (m/s)', 'V (m/s)'))
         
     
     for ii in range(0,6): #building table
@@ -248,17 +270,22 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     depthlims = [-5,1000] #axis default limits
     templims = [-2,32]
     psallims = [25,40]
+    currentlims = [-1,1]
     depthint = 50 #intervals at which to extend axis limits
     tsint = 2
+    cint = 0.25
         
     cdepths = np.array([0])
     ctemps = np.array([26])
     cpsal = np.array([27])
+    cvel = np.array([0])
     if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
         cdepths = self.alltabdata[plottabnum]["rawdata"]["depth"]
         ctemps = self.alltabdata[plottabnum]["rawdata"]["temperature"]
         if probetype == "AXCTD":
             cpsal = self.alltabdata[plottabnum]["rawdata"]["salinity"]
+        elif probetype == "AXCP":
+            cvel = np.sqrt(self.alltabdata[plottabnum]["rawdata"]["U"]**2 + self.alltabdata[plottabnum]["rawdata"]["V"]**2)
     
     #determining best axis limits and applying them
     if np.max(cdepths) > depthlims[1]:
@@ -274,13 +301,19 @@ def config_graph_ticks_lims(self, plottabnum, probetype):
     self.alltabdata[plottabnum]["ProcAxes"][0].grid(visible=True, which='major', axis='both')
     self.alltabdata[plottabnum]["ProcAxes"][0].invert_yaxis() 
     
-    if probetype == "AXCTD": #determining/setting axis limits for salinity as well for AXCTDs only
-        if np.min(cpsal) < psallims[0]:
-            psallims[0] = np.floor(np.min(cpsal)/tsint)*tsint
-        if np.max(cpsal) > psallims[1]:
-            psallims[1] = np.ceil(np.max(cpsal)/tsint)*tsint
-                        
-        self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(psallims)
+    if probetype != "AXBT": #other two probes share some common plot setup code
+        if probetype == "AXCTD": #determining/setting axis limits for salinity as well for AXCTDs only
+            if np.min(cpsal) < psallims[0]:
+                psallims[0] = np.floor(np.min(cpsal)/tsint)*tsint
+            if np.max(cpsal) > psallims[1]:
+                psallims[1] = np.ceil(np.max(cpsal)/tsint)*tsint
+            self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(psallims)
+        
+        elif probetype == "AXCP": #axis limits for current- equal on both sides and fxn of total velocity
+            if np.max(cvel) > currentlims[1]:
+                currentlims = np.ceil(np.max(cvel)/cint)*cint * np.array([-1,1])
+            self.alltabdata[plottabnum]["ProcAxes"][1].set_xlim(currentlims)
+        
         self.alltabdata[plottabnum]["ProcAxes"][1].set_ylim(depthlims)
         self.alltabdata[plottabnum]["ProcAxes"][1].invert_yaxis() 
         self.alltabdata[plottabnum]["ProcAxes"][1].grid(visible=False, which='major', axis='both')
@@ -375,6 +408,13 @@ def datasourcechange(self):
     except Exception:
         trace_error()
         self.posterror("Failed to change selected WiNRADIO receiver for current tab.")
+        
+        
+        
+#necessary when processing AXCPs to pass correct latitude/longitude/datetime to processor in order to calculate
+#magnetic field components and declination as accurately as possible for current calculations
+def updatedropposition(self):
+    pass
         
         
         

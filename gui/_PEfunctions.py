@@ -380,7 +380,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             self.alltabdata[opentab]["profdata"]['U_raw'] = rawdata['U']
             rawU = rawdata['U']
             self.alltabdata[opentab]["profdata"]['V_raw'] = rawdata['V']
-            rawU = rawdata['V']
+            rawV = rawdata['V']
         
         #deleting old buttons and inputs
         for i in self.alltabdata[opentab]["tabwidgets"]:
@@ -420,7 +420,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         elif probetype == "AXCTD":
             params = ["Temperature", "Salinity"]
             params_short = ["T","S"]
-        elif probetype == 'AXCP:
+        elif probetype == 'AXCP':
             params = ["Temperature","Zonal Current","Meridional Current"]
             params_short = ["T","U","V"]
         
@@ -588,6 +588,9 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             #tightening layout of plots to maximize space
             for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
                 self.alltabdata[opentab]["ProfFigs"][ckey].set_tight_layout(True)    
+                
+            #refreshing plots to adjust axes, other adjustments in updateprofeditplots
+            self.updateprofeditplots()
                 
             #adding location plot
             profplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
@@ -932,12 +935,28 @@ def updateprofeditplots(self):
                 self.alltabdata[opentab]["ProfCanvases"]["S"].draw()
                 
             elif probetype == "AXCP":
+                maxvel = 0.5
+                
                 del self.alltabdata[opentab]["ProfAxes"]["U"].lines[-1]
                 self.alltabdata[opentab]["ProfAxes"]["U"].plot(Uplot, depthUplot, 'g', linewidth=2, label='QC')
-                self.alltabdata[opentab]["ProfCanvases"]["U"].draw()
                 
                 del self.alltabdata[opentab]["ProfAxes"]["V"].lines[-1]
                 self.alltabdata[opentab]["ProfAxes"]["V"].plot(Vplot, depthVplot, 'b', linewidth=2, label='QC')
+                
+                if np.max(Uplot) > 0.9 * maxvel:
+                    maxvelU = np.ceil(np.max(Uplot)/0.25)*0.25
+                else:
+                    maxvelU = maxvel
+                    
+                if np.max(Vplot) > 0.9 * maxvel:
+                    maxvelV = np.ceil(np.max(Vplot)/0.25)*0.25
+                else:
+                    maxvelV = maxvel
+                
+                self.alltabdata[opentab]["ProfAxes"]["U"].set_xlim([-maxvelU, maxvelU])
+                self.alltabdata[opentab]["ProfAxes"]["V"].set_xlim([-maxvelV, maxvelV])
+                
+                self.alltabdata[opentab]["ProfCanvases"]["U"].draw()
                 self.alltabdata[opentab]["ProfCanvases"]["V"].draw()
             
         #noting that profile hasn't been saved and adding asterisk to tab name to display that for the user

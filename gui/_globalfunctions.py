@@ -151,12 +151,12 @@ def closecurrenttab(self):
                     self.alltabdata[opentab]["processor"].abort()
 
             #explicitly closing open figures in tab to prevent memory leak
-            if self.alltabdata[opentab]["tabtype"] == "ProfileEditor":
+            if self.alltabdata[opentab]["tabtype"] == "PE_p":
                 plt.close(self.alltabdata[opentab]["LocFig"])
                 for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
                     plt.close(self.alltabdata[opentab]["ProfFigs"][ckey])
 
-            elif self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_incomplete' or self.alltabdata[opentab]["tabtype"] == 'SignalProcessor_completed':
+            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS':
                 plt.close(self.alltabdata[opentab]["ProcessorFig"])
 
             #closing tab
@@ -538,7 +538,8 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     
     if probetype.upper() == 'AXCTD':
         hasSal = True
-        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
+        hasCurrent = False
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"]), 'U':None, 'V':None}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["salinity"]}
         metadata = self.alltabdata[opentab]["processor"].metadata
         coeffs = {}
@@ -569,9 +570,31 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     Cond. Coeff. 3     :  {coeffs['c'][2]}
     Cond. Coeff. 4     :  {coeffs['c'][3]}"""
     
-    else:
+    elif probetype.upper() == 'AXCP':
         hasSal = False
-        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature':self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency': self.alltabdata[opentab]["rawdata"]["frequency"]}
+        hasCurrent = True
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'U':self.alltabdata[opentab]["rawdata"]["U"], 'V':self.alltabdata[opentab]["rawdata"]["V"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
+        
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Rotation Rate (Hz)': self.alltabdata[opentab]["rawdata"]["FROTLP"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Zonal Current (m/s)':self.alltabdata[opentab]["rawdata"]["U"], 'Meridional Current (m/s)':self.alltabdata[opentab]["rawdata"]["V"]}
+        
+        qualities = ['High','Moderate','Low']
+        cproc = self.alltabdata[opentab]["processor"]
+        edf_comments = f"""Probe Type       :  AXCP
+    Temp Mode          :  {'FFT' if cproc.temp_mode >= 2 else 'Zero Crossing'}
+    Reverse Coil       :  {'Yes' if cproc.revcoil else 'No'}
+    Process Quality    :  {qualities[cproc.quality-1]}
+    MagVar Latitude    :  {cproc.lat:8.3f} {'N' if cproc.lat >= 0 else 'S'}
+    MagVar Longitude   :  {cproc.lon:9.3f} {'E' if cproc.lon >= 0 else 'W'}
+    F_h                :  {np.round(cproc.fh)} nT
+    F_z                :  {np.round(cproc.fz)} nT
+    Declination        :  {cproc.dec:5.1f} degrees
+    """
+    
+    
+    else: #AXBT
+        hasSal = False
+        hasCurrent = False
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature':self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency': self.alltabdata[opentab]["rawdata"]["frequency"], 'U':None, 'V':None}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frequency (Hz):': self.alltabdata[opentab]["rawdata"]["frequency"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"]}
         zcoeff = self.settingsdict["zcoeff_axbt"]
         tcoeff = self.settingsdict["tcoeff_axbt"]
@@ -609,7 +632,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
         
     
     
-    if self.settingsdict["savedta_raw"] and goodmetadata: #save NVO file
+    if self.settingsdict["savedta_raw"] and goodmetadata and probetype.upper() != 'AXCP': #save DTA file
         try:
             io.writelogfile(filename+'.DTA', dropdatetime, rawdata['depth'], rawdata['temperature'], rawdata['frequency'], rawdata['time'], probetype.upper())
         except Exception:
@@ -623,7 +646,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             #TODO: headerstart, tailnum, missionnum
             missionnum = self.settingsdict['missionid']
             headerstart = "****0000000000****\nSOFX01 KWBC 000000\n"
-            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
+            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'], U=rawdata['U'], V=rawdata['V'])
         except Exception:
             trace_error()
             self.posterror("Failed to save DAT file")
@@ -631,7 +654,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     
     if self.settingsdict["savenvo_raw"] and goodmetadata: #save NVO file
         try:
-            io.writefinfile(filename+'.nvo', dropdatetime, lat, lon, 99, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'])
+            io.writefinfile(filename+'.nvo', dropdatetime, lat, lon, 99, rawdata['depth'], rawdata['temperature'], salinity=rawdata['salinity'], U=rawdata['U'], V=rawdata['V'])
         except Exception:
             trace_error()
             self.posterror("Failed to save NVO file")
@@ -644,7 +667,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             if cdatasource.lower() not in ["audio","test"]:
                 edf_comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
                 
-            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=False, field_formats=[])
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, U=rawdata['U'], V=rawdata['V'], QC=False, field_formats=[])
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
@@ -704,6 +727,11 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     else:
         hasSal = False
     
+    if probetype.upper() == 'AXCP':
+        hasCurrent = True
+    else:
+        hasCurrent = False
+    
     #profile metadata
     dropdatetime = self.alltabdata[opentab]["profdata"]["dropdatetime"]
     lat = self.alltabdata[opentab]["profdata"]["lat"]
@@ -731,6 +759,22 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     else:
         salinity = None
         salinity1m = None
+        
+    if hasCurrent:
+        depthU = self.alltabdata[opentab]["profdata"]["depthU_plot"]
+        U = self.alltabdata[opentab]["profdata"]["U_plot"]
+        U1m = np.interp(depth1m,depthU,U)
+        depthV = self.alltabdata[opentab]["profdata"]["depthV_plot"]
+        V = self.alltabdata[opentab]["profdata"]["V_plot"]
+        V1m = np.interp(depth1m,depthV,V)
+        edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m, 'Zonal Current (m/s)':U1m, 'Meridional Current (m/s)':V1m}
+    else:
+        U = None
+        U1m = None
+        V = None
+        V1m = None
+        
+    if not hasSal and not hasCurrent: #AXBT edf data blocks
         edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m}
         
     ocean_depth = self.alltabdata[opentab]["profdata"]['oceandepth']
@@ -763,7 +807,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     
     if self.settingsdict["savefin_qc"]: #save FIN (1m) file
         try:
-            io.writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m)
+            io.writefinfile(filename+'.fin', dropdatetime, lat, lon, 99, depth=depth1m, temperature=temperature1m, salinity=salinity1m, U=U1m, V=V1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save FIN file")
@@ -781,7 +825,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
             #TODO: headerstart
             missionnum = self.settingsdict['missionid']
             headerstart = "****0000000000****\nSOFX01 KWBC 000000\n"
-            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, depth1m, temperature1m, salinity=salinity1m)
+            io.writedatfile(filename+'.dat', dropdatetime, lat, lon, headerstart, identifier, missionnum, depth1m, temperature1m, salinity=salinity1m, U=U1m, V=V1m)
         except Exception:
             trace_error()
             self.posterror("Failed to save DAT file")
@@ -790,7 +834,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
         try:
             if probetype.upper() != 'AXBT':
                 self.postwarning("The current version of AXBPS only supports saving temperature-depth profiles in BUFR format. A BUFR file will be generated for this profile but will only contain drop date/time/position and temperature/depth!")
-            io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m, salinity=salinity1m)
+            io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m) #dont even give S/U/V
         except Exception:
             trace_error()
             self.posterror("Failed to save BUFR file")
@@ -800,6 +844,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
             #initializing both figures first so they will exist/can be closed if plotting code throws an error
             figT = plt.figure() 
             figS = plt.figure()
+            figC = plt.figure() 
             
             if self.settingsdict["overlayclimo"]:
                 matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
@@ -821,12 +866,35 @@ def savePEfiles(self,opentab,outfileheader,probetype):
                     climohandleS.set_visible(False)
                 figS.savefig(filename+'_prof_psal.png',format='png')
                 
+            
+            if hasCurrent: #make this one custom
+                figC.clear()
+                axC = figC.add_axes([0.1,0.1,0.85,0.85])
+                
+                axC.set_ylabel('Depth (m)')
+                axC.set_xlabel('Current Speed (m/s)')
+                axC.invert_yaxis() #only need to invert one zxis since twiny causes the other to copy it
+                
+                axC.plot(rawU, rawdepth, 'r', linewidth=1, label='Raw U')
+                axC.plot(rawV, rawdepth, 'k', linewidth=1, label='Raw V')
+                axC.plot(U, depthU, 'g', linewidth=2, label='Raw U')
+                axC.plot(V, depthV, 'b', linewidth=2, label='Raw V')
+                
+                ax.set_title(dtg, fontweight="bold")
+                ax.grid()
+                axC.legend()
+                
+                figC.savefig(filename+'_prof_currents.png',format='png')
+                
+                
         except Exception:
             trace_error()
             self.posterror("Failed to save profile image")
         finally:
             plt.close('figT')
             plt.close('figS')
+            plt.close('figC')
+            
 
     if self.settingsdict["saveloc_qc"]: #save position plot with bathymetry overlay
         try:

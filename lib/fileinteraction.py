@@ -451,12 +451,12 @@ def readdatfile(datfile):
                             data['U'].append(np.NaN)
                         v = float(cline[4])
                         if v > -999:
-                            data['V'].append(cpsal)
+                            data['V'].append(v)
                         else:
                             data['V'].append(np.NaN)
                             
 
-    for cfield in ['depth','temperature','salinity']:  
+    for cfield in ['depth','temperature','salinity','U','V']:  
         data[cfield] = np.asarray(data[cfield])   
 
     return dropdatetime,lat,lon,data
