@@ -644,7 +644,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             if cdatasource.lower() not in ["audio","test"]:
                 edf_comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
                 
-            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=False)
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=False, field_formats=[])
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
@@ -756,7 +756,7 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     
     if self.settingsdict["saveedf_qc"]: #save EDF file
         try:
-            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=True)
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=True, field_formats=[])
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
@@ -788,6 +788,8 @@ def savePEfiles(self,opentab,outfileheader,probetype):
             
     if self.settingsdict["savebufr_qc"]: #save WMO-formatted BUFR file
         try:
+            if probetype.upper() != 'AXBT':
+                self.postwarning("The current version of AXBPS only supports saving temperature-depth profiles in BUFR format. A BUFR file will be generated for this profile but will only contain drop date/time/position and temperature/depth!")
             io.writebufrfile(filename+'.bufr', dropdatetime, lon, lat, identifier, self.settingsdict["originatingcenter"], depth=depth1m, temperature=temperature1m, salinity=salinity1m)
         except Exception:
             trace_error()
