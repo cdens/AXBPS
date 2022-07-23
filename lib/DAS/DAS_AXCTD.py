@@ -53,12 +53,14 @@ class AXCTDProcessor(QRunnable):
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff, zcoeff, flims
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, triggerstatus, firstpointtime, firstpulsetime,
-        settings, slash, tempdir, *args,**kwargs):
+        settings, tempdir, *args,**kwargs):
         
         super(AXCTDProcessor, self).__init__()
 
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)
         self.threadstatus = 0
+        
+        self.probetype = "AXCTD"
         
         #AXCTD specific variables
         self.starttime = starttime
@@ -75,7 +77,7 @@ class AXCTDProcessor(QRunnable):
         self.linesperquartersec = 6
                 
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,vhffreq,'AXCTD')
+        self.initialize_common_vars(tempdir,tabID,dll,settings,datasource,vhffreq,'AXCTD')
         
         #initializing AXCTD processor specific vars
         self.initialize_AXCTD_vars()

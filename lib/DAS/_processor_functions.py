@@ -43,6 +43,8 @@ from shutil import copy as shcopy
 
 import lib.DAS.common_DAS_functions as cdf
 
+import os
+
 
 
 
@@ -52,7 +54,7 @@ import lib.DAS.common_DAS_functions as cdf
 # =============================================================================        
         
 #initialize variables common to all DAS tabs (AXCTD,AXBT,etc)
-def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhffreq,probetype):
+def initialize_common_vars(self,tempdir,tabID,dll,settings,datasource,vhffreq,probetype):
     
     self.common_vars_init = False #prevents AXCTD settings update function from running until necessary variables are initialized
     self.probetype = probetype
@@ -68,9 +70,9 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhff
     self.update_settings(settings)
 
     #output file names
-    self.txtfilename = tempdir + slash + "sigdata_" + str(self.tabID) + '.txt'
+    self.txtfilename = os.path.join(tempdir, "sigdata_" + str(self.tabID) + '.txt')
     self.txtfile = open(self.txtfilename, 'w')
-    self.wavfilename = tempdir + slash +  "tempwav_" + str(self.tabID) + '.WAV'
+    self.wavfilename = os.path.join(tempdir, "tempwav_" + str(self.tabID) + '.WAV')
     
     #to prevent ARES from consuming all computer's resources- this limits the size of WAV files used by the signal processor to a number of PCM datapoints corresponding to 1 hour of audio @ fs=64 kHz, that would produce a wav file of ~0.5 GB for 16-bit PCM data
     self.maxsavedframes = 2.5E8
@@ -102,6 +104,8 @@ def initialize_common_vars(self,tempdir,slash,tabID,dll,settings,datasource,vhff
             self.audiofile = 'data/testdata/AXBT_sample.WAV'
         elif probetype == 'AXCTD':
             self.audiofile = 'data/testdata/AXCTD_sample.WAV'
+        elif probetype == 'AXCP':
+            self.audiofile = 'data/testdata/AXCP_sample.WAV'
         self.isfromtest = True
     
     
@@ -168,6 +172,10 @@ def kill(self,reason): #stop current thread
             cdf.stop_receiver(self.dll,self.sourcetype,self.hradio)
             wave.Wave_write.close(self.wavfile)
             
+        if self.probetype == "AXCP":
+            self.on_axcp_terminate() #AXCP specific- refine spindown point/recalc area, calculate U/V in deg True
+            timemodule.sleep(0.1)
+            
         self.signals.terminated.emit(tabID)  # emits signal that processor has been terminated
         self.txtfile.close()
         
@@ -220,6 +228,8 @@ def update_settings(self,settings):
         self.settings['fftwindow'] = np.min([self.settings['fftwindow'], 1])
     if self.probetype == 'AXCTD' and self.common_vars_init:
         self.load_AXCTD_settings() #refresh variables for all AXCTD settings
+    elif self.probetype == "AXCP" and self.common_vars_init:
+        self.initialize_AXCP_vars() #refreshing AXCP variables based on new settings
     
     
     

@@ -88,7 +88,7 @@ def setdefaultsettings():
     settingsdict['cprefreshrate'] = 1.0 #AXCP refresh rate (seconds)
     settingsdict['axcpquality'] = 1 #processing quality-> 1=best, 3=worst
     settingsdict['spindowndetectrt'] = 1 #realtime spindown detection and profile termination (1 or 0)
-    settingsdict['cptempmode'] = 1 #whether or not to use FFT for AXCP temperature calculation
+    settingsdict['cptempmode'] = 2 #whether or not to use FFT for AXCP temperature calculation
     settingsdict['cpfftwindow'] = 1 #FFT window length for AXCP (must be <= refreshrateaxcp)
     settingsdict['revcoil'] = 0 #whether coil is reversed on AXCP
     settingsdict['maglat'] = 20 #default latitude for AXCP Fh/Fz/declination calculations
@@ -404,7 +404,7 @@ class RunSettings(QMainWindow):
         self.processortabwidgets['cprefreshrate'].setValue(self.settingsdict['cprefreshrate'])
         self.processortabwidgets['axcpquality'].setCurrentIndex(self.settingsdict['axcpquality']-1)
         self.processortabwidgets['spindowndetectrt'].setChecked(self.settingsdict['spindowndetectrt'])
-        self.processortabwidgets['cptempmode'].setChecked(self.settingsdict['cptempmode'] )
+        self.processortabwidgets['cptempmode'].setChecked(self.settingsdict['cptempmode']-1)
         self.processortabwidgets['cpfftwindow'].setValue(self.settingsdict['cpfftwindow'])
         self.processortabwidgets['revcoil'].setChecked(self.settingsdict['revcoil'])
         self.processortabwidgets['maglat'].setValue(self.settingsdict['maglat'])
@@ -518,7 +518,7 @@ class RunSettings(QMainWindow):
         self.settingsdict['cprefreshrate'] = float(self.processortabwidgets['cprefreshrate'].value())
         self.settingsdict['axcpquality'] = self.processortabwidgets['axcpquality'].currentIndex() + 1
         self.settingsdict['spindowndetectrt'] = self.processortabwidgets['spindowndetectrt'].isChecked()
-        self.settingsdict['cptempmode'] = self.processortabwidgets['cptempmode'].isChecked()
+        self.settingsdict['cptempmode'] = self.processortabwidgets['cptempmode'].isChecked() + 1
         self.settingsdict['cpfftwindow'] = float(self.processortabwidgets['cpfftwindow'].value())
         self.settingsdict['revcoil'] = self.processortabwidgets['revcoil'].isChecked()
         self.settingsdict['maglat'] = float(self.processortabwidgets['maglat'].value())
@@ -720,7 +720,7 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["spindowndetectrt"].setChecked(self.settingsdict["spindowndetectrt"])
             
             self.processortabwidgets["cptempmode"] = QCheckBox('AXCP FFT Temperature ID') #40
-            self.processortabwidgets["cptempmode"].setChecked(self.settingsdict["cptempmode"])
+            self.processortabwidgets["cptempmode"].setChecked(self.settingsdict["cptempmode"]-1)
             self.processortabwidgets["cpfftwindowlabel"] = QLabel("AXCP FFT Window (sec): ")
             self.processortabwidgets["cpfftwindow"] = QDoubleSpinBox()  #39
             self.processortabwidgets["cpfftwindow"].setMinimum(0.25)

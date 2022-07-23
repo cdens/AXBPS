@@ -277,7 +277,7 @@ class CustomToolbar(NavigationToolbar):
 # =============================================================================
 #    PARSE STRING INPUTS/CHECK VALIDITY WHEN TRANSITIONING TO PROFILE EDITOR
 # =============================================================================
-def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoords,checktime,checkid):
+def parsestringinputs(self, latstr, lonstr, profdatestr, timestr, identifier, checkcoords, checktime, checkid, usewarnings=True):
     isgood = True
     lon = np.NaN
     lat = np.NaN
@@ -300,7 +300,8 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 else:
                     lat = float(latstr[0])
             except:
-                self.postwarning('Invalid Latitude Entered!')
+                if usewarnings:
+                    self.postwarning('Invalid Latitude Entered!')
                 isgood = False
 
             try:
@@ -317,14 +318,17 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 else:
                     lon = float(lonstr[0])
             except:
-                self.postwarning('Invalid Longitude Entered!')
+                if usewarnings:
+                    self.postwarning('Invalid Longitude Entered!')
                 isgood = False
 
             if lon < -180 or lon > 180:
-                self.postwarning('Longitude must be between -180 and 180')
+                if usewarnings:
+                    self.postwarning('Longitude must be between -180 and 180')
                 isgood = False
             elif lat < -90 or lat > 90:
-                self.postwarning('Latitude must be between -90 and 90')
+                if usewarnings:
+                    self.postwarning('Latitude must be between -90 and 90')
                 isgood = False
 
             lon = round(lon,3)
@@ -334,10 +338,12 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
 
         if checktime: #checking date and time
             if len(timestr) != 4:
-                self.postwarning('Invalid Time Format (must be HHMM)!')
+                if usewarnings:
+                    self.postwarning('Invalid Time Format (must be HHMM)!')
                 isgood = False
             elif len(profdatestr) != 8:
-                self.postwarning('Invalid Date Format (must be YYYYMMDD)!')
+                if usewarnings:
+                    self.postwarning('Invalid Date Format (must be YYYYMMDD)!')
                 isgood = False
 
             try: #checking date
@@ -345,30 +351,36 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 month = int(profdatestr[4:6])
                 day = int(profdatestr[6:])
             except:
-                self.postwarning('Invalid (non-numeric) Date Entered!')
+                if usewarnings:
+                    self.postwarning('Invalid (non-numeric) Date Entered!')
                 isgood = False
                 year = month = day = -99999
             try:
                 hour = int(timestr[:2])
                 minute = int(timestr[2:4])
             except:
-                self.postwarning('Invalid (non-numeric) Time Entered!')
+                if usewarnings:
+                    self.postwarning('Invalid (non-numeric) Time Entered!')
                 isgood = False
                 hour = minute = -99999
             
             if year != -99999:
                 if year < 1938 or year > 3000: #year the bathythermograph was invented and the year by which it was probably made obsolete
-                    self.postwarning('Invalid Year Entered (< 1938 AD or > 3000 AD)!')
+                    if usewarnings:
+                        self.postwarning('Invalid Year Entered (< 1938 AD or > 3000 AD)!')
                     isgood = False
                 elif month <= 0 or month > 12:
-                    self.postwarning("Invalid Month Entered (must be between 1 and 12)")
+                    if usewarnings:
+                        self.postwarning("Invalid Month Entered (must be between 1 and 12)")
                     isgood = False
             if hour != -99999:
                 if hour > 23 or hour < 0:
-                    self.postwarning('Invalid Time Entered (hour must be between 0 and 23')
+                    if usewarnings:
+                        self.postwarning('Invalid Time Entered (hour must be between 0 and 23')
                     isgood = False
                 elif minute >= 60 or minute < 0:
-                    self.postwarning('Invalid Time Entered (minute must be between 0 and 59')
+                    if usewarnings:
+                        self.postwarning('Invalid Time Entered (minute must be between 0 and 59')
                     isgood = False
             
             #figuring out number of days in month
@@ -389,7 +401,8 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 
             #checking to make sure days are in valid range
             if isgood and (day <= 0 or day > maxdays):
-                self.postwarning(f"Invalid Day Entered (must be between 1 and {maxdays} for {monthnames[month-1]})")
+                if usewarnings:
+                    self.postwarning(f"Invalid Day Entered (must be between 1 and {maxdays} for {monthnames[month-1]})")
                 isgood = False
             
             #getting datetime for drop
@@ -402,9 +415,11 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
                 option = ''
                 if self.settingsdict["dtgwarn"]:
                     if deltat.days < 0:
-                        option = self.postwarning_option("Drop time appears to be after the current time. Continue anyways?")
+                        if usewarnings:
+                            option = self.postwarning_option("Drop time appears to be after the current time. Continue anyways?")
                     elif deltat.days > 1 or (deltat.days == 0 and deltat.seconds > 12*3600):
-                        option = self.postwarning_option("Drop time appears to be more than 12 hours ago. Continue anyways?")
+                        if usewarnings:
+                            option = self.postwarning_option("Drop time appears to be more than 12 hours ago. Continue anyways?")
                     if option == 'cancel':
                         isgood = False
                         
@@ -412,7 +427,8 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
         #check length of identifier
         identifier = identifier.strip() #get rid of tabs/newlines/whitespace
         if checkid and len(identifier) == 0:
-            option = self.postwarning_option("Identifier not provided- continue anyways")
+            if usewarnings:
+                option = self.postwarning_option("Identifier not provided- continue anyways")
             if option == 'cancel':
                 isgood = False
             else:
@@ -420,7 +436,7 @@ def parsestringinputs(self,latstr,lonstr,profdatestr,timestr,identifier,checkcoo
         
     except Exception:
         trace_error()
-        self.posterror("Unspecified error in parsing profile information!")
+        self.posterror("Unspecified error in parsing drop date/time/position/ID!")
         isgood = False
     
     finally:
@@ -575,7 +591,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
         hasCurrent = True
         rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'U':self.alltabdata[opentab]["rawdata"]["U"], 'V':self.alltabdata[opentab]["rawdata"]["V"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
         
-        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Rotation Rate (Hz)': self.alltabdata[opentab]["rawdata"]["FROTLP"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Zonal Current (m/s)':self.alltabdata[opentab]["rawdata"]["U"], 'Meridional Current (m/s)':self.alltabdata[opentab]["rawdata"]["V"]}
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Rotation Rate (Hz)': self.alltabdata[opentab]["rawdata"]["frequency"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Zonal Current (m/s)':self.alltabdata[opentab]["rawdata"]["Utrue"], 'Meridional Current (m/s)':self.alltabdata[opentab]["rawdata"]["Vtrue"]}
         
         qualities = ['High','Moderate','Low']
         cproc = self.alltabdata[opentab]["processor"]
@@ -588,6 +604,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     F_h                :  {np.round(cproc.fh)} nT
     F_z                :  {np.round(cproc.fz)} nT
     Declination        :  {cproc.dec:5.1f} degrees
+//NOTE: Currents are provided in degrees True
     """
     
     

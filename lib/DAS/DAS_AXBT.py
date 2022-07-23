@@ -50,11 +50,13 @@ class AXBTProcessor(QRunnable):
     #initializing current thread (saving variables, reading audio data or contacting/configuring receiver)
     #AXBT settings: fftwindow, minfftratio, minsiglev, triggerfftratio, triggersiglev, tcoeff_axbt, zcoeff_axbt, flims_axbt
     def __init__(self, dll, datasource, vhffreq, tabID, starttime, istriggered, firstpointtime, 
-        settings, slash, tempdir, *args,**kwargs):
+        settings, tempdir, *args,**kwargs):
         super(AXBTProcessor, self).__init__()
 
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)
         self.threadstatus = 0
+        
+        self.probetype = "AXBT"
         
         #AXBT specific variables
         self.starttime = starttime
@@ -66,7 +68,7 @@ class AXBTProcessor(QRunnable):
         self.freqs = []
         
         #initializing non probe-specific variables and accessing receiver or opening audio file
-        self.initialize_common_vars(tempdir,slash,tabID,dll,settings,datasource,vhffreq,'AXBT')
+        self.initialize_common_vars(tempdir,tabID,dll,settings,datasource,vhffreq,'AXBT')
         
         #connecting signals to thread
         self.signals = cdf.ProcessorSignals()

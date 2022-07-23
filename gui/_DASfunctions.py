@@ -20,7 +20,7 @@
 
 from platform import system as cursys
 
-from os import path
+import os
 from traceback import print_exc as trace_error
 
 from PyQt5.QtWidgets import (QLineEdit, QLabel, QSpinBox, QPushButton, QWidget, QFileDialog, QComboBox, QGridLayout, QDoubleSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar, QApplication, QMessageBox, QVBoxLayout)
@@ -39,6 +39,7 @@ from gsw import SP_from_C #conductivity-to-salinity conversion
 
 import lib.DAS.DAS_AXBT as das_axbt 
 import lib.DAS.DAS_AXCTD as das_axctd
+import lib.DAS.DAS_AXCP as das_axcp
 from lib.DAS.common_DAS_functions import channelandfrequencylookup, list_receivers
 import lib.GPS_COM_interaction as gps
 
@@ -60,7 +61,7 @@ def makenewprocessortab(self):
         self.setnewtabcolor(self.alltabdata[opentab]["tab"])
         
         #initializing raw data storage
-        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]), "depth":np.array([]), "conductivity":np.array([]), "salinity":np.array([]), "frequency":np.array([]), "time":np.array([]), "frame":[], "starttime":0, "istriggered":False, "firstpointtime":0, "firstpulsetime":0}
+        self.alltabdata[opentab]["rawdata"] = {"temperature":np.array([]), "depth":np.array([]), "conductivity":np.array([]), "salinity":np.array([]), "Umag":np.array([]), "Vmag":np.array([]), "Utrue":np.array([]), "Vtrue":np.array([]), "frequency":np.array([]), "time":np.array([]), "frame":[], "starttime":0, "istriggered":False, "firstpointtime":0, "firstpulsetime":0}
         
         self.alltabdata[opentab]["tablayout"].setSpacing(10)
 
@@ -414,9 +415,79 @@ def datasourcechange(self):
 #necessary when processing AXCPs to pass correct latitude/longitude/datetime to processor in order to calculate
 #magnetic field components and declination as accurately as possible for current calculations
 def updatedropposition(self):
-    pass
+    try:
+        opentab = self.whatTab()
+        self.pull_drop_coords_update(True) #post warning boxes if date/time/lat/lon are incorrect
+    except Exception:
+        trace_error()
+        self.posterror("Failed to update drop position for magnetic field parameters")
+    
+    
+def pull_drop_coords_update(self, warn_incorrect):
+    latsend = None
+    lonsend = None
+    datesend = None
+    
+    try:
+        opentab = self.whatTab()
         
+        latstr = self.alltabdata[opentab]["tabwidgets"]["latedit"].text()
+        lonstr = self.alltabdata[opentab]["tabwidgets"]["lonedit"].text()
+        profdatestr = self.alltabdata[opentab]["tabwidgets"]["dateedit"].text()
+        timestr = self.alltabdata[opentab]["tabwidgets"]["timeedit"].text()
+        isgood,lat,lon,dropdatetime,_ = self.parsestringinputs(latstr, lonstr, profdatestr, timestr, 'None', True, True, False, usewarnings=warn_incorrect) #not checking ID
         
+        #identifying whether to send data or not- handling lat/lon separate from datetime
+        #if the parameter(s) is/are good, update and send them
+        #if they aren't good but it isn't processing yet, send the default values from the settings tab
+        #if they aren't good and it isn't processing, send None so it doesn't update the parameter
+        if not np.isnan(lon) and not np.isnan(lat):
+            latsend = lat
+            lonsend = lon
+        elif not self.alltabdata[opentab]["isprocessing"]:
+            lonsend = self.settingsdict['maglon']
+            latsend = self.settingsdict['maglat']
+            
+        if dropdatetime != dt.datetime(1,1,1):
+            datesend = dropdatetime.date()
+        elif not self.alltabdata[opentab]["isprocessing"]:
+            datesend = dt.datetime.utcnow().date()
+            
+        
+        change_magdata = False
+        if latsend is not None:
+            self.alltabdata[opentab]["rawdata"]["maglat"] = latsend
+            change_magdata = True
+        if lonsend is not None:
+            self.alltabdata[opentab]["rawdata"]["maglon"] = lonsend
+            change_magdata = True
+        if datesend is not None:
+            self.alltabdata[opentab]["rawdata"]["magdate"] = datesend
+            change_magdata = True
+            
+        if change_magdata: #only update the thread and plot if something was worth changing
+            latsend = self.alltabdata[opentab]["rawdata"]["maglat"]
+            lonsend = self.alltabdata[opentab]["rawdata"]["maglon"]
+            datesend = self.alltabdata[opentab]["rawdata"]["magdate"]
+            
+            if self.alltabdata[opentab]["isprocessing"] or len(self.alltabdata[opentab]["rawdata"]["depth"]) > 0: #only send magdata if it's already processing or already was processing valid profile data
+                self.alltabdata[opentab]["processor"].update_position_profile(latsend,lonsend,datesend) #AXCP only function
+            
+            mag_text = f"Mag Parameters: {np.abs(latsend):04.1f}{'N' if latsend >= 0 else 'S'}, {np.abs(lonsend):05.1f}{'E' if lonsend >= 0 else 'W'} {datesend:%Y/%m/%d}"
+            self.alltabdata[opentab]["ProcAxes"][0].set_title(mag_text, fontweight="bold", fontsize=14)
+            self.alltabdata[opentab]["ProcessorCanvas"].draw() #refresh plots on window
+        
+    except Exception:
+        trace_error()
+        self.posterror("Failed to collect GUI drop position for magnetic field parameters")
+        
+    finally:
+        #returns the lat/lon/dtg so the runprocessor function can properly initialize the AXCP DAS
+        return latsend,lonsend,datesend 
+        
+    
+    
+    
         
 #called when user changes channel and the frequency needs to be updated   
 #these options use a lookup table for VHF channel vs frequency
@@ -495,7 +566,7 @@ def updateDASsettings(self):
         newaxctdsettings = {}
         axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
         newaxcpsettings = {}
-        axcpsettingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil', 'maglat', 'maglon']
+        axcpsettingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil']
         
         for csetting in axbtsettingstopull:
             newaxbtsettings[csetting] = self.settingsdict[csetting]
@@ -565,7 +636,7 @@ def prepprocessor(self, opentab):
                 self.alltabdata[opentab]["isprocessing"] = False
                 return False,"No","No"
             else:
-                splitpath = path.split(fname)
+                splitpath = os.path.split(fname)
                 self.defaultfilereaddir = splitpath[0]
                 
             #determining which channel to use
@@ -647,8 +718,6 @@ def runprocessor(self, opentab, datasource, sourcetype):
     if self.goodPosition == True:
         self.alltabdata[opentab]['tabwidgets']['latedit'].setText(str(round(self.lat, 3)))
         self.alltabdata[opentab]['tabwidgets']['lonedit'].setText(str(round(self.lon, 3)))
-                
-        
         
     #this should never happen (if there is no DLL loaded there shouldn't be any receivers detected), but just in case
     if self.dll == 0 and sourcetype not in ['AA','TT']:
@@ -679,29 +748,43 @@ def runprocessor(self, opentab, datasource, sourcetype):
         datasource_toThread = datasource #set by the AudioWindow
     else:
         datasource_toThread = sourcetype + datasource #append receiver ID (2 characters) and serial number
-    
+        
+        
+    #getting drop latitude/longitude/time to use for mag params for AXCPs only
+    if probetype == "AXCP":
+        pass
     
     settings = {} #pulling settings required for processor thread, dependent on probe type
     if probetype == 'AXBT':
         settingstopull = ["fftwindow", "minfftratio", "minsiglev", "triggerfftratio", "triggersiglev", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt"]
     elif probetype == 'AXCTD':
         settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
+    elif probetype == 'AXCP':
+        settingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil']
         
     for csetting in settingstopull:
         settings[csetting] = self.settingsdict[csetting]
     
     #initializing processor, connecting signals/slots to GUI thread
     if probetype == "AXBT":
-        self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.slash, self.tempdir)
+        self.alltabdata[opentab]["processor"] = das_axbt.AXBTProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], settings, self.tempdir)
     elif probetype == "AXCTD":
-        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.slash, self.tempdir)
+        self.alltabdata[opentab]["processor"] = das_axctd.AXCTDProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, self.alltabdata[opentab]["rawdata"]["istriggered"], self.alltabdata[opentab]["rawdata"]["firstpointtime"], self.alltabdata[opentab]["rawdata"]["firstpulsetime"], settings, self.tempdir)
+    elif probetype == "AXCP": 
+        latsend,lonsend,datesend = self.pull_drop_coords_update(False) #for AXCP only, update lat/lon/date
+        self.alltabdata[opentab]["processor"] = das_axcp.AXCPProcessor(self.dll, datasource_toThread, vhffreq, tabID,  starttime, status=self.alltabdata[opentab]["rawdata"]["istriggered"], triggertime=self.alltabdata[opentab]["rawdata"]["firstpointtime"], lat=latsend, lon=lonsend, dropdate=datesend, settings=settings, tempdir=self.tempdir)
         
     
-        #connecting signals to GUI functions (e.g. updating the graph and table with new data)
+    #connecting signals to GUI functions (e.g. updating the graph and table with new data)
     self.alltabdata[opentab]["processor"].signals.failed.connect(self.failedWRmessage) #this signal only for actual processing tabs (not example tabs)
     self.alltabdata[opentab]["processor"].signals.iterated.connect(self.updateUIinfo)
     self.alltabdata[opentab]["processor"].signals.triggered.connect(self.triggerUI)
     self.alltabdata[opentab]["processor"].signals.terminated.connect(self.updateUIfinal)
+    
+    if probetype == "AXCP":
+        self.alltabdata[opentab]["processor"].signals.emit_profile_update.connect(self.replace_AXCP_profiles)
+    
+    #adding AXCP specific signal to notify GUI when the profile has been updated
 
     #connecting audio file-specific signal (to update progress bar on GUI)
     if sourcetype == 'AA':
@@ -853,6 +936,10 @@ def triggerUI(self,tabID,event,eventtime):
                 self.alltabdata[plottabnum]["rawdata"]["firstpulsetime"] = eventtime
             else: #profile collection initiated
                 self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = eventtime
+                
+        elif probetype == "AXCP":
+            self.alltabdata[plottabnum]["rawdata"]["firstpointtime"] = eventtime
+            self.alltabdata[plottabnum]["rawdata"]["istriggered"] = True
             
             
     except Exception:
@@ -877,6 +964,9 @@ def updateUIinfo(self,tabID,data):
                 curcolors, table_data = self.update_AXBT_DAS(plottabnum, data, False)
             elif probetype == "AXCTD":
                 curcolors, table_data = self.update_AXCTD_DAS(plottabnum, data, False)
+            elif probetype == "AXCP":
+                curcolors, table_data = self.update_AXCP_DAS(plottabnum, data, False)
+                
                 
             #updating table
             table = self.alltabdata[plottabnum]["tabwidgets"]["table"]
@@ -1023,6 +1113,107 @@ def update_AXCTD_DAS(self, plottabnum, data, interval_override):
   
         
         
+    
+def update_AXCP_DAS(self, plottabnum, data, interval_override):
+    #data organization: [self.status, cur_time, cur_rotf, cur_depth, cur_temp, cur_Umag, cur_Vmag, cur_Utrue, cur_Vtrue]
+    
+    #pulling data from list
+    status = data[0]
+    newtime = data[1]
+    newfrot = data[2]
+    newdepth = data[3]
+    newtemp = data[4]
+    newUmag = data[5]
+    newVmag = data[6]
+    newUtrue = data[7]
+    newVtrue = data[8]
+        
+    
+    #defaults so the last depth will be different unless otherwise explicitly stored (z > 0 here)
+    lastdepth = -1
+    if len(self.alltabdata[plottabnum]["rawdata"]["depth"]) > 0:
+        lastdepth = self.alltabdata[plottabnum]["rawdata"]["depth"][-1]
+        
+    
+    #only appending a datapoint if depths are different
+    if status:
+        #writing data to tab dictionary
+        self.alltabdata[plottabnum]["rawdata"]["time"] = np.append(self.alltabdata[plottabnum]["rawdata"]["time"], newtime)
+        self.alltabdata[plottabnum]["rawdata"]["frequency"] = np.append(self.alltabdata[plottabnum]["rawdata"]["frequency"], newfrot)
+        self.alltabdata[plottabnum]["rawdata"]["depth"] = np.append(self.alltabdata[plottabnum]["rawdata"]["depth"], newdepth)
+        self.alltabdata[plottabnum]["rawdata"]["temperature"] = np.append(self.alltabdata[plottabnum]["rawdata"]["temperature"], newtemp)
+        self.alltabdata[plottabnum]["rawdata"]["Umag"] = np.append(self.alltabdata[plottabnum]["rawdata"]["Umag"], newUmag)
+        self.alltabdata[plottabnum]["rawdata"]["Vmag"] = np.append(self.alltabdata[plottabnum]["rawdata"]["Vmag"], newVmag)
+        self.alltabdata[plottabnum]["rawdata"]["Utrue"] = np.append(self.alltabdata[plottabnum]["rawdata"]["Utrue"], newUtrue)
+        self.alltabdata[plottabnum]["rawdata"]["Vtrue"] = np.append(self.alltabdata[plottabnum]["rawdata"]["Vtrue"], newVtrue)
+        
+
+        #plot the most recent point
+        cdt = dt.datetime.utcnow()
+        if (cdt - self.alltabdata[plottabnum]["date_plot_updated"]).total_seconds() >= 5 or interval_override:
+            try:
+                del self.alltabdata[plottabnum]["ProcAxes"][0].lines[-1]
+                del self.alltabdata[plottabnum]["ProcAxes"][1].lines[-2:]
+            except IndexError: #if nothing has been plotted, trying to delete the lines from the plot raises IndexError
+                pass
+                
+            #plotting and updating
+            self.alltabdata[plottabnum]["ProcAxes"][0].plot(self.alltabdata[plottabnum]["rawdata"]["temperature"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='r')
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["Umag"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["Vmag"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='g')
+            self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
+            self.alltabdata[plottabnum]["date_plot_updated"] = cdt
+            
+
+    #coloring new cells based on whether or not it has good data, prepping data to append to table
+    curcolor = []
+    table_data = []
+    for (ctime, cfrot, cdepth, ctemp, cUmag, cVmag) in zip(newtime, newfrot, newdepth, newtemp, newUmag, newVmag):
+            
+        if np.isnan(cdepth):
+            ctemp = cUmag = cVmag = cdepth = '------'
+            
+        if status: 
+            curcolor.append(QColor(204, 255, 220)) #light green
+        else: #nothing detected yet
+            curcolor.append(QColor(200, 200, 200)) #light gray 
+
+        table_data.append([ctime, cfrot, cdepth, ctemp, cUmag, cVmag])
+    
+    return curcolor, table_data
+    
+    
+    
+    
+    
+#replacing and replotting U and V data after the AXCP DAS recalculates them
+@pyqtSlot(int, list)
+def replace_AXCP_profiles(self, tabID, data):
+    try:
+        plottabnum = self.gettabnumfromID(tabID)
+        
+        self.alltabdata[plottabnum]["rawdata"]["Umag"] = data[0]
+        self.alltabdata[plottabnum]["rawdata"]["Vmag"] = data[1]
+        self.alltabdata[plottabnum]["rawdata"]["Utrue"] = data[2]
+        self.alltabdata[plottabnum]["rawdata"]["Vtrue"] = data[3]
+        
+        try:
+            del self.alltabdata[plottabnum]["ProcAxes"][1].lines[-2:]
+        except IndexError: #if nothing has been plotted, trying to delete the lines from the plot raises IndexError
+            pass
+            
+        #plotting and updating
+        if len(data[0]) > 0:
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["Umag"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='b')
+            self.alltabdata[plottabnum]["ProcAxes"][1].plot(self.alltabdata[plottabnum]["rawdata"]["Vmag"],self.alltabdata[plottabnum]["rawdata"]["depth"],color='g')
+            self.alltabdata[plottabnum]["ProcessorCanvas"].draw()
+            
+    
+    except Exception:
+        self.posterror("Failed to replace AXCP velocity profiles")
+        trace_error()
+        
+        
         
 #final update from thread after being aborted- restoring scroll bar, other info
 @pyqtSlot(int)
@@ -1039,7 +1230,9 @@ def updateUIfinal(self,tabID):
         if probetype == 'AXBT':
             self.update_AXBT_DAS(plottabnum, [[],[],[],[],[],[]], True)
         elif probetype == 'AXCTD':
-            self.update_AXCTD_DAS(plottabnum, [[],[],[],[],[],[],[],[],[]], True)
+            self.update_AXCTD_DAS(plottabnum, [None,[],[],[],[],[],[],[],[]], True)
+        elif probetype == "AXCP":
+            self.update_AXCP_DAS(plottabnum, [None,[],[],[],[],[],[],[],[]], True)
             
         if "audioprogressbar" in self.alltabdata[plottabnum]["tabwidgets"]: #delete the audio progress bar if it exists
             self.alltabdata[plottabnum]["tabwidgets"]["audioprogressbar"].deleteLater()
@@ -1149,6 +1342,12 @@ def processprofile(self):
             rawconductivity = rawconductivity[notnanind]
             rawsalinity = self.alltabdata[opentab]["rawdata"]["salinity"]
             rawsalinity = rawsalinity[notnanind]
+        elif probetype == "AXCP":
+            rawU = self.alltabdata[opentab]["rawdata"]["Utrue"] #use degrees true not magnetic
+            rawV = self.alltabdata[opentab]["rawdata"]["Vtrue"]
+            notnanind = ~np.isnan(rawtemperature * rawdepth * rawU * rawV)
+            rawU = rawU[notnanind]
+            rawV = rawV[notnanind]
         else:
             notnanind = ~np.isnan(rawtemperature*rawdepth) #removing NaNs
         
@@ -1160,6 +1359,9 @@ def processprofile(self):
         
         if probetype == "AXCTD": #calculating salinity (AXCTD only)
             rawdata['salinity'] = rawsalinity
+        elif probetype == "AXCP":
+            rawdata['U'] = rawU
+            rawdata['V'] = rawV
             
         #saves profile if necessary
         if not self.alltabdata[opentab]["profileSaved"]: #only if it hasn't been saved

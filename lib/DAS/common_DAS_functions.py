@@ -122,16 +122,34 @@ def read_audio_file(audiofile, chselect, maxsavedframes):
     return audiostream, f_s, startthread
     
     
+
     
     
 #conversion: coefficients=C,  D_out = C[0] + C[1]*D_in + C[2]*D_in^2 + C[3]*D_in^3 + ...
 def dataconvert(data_in,coefficients):
-    output = 0
-    for (i,c) in enumerate(coefficients):
-        output += c*data_in**i
+    
+    datatype = 1 #integer or float
+    if type(data_in) == list:
+        datatype = 2
+    elif type(data_in) == np.ndarray: #numpy array
+        dataype = 3
+        
+    if datatype == 1:
+        data_in = [data_in]
+        
+    output = []
+    for cur_data_in in data_in:
+        cur_output = 0
+        for (i,c) in enumerate(coefficients):
+            cur_output += c*cur_data_in**i
+        output.append(cur_output)
+        
+    if datatype == 1: #convert back from list to int/float
+        output = output[0]
+    elif datatype == 3: #convert to np array
+        output = np.asarray(output)
+            
     return output
-    
-    
         
     
     
@@ -144,7 +162,7 @@ class ProcessorSignals(QObject):
     terminated = pyqtSignal(int) #signal that the loop has been terminated (by user input or program error)
     failed = pyqtSignal(int,int)
     updateprogress = pyqtSignal(int,int) #signal to update audio file progress bar
-    
+    emit_profile_update = pyqtSignal(int,list) #replace all profile data with updated info (AXCP only)
     
     
     

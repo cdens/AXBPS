@@ -39,7 +39,7 @@ def define_callbacks(self, probetype, sourcetype):
     
     if sourcetype == 'WR': #WiNRADIO receiver callbacks by probe type 
         
-        if probetype == "AXBT":
+        if probetype == "AXBT": #audio buffer tail is moved by the callback function
 
             #AXBT
             @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
@@ -68,7 +68,7 @@ def define_callbacks(self, probetype, sourcetype):
                     
                     
         
-        elif probetype == "AXCTD":
+        elif probetype == "AXCTD" or probetype == "AXCP": #audio buffer tail is moved by the DAS thread
             
             #AXCTD
             @CFUNCTYPE(None, c_void_p, c_void_p, c_ulong, c_ulong)
