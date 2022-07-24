@@ -138,8 +138,8 @@ def setdefaultsettings():
 strsettings = ["platformid", "missionid", "comport"] #settings saved as strings
 listsettings = ["mark_space_freqs", "tcoeff_axbt", "zcoeff_axbt", "flims_axbt", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd","tlims_axctd","slims_axctd"] #saved as lists of coefficients/parameters (each element is a float)
 floatsettings = ["fftwindow", "minsiglev", "minfftratio", "triggersiglev", "triggerfftratio", "minr400", "mindr7500", "smoothlev", "profres", "maxstdev", "refreshrate", 'cprefreshrate', 'cpfftwindow', 'maglat', 'maglon'] #saved as floats
-intsettings = ["deadfreq", 'axcpquality', "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
-boolsettings = ["autodtg", "autolocation", "autoid", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", 'spindowndetectrt', 'cptempmode', 'revcoil', "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "savedat_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
+intsettings = ["deadfreq", 'axcpquality', 'cptempmode', "originatingcenter", "gpsbaud", "fontsize"] #saved as ints
+boolsettings = ["autodtg", "autolocation", "autoid", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw", "savewav_raw", "savesig_raw", "dtgwarn", "renametabstodtg", "autosave",  "usebandpass", 'spindowndetectrt', 'revcoil', "useclimobottom", "overlayclimo", "comparetoclimo", "savefin_qc", "savejjvv_qc", "savedat_qc", "saveedf_qc", "savebufr_qc", "saveprof_qc", "saveloc_qc", "useoceanbottom", "checkforgaps", ] #saved as boolean
 
 
 class SettingNotRecognized(Exception):

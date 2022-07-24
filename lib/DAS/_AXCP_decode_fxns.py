@@ -50,73 +50,8 @@ def init_AXCP_settings(self, settings):
         
     
 
-
-    
         
-def initialize_AXCP_vars(self):
-    
-    #pulling user settings then initializing variables
-    self.revcoil = bool(self.settings["revcoil"])
-    self.spindown_detect_rt = bool(self.settings["spindowndetectrt"])
-    
-    self.quality = self.settings["axcpquality"]
-    if self.quality <= 0:
-        self.quality = 1
-    elif self.quality >= 4:
-        self.quality = 3
-    
-    self.temp_mode = self.settings["cptempmode"]
-    if self.temp_mode < 1:
-        self.temp_mode = 1
-    elif self.temp_mode > 2:
-        self.temp_mode = 2    
-
-    
-    self.refreshrate = self.settings["cprefreshrate"]
-    self.tempfftwindowsec = self.settings["cpfftwindow"]
-    
-    if self.tempfftwindowsec > self.refreshrate: #temperature FFT window length must be less than refresh rate
-        self.tempfftwindowsec = self.refreshrate
-        
-    
-    if self.isfromaudio or self.isfromtest:            
-        self.numpoints = len(self.audiostream)
-        
-    self.tsamp = 1/self.f_s
-    self.fnyq0 = self.f_s/2
-    
-    if self.quality == 1:
-        self.nss1 =  1   # first subsampling
-        self.nss2 = 200 # second subsampling
-    elif self.quality == 2:
-        self.nss1 =  3
-        self.nss2 = 67
-    elif self.quality == 3:
-        self.nss1 =  5
-        self.nss2 = 40
-        
-    #temperature FFT window calculation
-    self.N_temp = int(np.round(self.f_s * self.tempfftwindowsec))
-    self.init_fft_window(self.N_temp) #intialize window, frequencies, and taper 
-                
-    self.fnyq1 = self.fnyq0 / self.nss1
-    self.fnyq2 = self.fnyq1 / self.nss2
-    
-    self.fzclp = 50
-    
-    # make input buffer size evenly divisible by all the subsampling
-    # so filtering and subsampling is less complicated
-    self.pointsperloop = np.round(self.f_s * self.refreshrate)
-    self.pointsperloop = np.ceil(self.pointsperloop / self.nss1) * self.nss1
-    self.pointsperloop = int(np.ceil(self.pointsperloop / self.nss1 / self.nss2) * self.nss1 * self.nss2)
-    self.refreshrate = self.pointsperloop / self.f_s # actual seconds
-    self.minpointsperloop = self.pointsperloop
-    
-    # first fit is from depth_beg to depth_beg + depth_chunk
-    # next fit is depth_step deeper
-    self.depth_beg = 7.5 
-    self.depth_chunk = 5 
-    self.depth_step  = 2
+def initialize_AXCP_arrays(self):
     
     #profile output arrays
     self.T       = np.array([])
@@ -178,8 +113,83 @@ def initialize_AXCP_vars(self):
     self.fte = np.array([])
     self.tim = np.array([])
     
-    #initializing filter coefficients and indices
-    self.init_filters()
+        
+    
+        
+def initialize_AXCP_vars(self):
+    
+    #pulling user settings then initializing variables
+    self.revcoil = bool(self.settings["revcoil"])
+    self.spindown_detect_rt = bool(self.settings["spindowndetectrt"])
+    
+    self.quality = self.settings["axcpquality"]
+    if self.quality <= 0:
+        self.quality = 1
+    elif self.quality >= 4:
+        self.quality = 3
+    
+    self.temp_mode = self.settings["cptempmode"]
+    if self.temp_mode < 1:
+        self.temp_mode = 1
+    elif self.temp_mode > 2:
+        self.temp_mode = 2    
+
+    
+    self.refreshrate = self.settings["cprefreshrate"]
+    self.tempfftwindowsec = self.settings["cpfftwindow"]
+    
+    if self.tempfftwindowsec > self.refreshrate: #temperature FFT window length must be less than refresh rate
+        self.tempfftwindowsec = self.refreshrate
+        
+    
+    if self.isfromaudio or self.isfromtest:            
+        self.numpoints = len(self.audiostream)
+        
+    self.tsamp = 1/self.f_s
+    self.fnyq0 = self.f_s/2
+    
+        
+    #temperature FFT window calculation
+    self.N_temp = int(np.round(self.f_s * self.tempfftwindowsec))
+    self.init_fft_window(self.N_temp) #intialize window, frequencies, and taper 
+    
+    # first fit is from depth_beg to depth_beg + depth_chunk
+    # next fit is depth_step deeper
+    self.depth_beg = 7.5 
+    self.depth_chunk = 5 
+    self.depth_step  = 2
+    
+    
+    #only run this the first time (profile arrays should all be length 0)
+    if len(self.T) == 0:
+    
+        if self.quality == 1:
+            self.nss1 =  1   # first subsampling
+            self.nss2 = 200 # second subsampling
+        elif self.quality == 2:
+            self.nss1 =  3
+            self.nss2 = 67
+        elif self.quality == 3:
+            self.nss1 =  5
+            self.nss2 = 40
+            
+        #needs self.quality/nss1 and 2 to run
+        self.fnyq1 = self.fnyq0 / self.nss1
+        self.fnyq2 = self.fnyq1 / self.nss2
+    
+        self.fzclp = 50
+                
+        #initializing filter coefficients and indices
+        self.init_filters()
+        
+        
+    # make input buffer size evenly divisible by all the subsampling
+    # so filtering and subsampling is less complicated
+    self.pointsperloop = np.round(self.f_s * self.refreshrate)
+    self.pointsperloop = np.ceil(self.pointsperloop / self.nss1) * self.nss1
+    self.pointsperloop = int(np.ceil(self.pointsperloop / self.nss1 / self.nss2) * self.nss1 * self.nss2)
+    self.refreshrate = self.pointsperloop / self.f_s # actual seconds
+    self.minpointsperloop = self.pointsperloop
     
     # initialize conversion polynomials
     self.init_constants()
@@ -503,9 +513,9 @@ def iterate_AXCP_process(self, e):
     
     #saving rotation frequency info
     self.FCCDEV = np.append(self.FCCDEV, envfcclp[-1]*np.sqrt(2) )
-    self.FROTLP = np.append(self.FROTLP, np.round(frotlp[-1],1) )
-    self.FROTDEV = np.append(self.FROTDEV, envfrotlp[-1]*np.sqrt(2) )
-    
+    self.FROTLP = np.append(self.FROTLP, np.round(frotlp[-1],2) )
+    self.FROTDEV = np.append(self.FROTDEV, np.round(envfrotlp[-1]*np.sqrt(2),2))
+        
     
     #only retain last 40 seconds from previous iterations, append on new values
     time_save = -40 #last 40 seconds retained
@@ -530,12 +540,13 @@ def iterate_AXCP_process(self, e):
         self.keepgoing = False #stop processing new data, run spindown checks
         self.txtfile.write(f"[+] Spindown (realtime) detected: {self.T[-1]:7.2f} seconds, cleaning up!\n")
     
-    
+        
     #checking to see if probe has spunup (update status to 1 if so)
     #requirements: time >= 5 seconds, rotation frequency deviation below 0.5 (steady state), rotation frequency between 10 and 20 Hz
     #precise spinup time is defined as achieving 8 Hz, half rotation rate of average 16 Hz spin
     #added self.tspinup requirement so it won't re spin up profiles that have been spun down by the realtime detector
     if not self.status and self.T[-1] >= 5 and self.FROTDEV[-1] <= 0.5 and 10 < self.FROTLP[-1] < 20 and self.tspinup < 0:
+        
         
         self.status = 1 #noting profile has spun up,  finding precise spinup time
         
@@ -561,6 +572,7 @@ def iterate_AXCP_process(self, e):
             self.tspinup = tim_zc[0]
         
         self.txtfile.write(f"[+] Spinup detected: {self.tspinup:7.2f} seconds\n")
+        
         
     
     #handle updated temperature FFT calculation outside of self.status - grab most recent data    
@@ -601,6 +613,7 @@ def iterate_AXCP_process(self, e):
         #initializing arrays to be passed with iterated signal to GUI
         cur_time = []
         cur_rotf = []
+        cur_rotfrms = []
         cur_depth = []
         cur_temp = []
         cur_Umag = []
@@ -632,11 +645,10 @@ def iterate_AXCP_process(self, e):
                 elif self.temp_mode == 2:
                     temp = np.round(np.interp(depth, self.DEPTH_FFT, self.TEMP_FFT), 2)
                     
-                print(f"Time {tavg}: {rotfavg=}, {depth=}, {temp=}, {umag=}, {utrue=}")
-                    
                 #updating arrays with data to be passed with iterated signal to GUI
                 cur_time.append(tavg)
                 cur_rotf.append(rotfavg)
+                cur_rotfrms.append(rotfrms)
                 cur_depth.append(depth)
                 cur_temp.append(temp)
                 cur_Umag.append(umag)
@@ -689,6 +701,7 @@ def iterate_AXCP_process(self, e):
     else: #not triggered
         cur_time = [self.T[-1]]
         cur_rotf = [self.FROTLP[-1]]
+        cur_rotfrms = [self.FROTDEV[-1]]
         cur_depth = [np.NaN]
         cur_temp = [np.NaN]
         cur_Umag = [np.NaN]
@@ -696,7 +709,7 @@ def iterate_AXCP_process(self, e):
         cur_Utrue = [np.NaN]
         cur_Vtrue = [np.NaN]
         
-    data = [self.status, cur_time, cur_rotf, cur_depth, cur_temp, cur_Umag, cur_Vmag, cur_Utrue, cur_Vtrue]
+    data = [self.status, cur_time, cur_rotf, cur_rotfrms, cur_depth, cur_temp, cur_Umag, cur_Vmag, cur_Utrue, cur_Vtrue]
     return data
                 
 
@@ -771,6 +784,9 @@ def refine_spindown_prof(self):
         
         #updating profile meridional current velocities
         self.V_MAG = np.round(self.V_MAG - self.sfw * self.W * self.AREA * (1/self.amean_rough - 1/self.amean_calc), 3)
+        
+        
+    self.signals.update_spindown_index.emit(self.tabID, nffspindown) #sends update to GUI to truncate profiles
         
     
     

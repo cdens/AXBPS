@@ -943,22 +943,18 @@ def updateprofeditplots(self):
                 del self.alltabdata[opentab]["ProfAxes"]["V"].lines[-1]
                 self.alltabdata[opentab]["ProfAxes"]["V"].plot(Vplot, depthVplot, 'b', linewidth=2, label='QC')
                 
-                if np.max(Uplot) > 0.9 * maxvel:
-                    maxvelU = np.ceil(np.max(Uplot)/0.25)*0.25
-                else:
-                    maxvelU = maxvel
-                    
-                if np.max(Vplot) > 0.9 * maxvel:
-                    maxvelV = np.ceil(np.max(Vplot)/0.25)*0.25
-                else:
-                    maxvelV = maxvel
+                currentlims = np.array([-1,1])
+                cint = 0.25
+                cvel = np.max([np.max(np.abs(Uplot)), np.max(np.abs(Vplot))])
+                if np.max(cvel) > currentlims[1]:
+                    currentlims = np.ceil(np.max(cvel)/cint)*cint * np.array([-1,1])
                 
-                self.alltabdata[opentab]["ProfAxes"]["U"].set_xlim([-maxvelU, maxvelU])
-                self.alltabdata[opentab]["ProfAxes"]["V"].set_xlim([-maxvelV, maxvelV])
-                
+                self.alltabdata[opentab]["ProfAxes"]["U"].set_xlim(currentlims)
+                self.alltabdata[opentab]["ProfAxes"]["V"].set_xlim(currentlims)
                 self.alltabdata[opentab]["ProfCanvases"]["U"].draw()
                 self.alltabdata[opentab]["ProfCanvases"]["V"].draw()
             
+                
         #noting that profile hasn't been saved and adding asterisk to tab name to display that for the user
         self.alltabdata[opentab]["profileSaved"] = False
         self.add_asterisk(opentab)

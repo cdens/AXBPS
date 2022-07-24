@@ -64,8 +64,8 @@ def calc_vel_components(self, fcss, fess, tss):
         perrms = np.NaN
     
     
-    rotfavg = (1/peravg)
-    rotfrms = rotfavg * perrms / peravg
+    rotfavg = np.round(1/peravg, 2)
+    rotfrms = np.round(rotfavg * perrms / peravg, 2)
     
     # make phase
     phase = np.NaN * np.ones(len(tss))

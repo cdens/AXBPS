@@ -589,14 +589,14 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
     elif probetype.upper() == 'AXCP':
         hasSal = False
         hasCurrent = True
-        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'U':self.alltabdata[opentab]["rawdata"]["U"], 'V':self.alltabdata[opentab]["rawdata"]["V"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
+        rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':None, 'U':self.alltabdata[opentab]["rawdata"]["Utrue"], 'V':self.alltabdata[opentab]["rawdata"]["Vtrue"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"])}
         
-        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Rotation Rate (Hz)': self.alltabdata[opentab]["rawdata"]["frequency"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Zonal Current (m/s)':self.alltabdata[opentab]["rawdata"]["Utrue"], 'Meridional Current (m/s)':self.alltabdata[opentab]["rawdata"]["Vtrue"]}
+        edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Rotation Rate (Hz)': self.alltabdata[opentab]["rawdata"]["frequency"], 'Rotation Deviation (Hz)': self.alltabdata[opentab]["rawdata"]["frotdev"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Zonal Current (m/s)':self.alltabdata[opentab]["rawdata"]["Utrue"], 'Meridional Current (m/s)':self.alltabdata[opentab]["rawdata"]["Vtrue"]}
         
         qualities = ['High','Moderate','Low']
         cproc = self.alltabdata[opentab]["processor"]
         edf_comments = f"""Probe Type       :  AXCP
-    Temp Mode          :  {'FFT' if cproc.temp_mode >= 2 else 'Zero Crossing'}
+    Temperature Mode   :  {'FFT' if cproc.temp_mode >= 2 else 'Zero Crossing'}
     Reverse Coil       :  {'Yes' if cproc.revcoil else 'No'}
     Process Quality    :  {qualities[cproc.quality-1]}
     MagVar Latitude    :  {cproc.lat:8.3f} {'N' if cproc.lat >= 0 else 'S'}
@@ -684,7 +684,7 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
             if cdatasource.lower() not in ["audio","test"]:
                 edf_comments += f", VHF Ch. {self.alltabdata[opentab]['tabwidgets']['vhfchannel'].value()} ({self.alltabdata[opentab]['tabwidgets']['vhffreq'].value()} MHz)"
                 
-            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, U=rawdata['U'], V=rawdata['V'], QC=False, field_formats=[])
+            io.writeedffile(filename+'.edf', dropdatetime, lat, lon, edf_data, edf_comments, QC=False, field_formats=[])
         except Exception:
             trace_error()
             self.posterror("Failed to save EDF file")
@@ -778,6 +778,8 @@ def savePEfiles(self,opentab,outfileheader,probetype):
         salinity1m = None
         
     if hasCurrent:
+        rawU = self.alltabdata[opentab]["profdata"]['U_raw']
+        rawV = self.alltabdata[opentab]["profdata"]['V_raw']
         depthU = self.alltabdata[opentab]["profdata"]["depthU_plot"]
         U = self.alltabdata[opentab]["profdata"]["U_plot"]
         U1m = np.interp(depth1m,depthU,U)
@@ -897,8 +899,8 @@ def savePEfiles(self,opentab,outfileheader,probetype):
                 axC.plot(U, depthU, 'g', linewidth=2, label='Raw U')
                 axC.plot(V, depthV, 'b', linewidth=2, label='Raw V')
                 
-                ax.set_title(dtg, fontweight="bold")
-                ax.grid()
+                axC.set_title(dtg, fontweight="bold")
+                axC.grid()
                 axC.legend()
                 
                 figC.savefig(filename+'_prof_currents.png',format='png')

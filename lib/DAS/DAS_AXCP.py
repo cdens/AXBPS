@@ -44,7 +44,7 @@ class AXCPProcessor(QRunnable):
     from ._DAS_callbacks import define_callbacks
     
     #importing AXCP specific functions
-    from ._AXCP_decode_fxns import (init_AXCP_settings, initialize_AXCP_vars, init_fft_window, dofft, init_filters, init_constants, first_subsample, second_subsample, calc_current_datapoint, iterate_AXCP_process, refine_spindown_prof, calculate_true_velocities)
+    from ._AXCP_decode_fxns import (init_AXCP_settings, initialize_AXCP_arrays, initialize_AXCP_vars, init_fft_window, dofft, init_filters, init_constants, first_subsample, second_subsample, calc_current_datapoint, iterate_AXCP_process, refine_spindown_prof, calculate_true_velocities)
     from ._AXCP_convert_fxns import (calc_temp_from_freq, calc_vel_components, calc_currents)
     
     #kill: terminates the thread and emits an error message if necessary
@@ -60,7 +60,7 @@ class AXCPProcessor(QRunnable):
     def __init__(self, dll, datasource, vhffreq, tabID, starttime=dt.datetime.utcnow(), status=0, triggertime=-1, lat=20, lon=-80, dropdate=dt.date.today(), settings={}, tempdir='', *args, **kwargs):
         
         super(AXCPProcessor, self).__init__()
-
+        
         #prevents Run() method from starting before init is finished (value must be changed to 100 at end of __init__)
         self.threadstatus = 0
         
@@ -86,7 +86,10 @@ class AXCPProcessor(QRunnable):
         #initialize default settings, override user-specified ones
         self.init_AXCP_settings(settings)     
         
-        #initializing AXCP processor specific vars, as well as filter and conversion coefficients and output profile arrays
+        #initializing buffers and output profile arrays **must be called before initialize_AXCP_vars**
+        self.initialize_AXCP_arrays()
+            
+        #initializing AXCP processor specific vars, as well as filter and conversion coefficients 
         self.initialize_AXCP_vars()
         
         #connecting signals to thread
@@ -97,6 +100,7 @@ class AXCPProcessor(QRunnable):
             self.keepgoing = False
         else: #if it's still 0, intialization was successful
             self.threadstatus = 100 #send signal to start running data acquisition thread
+        
             
             
             
@@ -116,12 +120,12 @@ class AXCPProcessor(QRunnable):
         self.lock_processing = True #prevent AXCP DAS from processing new chunks of data until this is complete
         
         self.update_position(lat,lon,dropdate) #updates position/date, mag parameters
-        self.initialize_AXCP_vars() #needed to recalculate magvar related parameters
+        self.init_constants() #needed to recalculate magvar related parameters
         
         #reprocesses profile U and V (mag/true) from mag params
-        self.reprocess_profdata()
-        
-        self.signals.emit_profile_update.emit(self.tabID, [self.U_MAG, self.V_MAG, self.U_TRUE, self.V_TRUE]) #sends all profile info back to main slot
+        if self.tspinup >= 0:
+            self.reprocess_profdata()
+            self.signals.emit_profile_update.emit(self.tabID, [self.U_MAG, self.V_MAG, self.U_TRUE, self.V_TRUE]) #sends all profile info back to main slot
         
         timemodule.sleep(0.2) #make the DAS wait for the GUI to receive/update the profiles 
         self.lock_processing = False #prevent AXCP DAS from processing new chunks of data until this is complete
@@ -153,7 +157,7 @@ class AXCPProcessor(QRunnable):
     #after finishing entire profile, refine the spindown point, correct amean, and adjust the profile
     def on_axcp_terminate(self):
         if self.tspinup >= 0 and len(self.TIME) > 0: #spinup detected, valid profile points recorded
-            self.refine_spindown_prof()            
+            self.refine_spindown_prof()
         
     @pyqtSlot()
     def run(self):
@@ -196,7 +200,6 @@ class AXCPProcessor(QRunnable):
             # setting up thread while loop- terminates when user clicks "STOP" or audio file finishes processing
             i = -1
             
-            self.status = 0
             
             #initialize self.demodbufferstartind
             self.demodbufferstartind = 0
@@ -267,14 +270,17 @@ class AXCPProcessor(QRunnable):
                         #demodulating and parsing current batch of AXCTD PCM data
                         oldstatus = self.status
                         data = self.iterate_AXCP_process(e)
-                        if self.status and not oldstatus: #profile collection triggered
+                        if self.status and not oldstatus: #spinup detected/profile collection triggered
                             #release signal indicating probe triggered
                             self.signals.triggered.emit(self.tabID, self.status, self.tspinup)
-                        
                         
                         #won't send if keepgoing stopped since current iteration began
                         if self.keepgoing and len(data) > 0: 
                             self.signals.iterated.emit(self.tabID, data) #updating data in GUI loop
+                            
+                        #wait to run this until any final data has been passed
+                        if not self.status and oldstatus: #spindown detected
+                            self.kill(0) #auto terminate on spindown
                                 
                         #increment demod buffer index forward
                         self.demodbufferstartind = e 

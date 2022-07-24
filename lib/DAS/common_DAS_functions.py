@@ -162,7 +162,10 @@ class ProcessorSignals(QObject):
     terminated = pyqtSignal(int) #signal that the loop has been terminated (by user input or program error)
     failed = pyqtSignal(int,int)
     updateprogress = pyqtSignal(int,int) #signal to update audio file progress bar
-    emit_profile_update = pyqtSignal(int,list) #replace all profile data with updated info (AXCP only)
+    
+    #following signals used for AXCP processing only
+    emit_profile_update = pyqtSignal(int,list) #replace all profile data with updated info 
+    update_spindown_index = pyqtSignal(int,int) #send refined index to truncate profiles in GUI/replot
     
     
     
