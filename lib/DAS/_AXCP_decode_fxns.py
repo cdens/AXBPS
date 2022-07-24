@@ -586,15 +586,17 @@ def iterate_AXCP_process(self, e):
             cdepth_fft = -999 #leave depths as -999 until spinup time can be determined and used to process
             
         ctemp_fft = self.calc_temp_from_freq(fp,cdepth_fft) #convert peak frequency in temperature band to corresponding temperature
-    else:
-        ctemp_fft = np.NaN
-        cdepth_fft = np.NaN
         
-    self.TEMP_FFT = np.append(self.TEMP_FFT, ctemp_fft)
-    self.DEPTH_FFT = np.append(self.DEPTH_FFT, cdepth_fft)
+        self.TEMP_FFT = np.append(self.TEMP_FFT, ctemp_fft)
+        self.DEPTH_FFT = np.append(self.DEPTH_FFT, cdepth_fft)    
+        
+        fft_str = f"{self.DEPTH_FFT[-1]:6.1f},{self.TEMP_FFT[-1]:6.2f}"
+        
+    else:
+        fft_str = 'No_FFT_temps'
     
     
-    self.txtfile.write(f"npp={self.npp},{self.T[-1]:9.3f},{self.PK[-1]},{self.CCENV[-1]},{self.FCCDEV[-1]},{self.FROTLP[-1]:6.2f},{self.FROTDEV[-1]:6.3f},{self.DEPTH_FFT[-1]:6.1f},{self.TEMP_FFT[-1]:6.2f}\n")
+    self.txtfile.write(f"npp={self.npp},{self.T[-1]:9.3f},{self.PK[-1]},{self.CCENV[-1]},{self.FCCDEV[-1]},{self.FROTLP[-1]:6.2f},{self.FROTDEV[-1]:6.3f},{fft_str}\n")
     
     #if spinup has been detected but depths haven't been filled in, do that
     if self.status and self.temp_mode > 1 and -999 in self.DEPTH_FFT:
@@ -640,10 +642,10 @@ def iterate_AXCP_process(self, e):
                 
                 
                 #determining which temperature to use: zero crossing or FFT (depends on self.temp_mode and how they match)
-                if self.temp_mode == 1:
-                    temp = temp_zc
-                elif self.temp_mode == 2:
+                if self.temp_mode == 2 and len(self.DEPTH_FFT) >= 2:
                     temp = np.round(np.interp(depth, self.DEPTH_FFT, self.TEMP_FFT), 2)
+                else:
+                    temp = temp_zc
                     
                 #updating arrays with data to be passed with iterated signal to GUI
                 cur_time.append(tavg)
