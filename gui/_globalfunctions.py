@@ -156,7 +156,7 @@ def closecurrenttab(self):
                 for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
                     plt.close(self.alltabdata[opentab]["ProfFigs"][ckey])
 
-            elif self.alltabdata[ctab]["tabtype"][:3] == 'DAS':
+            elif self.alltabdata[opentab]["tabtype"][:3] == 'DAS':
                 plt.close(self.alltabdata[opentab]["ProcessorFig"])
 
             #closing tab

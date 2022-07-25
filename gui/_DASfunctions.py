@@ -571,19 +571,21 @@ def changechanneltomatchfrequency(self,newfrequency):
 #sends command to update radio receiver frequency if it's actively processing data
 def changechannelandfrequency(self,newchannel,newfrequency,opentab):
     try:
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setValue(int(newchannel))
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setValue(newfrequency)        
 
-        curdatasource = self.alltabdata[opentab]["datasource"]
+        curdatasource = self.alltabdata[opentab]["datasource"]        
+        #sends signal to processor thread to change demodulation VHF frequency for any actively processing non-test/non-audio tabs
+        if self.alltabdata[opentab]["isprocessing"] and curdatasource != 'Audio' and curdatasource != 'Test':
+            self.alltabdata[opentab]["processor"].changecurrentfrequency(newfrequency)
         
-        # sets all tabs with the current receiver to the same channel/freq
+        # sets all tabs with the current receiver to the same channel/freq if not processing
         for ctab,_ in enumerate(self.alltabdata):
             #changes channel+frequency values for all tabs set to current data source
-            if self.alltabdata[ctab]["datasource"] == curdatasource:
+            if ctab != opentab and self.alltabdata[ctab]["datasource"] == curdatasource and not self.alltabdata[ctab]["isprocessing"]:
                 self.alltabdata[ctab]["tabwidgets"]["vhfchannel"].setValue(int(newchannel))
                 self.alltabdata[ctab]["tabwidgets"]["vhffreq"].setValue(newfrequency)
                 
-                #sends signal to processor thread to change demodulation VHF frequency for any actively processing non-test/non-audio tabs
-                if self.alltabdata[ctab]["isprocessing"] and curdatasource != 'Audio' and curdatasource != 'Test':
-                    self.alltabdata[opentab]["processor"].changecurrentfrequency(newfrequency)
             
     except Exception:
         trace_error()
