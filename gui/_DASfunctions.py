@@ -1066,7 +1066,7 @@ def update_AXBT_DAS(self, plottabnum, data, interval_override):
             
         #coloring new cell based on whether or not it has good data
         if np.isnan(ctemp):
-            ctemp = cfreq = '------'
+            ctemp = '------'
             if np.isnan(cdepth):
                 cdepth = ctemp
             curcolor.append(QColor(200, 200, 200)) #light gray
