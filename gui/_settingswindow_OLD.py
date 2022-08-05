@@ -59,7 +59,7 @@ def setdefaultsettings():
     settingsdict["missionid"] = 'UNKNOWN1'
     
     settingsdict["savedta_raw"] = False
-    settingsdict["savedat_raw"] = True
+    settingsdict["savedat_raw"] = False
     settingsdict["savenvo_raw"] = False
     settingsdict["saveedf_raw"] = True
     settingsdict["savewav_raw"] = True
@@ -270,8 +270,7 @@ class RunSettings(QMainWindow):
 
             #building window/tabs (build one of each tab type)
             self.buildcentertable()
-            self.makeprocessorsigthresholdstab() #DAS signal thresholds/probe specific settings
-            self.makeprocessorsettingstab()  #general DAS settings
+            self.makeprocessorsettingstab()  #processor settings
             self.makeaxbtconvertsettingstab() #AXBT conversion equation settings
             self.makeaxctdconvertsettingstab() #AXCTD conversion equation settings
             self.makeprofileeditorsettingstab() #profile editor tab
@@ -377,49 +376,49 @@ class RunSettings(QMainWindow):
         self.processortabwidgets["renametab"].setChecked(self.settingsdict["renametabstodtg"])
         self.processortabwidgets["autosave"].setChecked(self.settingsdict["autosave"])
 
-        self.sigsettingstabwidgets["fftwindowlabel"].setText(self.label_fftwindow + str(self.settingsdict["fftwindow"]))  # 15
-        self.sigsettingstabwidgets["fftwindow"].setValue(int(self.settingsdict["fftwindow"] * 100))
+        self.processortabwidgets["fftwindowlabel"].setText(self.label_fftwindow + str(self.settingsdict["fftwindow"]))  # 15
+        self.processortabwidgets["fftwindow"].setValue(int(self.settingsdict["fftwindow"] * 100))
 
-        self.sigsettingstabwidgets["fftsiglevlabel"].setText(self.label_minsiglev + str(np.round(self.settingsdict["minsiglev"], 2)).ljust(4, '0'))  # 17
-        self.sigsettingstabwidgets["fftsiglev"].setValue(int(self.settingsdict["minsiglev"]*10))
+        self.processortabwidgets["fftsiglevlabel"].setText(self.label_minsiglev + str(np.round(self.settingsdict["minsiglev"], 2)).ljust(4, '0'))  # 17
+        self.processortabwidgets["fftsiglev"].setValue(int(self.settingsdict["minsiglev"]*10))
 
-        self.sigsettingstabwidgets["fftratiolabel"].setText(self.label_minsigrat + str(np.round(self.settingsdict["minfftratio"] * 100)))  # 19
-        self.sigsettingstabwidgets["fftratio"].setValue(int(self.settingsdict["minfftratio"] * 100))
+        self.processortabwidgets["fftratiolabel"].setText(self.label_minsigrat + str(np.round(self.settingsdict["minfftratio"] * 100)))  # 19
+        self.processortabwidgets["fftratio"].setValue(int(self.settingsdict["minfftratio"] * 100))
 
-        self.sigsettingstabwidgets["triggersiglevlabel"].setText(
+        self.processortabwidgets["triggersiglevlabel"].setText(
             self.label_trigsiglev + str(np.round(self.settingsdict["triggersiglev"], 2)).ljust(4, '0'))
-        self.sigsettingstabwidgets["triggersiglev"].setValue(int(self.settingsdict["triggersiglev"]*10))
+        self.processortabwidgets["triggersiglev"].setValue(int(self.settingsdict["triggersiglev"]*10))
 
-        self.sigsettingstabwidgets["triggerratiolabel"].setText(
+        self.processortabwidgets["triggerratiolabel"].setText(
             self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"] * 100))) 
-        self.sigsettingstabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
+        self.processortabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
         
         
         
-        self.sigsettingstabwidgets["minr400label"].setText(
+        self.processortabwidgets["minr400label"].setText(
             self.label_minr400 + str(np.round(self.settingsdict["minr400"],2)))
-        self.sigsettingstabwidgets["minr400"].setValue(int(self.settingsdict["minr400"] * 100))
+        self.processortabwidgets["minr400"].setValue(int(self.settingsdict["minr400"] * 100))
             
-        self.sigsettingstabwidgets["mindr7500label"].setText(
+        self.processortabwidgets["mindr7500label"].setText(
             self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)))
-        self.sigsettingstabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
+        self.processortabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
         
-        self.sigsettingstabwidgets["deadfreq"].setValue(self.settingsdict["deadfreq"])
-        self.sigsettingstabwidgets["markfreq"].setValue(self.settingsdict["mark_space_freqs"][0])
-        self.sigsettingstabwidgets["spacefreq"].setValue(self.settingsdict["mark_space_freqs"][1])
-        self.sigsettingstabwidgets["refreshrate"].setValue(self.settingsdict["refreshrate"])
-        self.sigsettingstabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
+        self.processortabwidgets["deadfreq"].setValue(self.settingsdict["deadfreq"])
+        self.processortabwidgets["markfreq"].setValue(self.settingsdict["mark_space_freqs"][0])
+        self.processortabwidgets["spacefreq"].setValue(self.settingsdict["mark_space_freqs"][1])
+        self.processortabwidgets["refreshrate"].setValue(self.settingsdict["refreshrate"])
+        self.processortabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
             
-        self.sigsettingstabwidgets['cprefreshrate'].setValue(self.settingsdict['cprefreshrate'])
-        self.sigsettingstabwidgets['axcpquality'].setCurrentIndex(self.settingsdict['axcpquality']-1)
-        self.sigsettingstabwidgets['spindowndetectrt'].setChecked(self.settingsdict['spindowndetectrt'])
-        self.sigsettingstabwidgets['cptempmode'].setChecked(self.settingsdict['cptempmode']-1)
-        self.sigsettingstabwidgets['cpfftwindow'].setValue(self.settingsdict['cpfftwindow'])
-        self.sigsettingstabwidgets['revcoil'].setChecked(self.settingsdict['revcoil'])
-        self.sigsettingstabwidgets['maglat'].setValue(self.settingsdict['maglat'])
-        self.sigsettingstabwidgets['maglon'].setValue(self.settingsdict['maglon'])
-        self.sigsettingstabwidgets["spinupfrotmax"].setValue(self.settingsdict["spinupfrotmax"])
-        self.sigsettingstabwidgets["spindownfrotmax"].setValue(self.settingsdict["spindownfrotmax"])
+        self.processortabwidgets['cprefreshrate'].setValue(self.settingsdict['cprefreshrate'])
+        self.processortabwidgets['axcpquality'].setCurrentIndex(self.settingsdict['axcpquality']-1)
+        self.processortabwidgets['spindowndetectrt'].setChecked(self.settingsdict['spindowndetectrt'])
+        self.processortabwidgets['cptempmode'].setChecked(self.settingsdict['cptempmode']-1)
+        self.processortabwidgets['cpfftwindow'].setValue(self.settingsdict['cpfftwindow'])
+        self.processortabwidgets['revcoil'].setChecked(self.settingsdict['revcoil'])
+        self.processortabwidgets['maglat'].setValue(self.settingsdict['maglat'])
+        self.processortabwidgets['maglon'].setValue(self.settingsdict['maglon'])
+        self.processortabwidgets["spinupfrotmax"].setValue(self.settingsdict["spinupfrotmax"])
+        self.processortabwidgets["spindownfrotmax"].setValue(self.settingsdict["spindownfrotmax"])
         
         
         tc = self.settingsdict["tcoeff_axbt"]
@@ -512,30 +511,30 @@ class RunSettings(QMainWindow):
         self.settingsdict["renametabstodtg"] = self.processortabwidgets["renametab"].isChecked()
         self.settingsdict["autosave"] = self.processortabwidgets["autosave"].isChecked()
 
-        self.settingsdict["fftwindow"] = float(self.sigsettingstabwidgets["fftwindow"].value())/100
-        self.settingsdict["minsiglev"] = float(self.sigsettingstabwidgets["fftsiglev"].value())/10
-        self.settingsdict["minfftratio"] = float(self.sigsettingstabwidgets["fftratio"].value())/100
+        self.settingsdict["fftwindow"] = float(self.processortabwidgets["fftwindow"].value())/100
+        self.settingsdict["minsiglev"] = float(self.processortabwidgets["fftsiglev"].value())/10
+        self.settingsdict["minfftratio"] = float(self.processortabwidgets["fftratio"].value())/100
 
-        self.settingsdict["triggersiglev"] = float(self.sigsettingstabwidgets["triggersiglev"].value())/10
-        self.settingsdict["triggerfftratio"] = float(self.sigsettingstabwidgets["triggerratio"].value())/100
+        self.settingsdict["triggersiglev"] = float(self.processortabwidgets["triggersiglev"].value())/10
+        self.settingsdict["triggerfftratio"] = float(self.processortabwidgets["triggerratio"].value())/100
         
-        self.settingsdict['minr400'] = float(self.sigsettingstabwidgets['minr400'].value())/100
-        self.settingsdict['mindr7500'] = float(self.sigsettingstabwidgets['mindr7500'].value())/100
-        self.settingsdict['deadfreq'] = int(self.sigsettingstabwidgets['deadfreq'].value())
-        self.settingsdict['mark_space_freqs'] = [int(self.sigsettingstabwidgets['markfreq'].value()), int(self.processortabwidgets['spacefreq'].value())]
-        self.settingsdict['refreshrate'] = float(self.sigsettingstabwidgets['refreshrate'].value())
-        self.settingsdict['usebandpass'] = self.sigsettingstabwidgets['usebandpass'].isChecked()
+        self.settingsdict['minr400'] = float(self.processortabwidgets['minr400'].value())/100
+        self.settingsdict['mindr7500'] = float(self.processortabwidgets['mindr7500'].value())/100
+        self.settingsdict['deadfreq'] = int(self.processortabwidgets['deadfreq'].value())
+        self.settingsdict['mark_space_freqs'] = [int(self.processortabwidgets['markfreq'].value()), int(self.processortabwidgets['spacefreq'].value())]
+        self.settingsdict['refreshrate'] = float(self.processortabwidgets['refreshrate'].value())
+        self.settingsdict['usebandpass'] = self.processortabwidgets['usebandpass'].isChecked()
         
-        self.settingsdict['cprefreshrate'] = float(self.sigsettingstabwidgets['cprefreshrate'].value())
-        self.settingsdict['axcpquality'] = self.sigsettingstabwidgets['axcpquality'].currentIndex() + 1
-        self.settingsdict['spindowndetectrt'] = self.sigsettingstabwidgets['spindowndetectrt'].isChecked()
-        self.settingsdict['cptempmode'] = self.sigsettingstabwidgets['cptempmode'].isChecked() + 1
-        self.settingsdict['cpfftwindow'] = float(self.sigsettingstabwidgets['cpfftwindow'].value())
-        self.settingsdict['revcoil'] = self.sigsettingstabwidgets['revcoil'].isChecked()
-        self.settingsdict['maglat'] = float(self.sigsettingstabwidgets['maglat'].value())
-        self.settingsdict['maglon'] = float(self.sigsettingstabwidgets['maglon'].value()) 
-        self.settingsdict['spinupfrotmax'] = float(self.sigsettingstabwidgets['spinupfrotmax'].value()) 
-        self.settingsdict['spindownfrotmax'] = float(self.sigsettingstabwidgets['spindownfrotmax'].value())
+        self.settingsdict['cprefreshrate'] = float(self.processortabwidgets['cprefreshrate'].value())
+        self.settingsdict['axcpquality'] = self.processortabwidgets['axcpquality'].currentIndex() + 1
+        self.settingsdict['spindowndetectrt'] = self.processortabwidgets['spindowndetectrt'].isChecked()
+        self.settingsdict['cptempmode'] = self.processortabwidgets['cptempmode'].isChecked() + 1
+        self.settingsdict['cpfftwindow'] = float(self.processortabwidgets['cpfftwindow'].value())
+        self.settingsdict['revcoil'] = self.processortabwidgets['revcoil'].isChecked()
+        self.settingsdict['maglat'] = float(self.processortabwidgets['maglat'].value())
+        self.settingsdict['maglon'] = float(self.processortabwidgets['maglon'].value()) 
+        self.settingsdict['spinupfrotmax'] = float(self.processortabwidgets['spinupfrotmax'].value()) 
+        self.settingsdict['spindownfrotmax'] = float(self.processortabwidgets['spindownfrotmax'].value())
 
         
         #AXBT/AXCTD coefficients and frequency ranges are recorded on every update to their respective fields
@@ -571,7 +570,7 @@ class RunSettings(QMainWindow):
     
 
     # =============================================================================
-    #     DAS GENERAL SETTINGS TAB AND INPUTS HERE
+    #     SIGNAL PROCESSOR TAB AND INPUTS HERE
     # =============================================================================
     def makeprocessorsettingstab(self):
         try:
@@ -582,7 +581,7 @@ class RunSettings(QMainWindow):
 
             self.processortablayout.setSpacing(10)
 
-            self.tabWidget.addTab(self.processortab,'DAS General Settings')
+            self.tabWidget.addTab(self.processortab,'Data Acquisition System Settings')
             self.tabWidget.setCurrentIndex(0)
 
             # and add new buttons and other widgets
@@ -776,18 +775,20 @@ class RunSettings(QMainWindow):
             self.processortabwidgets["maglon"].setSingleStep(0.25)
             self.processortabwidgets["maglon"].setValue(np.round(self.settingsdict['maglon']*4)/4)
             
-                        
+            
+            
+            
             # formatting widgets
             self.processortabwidgets["IDlabel"].setAlignment(Qt.AlignCenter | Qt.AlignVCenter)
 
             # should be 24 entries
-            widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel", "IDedit", "missionlabel", "missionid", "filesavetypes", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw", "dtgwarn", "renametab", "autosave"]
+            widgetorder = ["autopopulatetitle", "autodtg", "autolocation", "autoID", "IDlabel", "IDedit", "missionlabel", "missionid", "filesavetypes", "savedta_raw", "savedat_raw", "savenvo_raw", "saveedf_raw","savewav_raw", "savesig_raw", "dtgwarn", "renametab", "autosave", "axbtsiglabel", "fftwindowlabel", "fftwindow", "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel", "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass", "axcpsiglabel", "cprefreshratelabel", "cprefreshrate", "axcpqualitylabel", "axcpquality", "spindowndetectrt", "cptempmode", "cpfftwindowlabel", "cpfftwindow", "revcoil", "spinupfrotmaxlabel", "spinupfrotmax", "spindownfrotmaxlabel", "spindownfrotmax", "maglatlabel", "maglat", "maglonlabel", "maglon"]
 
             #assigning column/row/column extension/row extension for each widget
-            wcols   = [1,1,1,1,1,2,1,2,4,4,4,4,4,4,4,1, 1, 1]
-            wrows   = [1,2,3,4,5,5,6,6,1,2,3,4,5,6,7,9,10,11]
-            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1]
-            wcolext = [2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,4, 4, 4]
+            wcols   = [1,1,1,1,1,2,1,2,4,4,4,4,4,4,4,1, 1, 1,5,5,5,5,5,5,5,5,5, 5, 5, 7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7,10,10,11,10,11,10,10,10,11,10,10,11,10,11,10,11,10,11]
+            wrows   = [1,2,3,4,5,5,6,6,1,2,3,4,5,6,7,9,10,11,1,2,3,4,5,6,7,8,9,10,11, 1,2,3,4,5,7,7,8,8,9,9,10,10,11, 1, 2, 2, 3, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9,10,10,11,11]
+            wrext   = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1, 1,1,1,1,1,1,1,1,1,1, 1, 1, 1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            wcolext = [2,2,2,2,1,1,1,1,1,1,1,1,1,1,1,4, 4, 4,1,1,1,1,1,1,1,1,1, 1, 1, 2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1]
             
 
             #adding widgets to assigned locations
@@ -795,7 +796,7 @@ class RunSettings(QMainWindow):
                 self.processortablayout.addWidget(self.processortabwidgets[i], r, c, re, ce)
 
             # Applying spacing preferences to grid layout
-            colstretch = [5,1,1,2,5]
+            colstretch = [5,1,1,2,5,3,5,2,1,5,2,1,5]
             for i,s in enumerate(colstretch):
                 self.processortablayout.setColumnStretch(i, s)
             for i in range(0,12):
@@ -807,212 +808,7 @@ class RunSettings(QMainWindow):
 
         except Exception:
             trace_error()
-            self.posterror("Failed to build new processor general settings tab")
-            
-            
-        
-    # =============================================================================
-    #     DAS SIGNAL THRESHOLDS/SETTINGS TAB AND INPUTS HERE
-    # =============================================================================
-    def makeprocessorsigthresholdstab(self):
-        try:
-
-            self.sigsettingstab = QWidget()
-            self.sigsettingstablayout = QGridLayout()
-            self.setnewtabcolor(self.sigsettingstab)
-
-            self.sigsettingstablayout.setSpacing(10)
-
-            self.tabWidget.addTab(self.sigsettingstab,'DAS Signal Thresholds')
-            self.tabWidget.setCurrentIndex(0)
-
-            # and add new buttons and other widgets
-            self.sigsettingstabwidgets = {}
-            
-            
-            self.sigsettingstabwidgets["axbtsiglabel"] = QLabel("AXBT Signal Settings")
-            self.sigsettingstabwidgets["fftwindowlabel"] = QLabel(self.label_fftwindow +str(self.settingsdict["fftwindow"]).ljust(4,'0')) #17
-            self.sigsettingstabwidgets["fftwindow"] = QSlider(Qt.Horizontal) #18
-            self.sigsettingstabwidgets["fftwindow"].setValue(int(self.settingsdict["fftwindow"] * 100))
-            self.sigsettingstabwidgets["fftwindow"].setMinimum(10)
-            self.sigsettingstabwidgets["fftwindow"].setMaximum(100)
-            self.sigsettingstabwidgets["fftwindow"].valueChanged[int].connect(self.changefftwindow)
-
-            self.sigsettingstabwidgets["fftsiglevlabel"] = QLabel(self.label_minsiglev + str(np.round(self.settingsdict["minsiglev"],2)).ljust(4,'0'))  # 19
-            self.sigsettingstabwidgets["fftsiglev"] = QSlider(Qt.Horizontal)  # 20
-            self.sigsettingstabwidgets["fftsiglev"].setMinimum(400)
-            self.sigsettingstabwidgets["fftsiglev"].setMaximum(900)
-            self.sigsettingstabwidgets["fftsiglev"].setValue(int(self.settingsdict["minsiglev"] * 10))
-            self.sigsettingstabwidgets["fftsiglev"].valueChanged[int].connect(self.changefftsiglev)
-
-            self.sigsettingstabwidgets["fftratiolabel"] = QLabel(self.label_minsigrat + str(np.round(self.settingsdict["minfftratio"]*100)).ljust(4,'0'))  # 21
-            self.sigsettingstabwidgets["fftratio"] = QSlider(Qt.Horizontal)  # 22
-            self.sigsettingstabwidgets["fftratio"].setValue(int(self.settingsdict["minfftratio"] * 100))
-            self.sigsettingstabwidgets["fftratio"].setMinimum(0)
-            self.sigsettingstabwidgets["fftratio"].setMaximum(100)
-            self.sigsettingstabwidgets["fftratio"].valueChanged[int].connect(self.changefftratio)
-
-            self.sigsettingstabwidgets["triggersiglevlabel"] = QLabel(
-                self.label_trigsiglev + str(np.round(self.settingsdict["triggersiglev"], 2)).ljust(4, '0'))  # 23
-            self.sigsettingstabwidgets["triggersiglev"] = QSlider(Qt.Horizontal)  # 24
-            self.sigsettingstabwidgets["triggersiglev"].setMinimum(400)
-            self.sigsettingstabwidgets["triggersiglev"].setMaximum(900)
-            self.sigsettingstabwidgets["triggersiglev"].setValue(int(self.settingsdict["triggersiglev"] * 10))
-            self.sigsettingstabwidgets["triggersiglev"].valueChanged[int].connect(self.changetriggersiglev)
-
-            self.sigsettingstabwidgets["triggerratiolabel"] = QLabel(
-                self.label_trigsigrat + str(np.round(self.settingsdict["triggerfftratio"] * 100)).ljust(4, '0'))  # 25
-            self.sigsettingstabwidgets["triggerratio"] = QSlider(Qt.Horizontal)  # 26
-            self.sigsettingstabwidgets["triggerratio"].setValue(int(self.settingsdict["triggerfftratio"] * 100))
-            self.sigsettingstabwidgets["triggerratio"].setMinimum(0)
-            self.sigsettingstabwidgets["triggerratio"].setMaximum(100)
-            self.sigsettingstabwidgets["triggerratio"].valueChanged[int].connect(self.changetriggerratio)
-            
-            
-            
-            self.sigsettingstabwidgets["axctdsiglabel"] = QLabel("AXCTD Settings") #27
-            self.sigsettingstabwidgets["minr400label"] = QLabel(self.label_minr400 +str(self.settingsdict["minr400"]).ljust(4,'0')) #28
-            self.sigsettingstabwidgets["minr400"] = QSlider(Qt.Horizontal) #29
-            self.sigsettingstabwidgets["minr400"].setMinimum(0)
-            self.sigsettingstabwidgets["minr400"].setMaximum(500)
-            self.sigsettingstabwidgets["minr400"].setValue(int(self.settingsdict["minr400"] * 100))
-            self.sigsettingstabwidgets["minr400"].valueChanged[int].connect(self.changeminr400)
-
-            self.sigsettingstabwidgets["mindr7500label"] = QLabel(self.label_mindr7500 + str(np.round(self.settingsdict["mindr7500"],2)).ljust(4,'0'))  #30
-            self.sigsettingstabwidgets["mindr7500"] = QSlider(Qt.Horizontal)  #31
-            self.sigsettingstabwidgets["mindr7500"].setMinimum(0)
-            self.sigsettingstabwidgets["mindr7500"].setMaximum(500)
-            self.sigsettingstabwidgets["mindr7500"].setValue(int(self.settingsdict["mindr7500"] * 100))
-            self.sigsettingstabwidgets["mindr7500"].valueChanged[int].connect(self.changemindr7500)
-            
-            
-            self.sigsettingstabwidgets["deadfreqlabel"] = QLabel("Quiet Frequency (Hz): ")  #32
-            self.sigsettingstabwidgets["deadfreq"] = QSpinBox()  #33
-            self.sigsettingstabwidgets["deadfreq"].setMinimum(1000)
-            self.sigsettingstabwidgets["deadfreq"].setMaximum(7000)
-            self.sigsettingstabwidgets["deadfreq"].setSingleStep(1)
-            self.sigsettingstabwidgets["deadfreq"].setValue(int(self.settingsdict["deadfreq"]))
-            
-            
-            self.sigsettingstabwidgets["markfreqlabel"] = QLabel("Mark (1) Bit Freq. (Hz): ")  #34
-            self.sigsettingstabwidgets["markfreq"] = QSpinBox()  #35
-            self.sigsettingstabwidgets["markfreq"].setMinimum(100)
-            self.sigsettingstabwidgets["markfreq"].setMaximum(1000)
-            self.sigsettingstabwidgets["markfreq"].setSingleStep(1)
-            self.sigsettingstabwidgets["markfreq"].setValue(int(self.settingsdict["mark_space_freqs"][0]))
-            
-            
-            self.sigsettingstabwidgets["spacefreqlabel"] = QLabel("Space (0) Bit Freq. (Hz): ")  #36
-            self.sigsettingstabwidgets["spacefreq"] = QSpinBox()  #37
-            self.sigsettingstabwidgets["spacefreq"].setMinimum(100)
-            self.sigsettingstabwidgets["spacefreq"].setMaximum(1000)
-            self.sigsettingstabwidgets["spacefreq"].setSingleStep(1)
-            self.sigsettingstabwidgets["spacefreq"].setValue(int(self.settingsdict["mark_space_freqs"][1]))
-            
-            
-            self.sigsettingstabwidgets["refreshratelabel"] = QLabel("Refresh Rate (sec): ")  #38
-            self.sigsettingstabwidgets["refreshrate"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["refreshrate"].setMinimum(0.25)
-            self.sigsettingstabwidgets["refreshrate"].setMaximum(10)
-            self.sigsettingstabwidgets["refreshrate"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["refreshrate"].setValue(np.round(self.settingsdict['refreshrate']*20)/20)
-            
-            self.sigsettingstabwidgets["usebandpass"] = QCheckBox('Use 100 Hz - 1200 Hz bandpass filter') #40
-            self.sigsettingstabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
-            
-            
-            self.sigsettingstabwidgets["axcpsiglabel"] = QLabel("AXCP Settings")
-            
-            self.sigsettingstabwidgets["cprefreshratelabel"] = QLabel("Refresh Rate (sec): ")  #38
-            self.sigsettingstabwidgets["cprefreshrate"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["cprefreshrate"].setMinimum(0.25)
-            self.sigsettingstabwidgets["cprefreshrate"].setMaximum(10)
-            self.sigsettingstabwidgets["cprefreshrate"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["cprefreshrate"].setValue(np.round(self.settingsdict['cprefreshrate']*20)/20)
-            
-            self.sigsettingstabwidgets["axcpqualitylabel"] = QLabel("Profile Quality: ")  #38
-            self.sigsettingstabwidgets["axcpquality"] = QComboBox()
-            for option in ["Highest","Moderate","Lowest"]:
-                self.sigsettingstabwidgets["axcpquality"].addItem(option)
-            self.sigsettingstabwidgets["axcpquality"].setCurrentIndex(self.settingsdict["axcpquality"]-1)
-                
-            self.sigsettingstabwidgets["spindowndetectrt"] = QCheckBox('Realtime AXCP spindown detection') #40
-            self.sigsettingstabwidgets["spindowndetectrt"].setChecked(self.settingsdict["spindowndetectrt"])
-            
-            self.sigsettingstabwidgets["cptempmode"] = QCheckBox('AXCP FFT Temperature ID') #40
-            self.sigsettingstabwidgets["cptempmode"].setChecked(self.settingsdict["cptempmode"]-1)
-            self.sigsettingstabwidgets["cpfftwindowlabel"] = QLabel("AXCP FFT Window (sec): ")
-            self.sigsettingstabwidgets["cpfftwindow"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["cpfftwindow"].setMinimum(0.25)
-            self.sigsettingstabwidgets["cpfftwindow"].setMaximum(5)
-            self.sigsettingstabwidgets["cpfftwindow"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["cpfftwindow"].setValue(np.round(self.settingsdict['cpfftwindow']*20)/20)
-            
-            self.sigsettingstabwidgets["revcoil"] = QCheckBox('Reversed AXCP Coil') #40
-            self.sigsettingstabwidgets["revcoil"].setChecked(self.settingsdict["revcoil"])
-            
-            
-            self.sigsettingstabwidgets["spinupfrotmaxlabel"] = QLabel("Max Spinup &Delta; f<sub>rot</sub> &sigma;: ")  #38
-            self.sigsettingstabwidgets["spinupfrotmax"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["spinupfrotmax"].setMinimum(0.1)
-            self.sigsettingstabwidgets["spinupfrotmax"].setMaximum(5)
-            self.sigsettingstabwidgets["spinupfrotmax"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["spinupfrotmax"].setValue(np.round(self.settingsdict['spinupfrotmax']*20)/20)
-            
-            
-            self.sigsettingstabwidgets["spindownfrotmaxlabel"] = QLabel("Max Spindown &Delta; f<sub>rot</sub> &sigma;: ")  #38
-            self.sigsettingstabwidgets["spindownfrotmax"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["spindownfrotmax"].setMinimum(0.1)
-            self.sigsettingstabwidgets["spindownfrotmax"].setMaximum(5)
-            self.sigsettingstabwidgets["spindownfrotmax"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["spindownfrotmax"].setValue(np.round(self.settingsdict['spindownfrotmax']*20)/20)
-            
-            
-            
-            self.sigsettingstabwidgets["maglatlabel"] = QLabel("Default Latitude (N > 0)")
-            self.sigsettingstabwidgets["maglat"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["maglat"].setMinimum(-90)
-            self.sigsettingstabwidgets["maglat"].setMaximum(90)
-            self.sigsettingstabwidgets["maglat"].setSingleStep(0.25)
-            self.sigsettingstabwidgets["maglat"].setValue(np.round(self.settingsdict['maglat']*4)/4)
-            
-            self.sigsettingstabwidgets["maglonlabel"] = QLabel("Default Longitude (E > 0)")
-            self.sigsettingstabwidgets["maglon"] = QDoubleSpinBox()  #39
-            self.sigsettingstabwidgets["maglon"].setMinimum(-180)
-            self.sigsettingstabwidgets["maglon"].setMaximum(180)
-            self.sigsettingstabwidgets["maglon"].setSingleStep(0.25)
-            self.sigsettingstabwidgets["maglon"].setValue(np.round(self.settingsdict['maglon']*4)/4)
-            
-
-            # should be 24 entries
-            widgetorder = ["axbtsiglabel", "fftwindowlabel", "fftwindow", "fftsiglevlabel", "fftsiglev", "fftratiolabel","fftratio", "triggersiglevlabel", "triggersiglev","triggerratiolabel","triggerratio", "axctdsiglabel", "minr400label", "minr400", "mindr7500label", "mindr7500", "deadfreqlabel", "deadfreq", "markfreqlabel", "markfreq", "spacefreqlabel", "spacefreq", "refreshratelabel", "refreshrate", "usebandpass", "axcpsiglabel", "cprefreshratelabel", "cprefreshrate", "axcpqualitylabel", "axcpquality", "spindowndetectrt", "cptempmode", "cpfftwindowlabel", "cpfftwindow", "revcoil", "spinupfrotmaxlabel", "spinupfrotmax", "spindownfrotmaxlabel", "spindownfrotmax", "maglatlabel", "maglat", "maglonlabel", "maglon"]
-
-            #assigning column/row/column extension/row extension for each widget
-            # wcols   = [5,5,5,5,5,5,5,5,5, 5, 5, 7,7,7,7,7,7,8,7,8,7,8, 7, 8, 7,10,10,11,10,11,10,10,10,11,10,10,11,10,11,10,11,10,11]
-            wcols = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 4, 3, 4, 3, 4, 3, 4, 3, 6, 6, 7, 6, 7, 6, 6, 6, 7, 6, 6, 7, 6, 7, 6, 7, 6, 7]
-            wrows   = [1,2,3,4,5,6,7,8,9,10,11, 1,2,3,4,5,7,7,8,8,9,9,10,10,11, 1, 2, 2, 3, 3, 4, 5, 6, 6, 7, 8, 8, 9, 9,10,10,11,11]
-            wrext   = [1,1,1,1,1,1,1,1,1, 1, 1, 1,1,1,1,1,1,1,1,1,1,1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            wcolext = [1,1,1,1,1,1,1,1,1, 1, 1, 2,2,2,2,2,1,1,1,1,1,1, 1, 1, 2, 2, 1, 1, 1, 1, 2, 2, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1]
-            
-
-            #adding widgets to assigned locations
-            for i, r, c, re, ce in zip(widgetorder, wrows, wcols, wrext, wcolext):
-                self.sigsettingstablayout.addWidget(self.sigsettingstabwidgets[i], r, c, re, ce)
-
-            # Applying spacing preferences to grid layout
-            colstretch = [5,3,5,2,1,5,2,1,5]
-            for i,s in enumerate(colstretch):
-                self.sigsettingstablayout.setColumnStretch(i, s)
-            for i in range(0,12):
-                self.sigsettingstablayout.setRowStretch(i, 1)
-            self.sigsettingstablayout.setRowStretch(13, 4)
-
-            # applying the current layout for the tab
-            self.sigsettingstab.setLayout(self.sigsettingstablayout)
-
-        except Exception:
-            trace_error()
-            self.posterror("Failed to build new processor signal settings tab")
+            self.posterror("Failed to build new processor tab")
             
             
             
@@ -1276,7 +1072,7 @@ class RunSettings(QMainWindow):
             
             self.axctdconverttabwidgets["slow"] = QDoubleSpinBox() #39
             self.axctdconverttabwidgets["slow"].setMinimum(0)
-            self.axctdconverttabwidgets["slow"].setMaximum(50)
+            self.axctdconverttabwidgets["slow"].setMaximum(30)
             self.axctdconverttabwidgets["slow"].setSingleStep(0.1)
             self.axctdconverttabwidgets["slow"].setValue(slims_axctd[0])
             self.axctdconverttabwidgets["shigh"] = QDoubleSpinBox() #40

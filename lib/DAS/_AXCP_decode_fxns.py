@@ -145,6 +145,11 @@ def initialize_AXCP_vars(self):
     self.spinupfrotmax = self.settings["spinupfrotmax"]
     self.spindownfrotmax = self.settings["spindownfrotmax"]
     
+    if np.max([self.spinupfrotmax, self.spindownfrotmax]) >= 1:
+        self.noisy_prof = True
+    else:
+        self.noisy_prof = False
+            
     if self.tempfftwindowsec > self.refreshrate: #temperature FFT window length must be less than refresh rate
         self.tempfftwindowsec = self.refreshrate
         
@@ -584,7 +589,10 @@ def iterate_AXCP_process(self, e):
         else:
             tspinup_devchange = tspinup_rot
         
+        if self.noisy_prof:
             self.tspinup = np.min([tspinup_rot, tspinup_devchange])
+        else:
+            self.tspinup = tspinup_rot
         
         self.txtfile.write(f"[+] Spinup detected: {self.tspinup:7.2f} seconds\n")
         
@@ -777,7 +785,7 @@ def refine_spindown_prof(self):
                     nffspindown2 = goodpoints[-1] - 1
                     
     tspindown_all = self.T[nffspindown2]
-    if tspindown_all > self.tspindown: #only if updated spindown is after profile spindown time
+    if tspindown_all > self.tspindown and self.noisy_prof: #only if updated spindown is after profile spindown time
         nffspindown = np.argmin(np.abs(self.TIME - tspindown_all))
         self.tspindown = tspindown_all
         

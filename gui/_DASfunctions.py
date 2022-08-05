@@ -603,7 +603,7 @@ def updateDASsettings(self):
         newaxctdsettings = {}
         axctdsettingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
         newaxcpsettings = {}
-        axcpsettingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil']
+        axcpsettingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil', "spinupfrotmax", "spindownfrotmax"]
         
         for csetting in axbtsettingstopull:
             newaxbtsettings[csetting] = self.settingsdict[csetting]
@@ -795,7 +795,7 @@ def runprocessor(self, opentab, datasource, sourcetype):
     elif probetype == 'AXCTD':
         settingstopull = ["minr400", "mindr7500", "deadfreq", "refreshrate", "mark_space_freqs", "usebandpass", "zcoeff_axctd", "tcoeff_axctd", "ccoeff_axctd", "tlims_axctd", "slims_axctd"]
     elif probetype == 'AXCP':
-        settingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil']
+        settingstopull = ['cprefreshrate', 'axcpquality', 'spindowndetectrt', 'cptempmode', 'cpfftwindow', 'revcoil', "spinupfrotmax", "spindownfrotmax"]
         
     for csetting in settingstopull:
         settings[csetting] = self.settingsdict[csetting]

@@ -842,6 +842,9 @@ def savePEfiles(self,opentab,outfileheader,probetype):
 // QC Code: {rcnum} ({self.reason_code_strings[rcnum]})
 // Data interpolated to 1-meter interval"""
     
+    if hasCurrent:
+        edf_comments += "\n//NOTE: Currents are provided in degrees True\n"
+    
     dtg = dt.datetime.strftime(dropdatetime,'%Y%m%d%H%M')
     filename = self.check_filename(outfileheader)
     
