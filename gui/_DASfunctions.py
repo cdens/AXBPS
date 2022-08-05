@@ -1065,8 +1065,10 @@ def update_AXBT_DAS(self, plottabnum, data, interval_override):
             
             
         #coloring new cell based on whether or not it has good data
-        if np.isnan(cdepth):
-            ctemp = cdepth = cfreq = '------'
+        if np.isnan(ctemp):
+            ctemp = cfreq = '------'
+            if np.isnan(cdepth):
+                cdepth = ctemp
             curcolor.append(QColor(200, 200, 200)) #light gray
         else:
             curcolor.append(QColor(204, 255, 220)) #light green
@@ -1479,8 +1481,9 @@ def processprofile(self):
                 
         #prevent processor from continuing if there is no data
         if len(rawdepth) == 0:
-            self.postwarning("No valid signal was identified in this profile! Please reprocess from the .wav file with lower minimum signal thresholds to generate a valid profile.")
-            return
+            option = self.postwarning_option("No valid signal was identified in this profile! Reprocess from the .wav file with lower minimum signal thresholds to generate a valid profile. Continue?")
+            if option == 'cancel':
+                return
         
         #delete Processor profile canvas (widget with the profile plot) since it isn't in the tabwidgets sub-dict
         self.alltabdata[opentab]["ProcessorCanvas"].deleteLater()

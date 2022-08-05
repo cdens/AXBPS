@@ -71,12 +71,19 @@ def makeprofileplot(ax, rawdata, rawdepth, data, depth, dtg, climodatafill=None,
         x_range = [np.floor(xmin/xcut)*xcut, np.ceil(xmax/xcut)*xcut]
         
     elif len(data) == 0: #axlimtype = 0 but no good data
-        axlimtype = 1 #use default temp axes instead
+        if 'sal' in datalabel.lower():
+            axlimtype = 2 #default salinity
+        elif 'temp' in datalabel.lower():
+            axlimtype = 1 #use default temp axes instead
+        else: #current or other, use current limits
+            axlimtype = 3
     
     if axlimtype == 1:
         x_range = [-3, 32]
     elif axlimtype == 2:
         x_range = [32,40]
+    elif axlimtype == 3:
+        x_range = [-1.5, 1.5]
         
     ax.set_xlim(x_range)
     ax.set_ylim([-5,y_max])

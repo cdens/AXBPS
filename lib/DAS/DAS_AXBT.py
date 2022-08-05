@@ -182,10 +182,11 @@ class AXBTProcessor(QRunnable):
                         self.signals.triggered.emit(self.tabID, 1, ctime) 
                         
                 #logic to determine whether or not point is valid
-                if self.istriggered and Sp >= self.settings["minsiglev"] and Rp >= self.settings["minfftratio"]:
+                if self.istriggered:
                     cdepth = cdf.dataconvert(ctime - self.firstpointtime, self.settings["zcoeff_axbt"])
-                    ctemp = cdf.dataconvert(fp, self.settings["tcoeff_axbt"])
-                
+                    if Sp >= self.settings["minsiglev"] and Rp >= self.settings["minfftratio"]:
+                        ctemp = cdf.dataconvert(fp, self.settings["tcoeff_axbt"])
+                                        
                 else:
                     fp = 0
                     ctemp = cdepth = np.NaN

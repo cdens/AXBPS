@@ -71,9 +71,9 @@ def setdefaultsettings():
     
     #AXBT data acquisition
     settingsdict["fftwindow"] = 0.3  # window to run FFT (in seconds)
-    settingsdict["minfftratio"] = 0.42  # minimum signal to noise ratio to ID data
-    settingsdict["minsiglev"] = 58.  # minimum total signal level to receive data
-    settingsdict["triggerfftratio"] = 0.8  # minimum signal to noise ratio to ID data
+    settingsdict["minfftratio"] = 0.5  # minimum signal to noise ratio to ID data
+    settingsdict["minsiglev"] = 63.  # minimum total signal level to receive data
+    settingsdict["triggerfftratio"] = 0.95  # minimum signal to noise ratio to ID data
     settingsdict["triggersiglev"] = 70.  # minimum total signal level to receive data
     
     #AXCTD data acquisition
@@ -95,11 +95,17 @@ def setdefaultsettings():
     settingsdict['maglon'] = -80 #default longitude for AXCP Fh/Fz/declination calculations
     
     #AXBT conversions
-    settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
-    settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
+    # #standard navy equations
+    # settingsdict["tcoeff_axbt"] = [-40,0.02778,0,0] #temperature conversion coefficients
+    # settingsdict["zcoeff_axbt"] = [0,1.524,0,0] #depth conversion coefficients
+    
+    #updated equations similar to Mk-21 output
+    settingsdict['tcoeff_axbt'] = [-67.8339, 0.0713, -2.2001e-05, 3.6060e-09]
+    settingsdict['zcoeff_axbt'] = [0, 1.5926, -0.00018, 0]
+    
     settingsdict["flims_axbt"] = [1300, 2800] #valid frequency range limits
     
-    #AXCTD conversions
+    #AXCTD conversions (default coefficients replaced by header)
     settingsdict["zcoeff_axctd"] = [0.72, 2.76124, -0.000238007, 0]
     settingsdict["tcoeff_axctd"] = [-0.053328, 0.994372, 0.0, 0.0]
     settingsdict["ccoeff_axctd"] = [-0.0622192, 1.04584, 0.0, 0.0]

@@ -263,8 +263,9 @@ def checkdatainputs_editorinput(self):
                 rawdata['V'] = rawV[notnanind]
                 
             if len(rawdata['depth']) == 0:
-                success = False
-                warningmsg = f'This file does not contain any valid {probetype.upper()} profile data. Please select a different file or probe type!'
+                option = self.postwarning_option('This file does not contain any valid profile data- continue?')
+                if option == 'cancel':
+                    success = False
             
     except Exception:
         trace_error()
@@ -487,22 +488,27 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         self.alltabdata[opentab]["tabwidgets"]["removerange"].clicked.connect(self.removerange)
         self.alltabdata[opentab]["tabwidgets"]["removerange"].setToolTip("After clicking, click and drag over a (vertical) range of points to remove")
         
+        if len(rawdepth) > 0:
+            max_depth_options = int(np.max(rawdepth+200)) #int(np.round(np.max(rawdepth+200),-2))
+        else:
+            max_depth_options = 1000
+        
         self.alltabdata[opentab]["tabwidgets"]["sfccorrectiontitle"] = QLabel('Isothermal Layer (m):') #5
         self.alltabdata[opentab]["tabwidgets"]["sfccorrection"] = QSpinBox() #6
-        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setRange(0, int(np.max(rawdepth+200)))
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setRange(0, max_depth_options)
         self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setSingleStep(1)
         self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setValue(0)
         
         self.alltabdata[opentab]["tabwidgets"]["maxdepthtitle"] = QLabel('Maximum Depth (m):') #7
         self.alltabdata[opentab]["tabwidgets"]["maxdepth"] = QSpinBox() #8
-        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setRange(0, max_depth_options)
         self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setSingleStep(1)
         # self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
         self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(1000)))
         
         self.alltabdata[opentab]["tabwidgets"]["depthdelaytitle"] = QLabel('Depth Delay (m):') #9
         self.alltabdata[opentab]["tabwidgets"]["depthdelay"] = QSpinBox() #10
-        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setRange(0, int(np.round(np.max(rawdepth+200),-2)))
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setRange(0, max_depth_options)
         self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setSingleStep(1)
         self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setValue(0)
 
@@ -557,7 +563,12 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
         #run autoQC code, pull variables from self.alltabdata dict
         self.alltabdata[opentab]["hasbeenprocessed"] = False
         
-        if self.runqc(): #only executes following code if autoQC runs sucessfully
+        
+        success = self.runqc()
+            
+        if not success and len(rawdepth) > 0: #if no data, success will also be false
+            self.posterror("autoQC algorithm failed!")
+        elif success: #only executes following code if autoQC runs sucessfully
             depthT = self.alltabdata[opentab]["profdata"]["depthT_plot"]
             temperature = self.alltabdata[opentab]["profdata"]["temperature_plot"]
             matchclimo = self.alltabdata[opentab]["profdata"]["matchclimo"]
@@ -570,44 +581,48 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
                 U = self.alltabdata[opentab]["profdata"]["U_plot"]
                 depthV = self.alltabdata[opentab]["profdata"]["depthV_plot"]
                 V = self.alltabdata[opentab]["profdata"]["V_plot"]
-
-            # plot data, refresh plots on window
-            self.alltabdata[opentab]["climohandle"] = {} #initializing
             
-            #temperature
-            self.alltabdata[opentab]["climohandle"]["T"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["T"], rawtemperature, rawdepth, temperature, depthT, dtg, climodatafill=climotempfill, climodepthfill=climodepthfill, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=matchclimo, axlimtype=0)
+        if not success: #if algorithm failed or no valid data, create empty lists for profile plot
+            matchclimo = True
+            depthT = temperature = depthS = salinity = depthU = U = depthV = V = np.array([])
+        
+        
+        # plot data, refresh plots on window
+        self.alltabdata[opentab]["climohandle"] = {} #initializing
+        
+        #temperature
+        self.alltabdata[opentab]["climohandle"]["T"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["T"], rawtemperature, rawdepth, temperature, depthT, dtg, climodatafill=climotempfill, climodepthfill=climodepthfill, datacolor='r', datalabel = 'Temperature ($^\circ$C)', matchclimo=matchclimo, axlimtype=0)
+        
+        #salinity, as required
+        if probetype == 'AXCTD':
+            self.alltabdata[opentab]["climohandle"]["S"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["S"], rawsalinity, rawdepth, salinity, depthS, dtg, climodatafill=climopsalfill, climodepthfill=climodepthfill, datacolor='g', datalabel = 'Salinity (PSU)', matchclimo=matchclimo, axlimtype=0)
+        elif probetype == "AXCP":
+            profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["U"], rawU, rawdepth, U, depthU, dtg,  datacolor='g', datalabel = 'Zonal Current (m/s)', axlimtype=0)
+            profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["V"], rawV, rawdepth, V, depthV, dtg,  datacolor='b', datalabel = 'Meridional Current (m/s)', axlimtype=0)
             
-            #salinity, as required
-            if probetype == 'AXCTD':
-                self.alltabdata[opentab]["climohandle"]["S"] = profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["S"], rawsalinity, rawdepth, salinity, depthS, dtg, climodatafill=climopsalfill, climodepthfill=climodepthfill, datacolor='g', datalabel = 'Salinity (PSU)', matchclimo=matchclimo, axlimtype=0)
-            elif probetype == "AXCP":
-                profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["U"], rawU, rawdepth, U, depthU, dtg,  datacolor='g', datalabel = 'Zonal Current (m/s)', axlimtype=0)
-                profplot.makeprofileplot(self.alltabdata[opentab]["ProfAxes"]["V"], rawV, rawdepth, V, depthV, dtg,  datacolor='b', datalabel = 'Meridional Current (m/s)', axlimtype=0)
-                
-                
-            #tightening layout of plots to maximize space
-            for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
-                self.alltabdata[opentab]["ProfFigs"][ckey].set_tight_layout(True)    
-                
-            #refreshing plots to adjust axes, other adjustments in updateprofeditplots
-            self.updateprofeditplots()
-                
-            #adding location plot
-            profplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
-            self.alltabdata[opentab]["ProfCanvases"]["T"].draw() #update figure canvases
-            self.alltabdata[opentab]["LocCanvas"].draw()
-            self.alltabdata[opentab]["pt_type"] = 0  # sets that none of the point selector buttons have been pushed
-            self.alltabdata[opentab]["hasbeenprocessed"] = True #note that the autoQC driver has run at least once
-
-            #configure spinboxes to run "applychanges" function after being changed
-            self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].valueChanged.connect(self.applychanges)
-            self.alltabdata[opentab]["tabwidgets"]["maxdepth"].valueChanged.connect(self.applychanges)
-            self.alltabdata[opentab]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
-
-            self.alltabdata[opentab]["tabtype"] = "PE_p"
             
-        else:
-            self.posterror("autoQC algorithm failed!")
+        #tightening layout of plots to maximize space
+        for ckey in self.alltabdata[opentab]["ProfFigs"].keys():
+            self.alltabdata[opentab]["ProfFigs"][ckey].set_tight_layout(True)
+            
+        #refreshing plots to adjust axes, other adjustments in updateprofeditplots
+        self.updateprofeditplots()
+            
+        #adding location plot
+        profplot.makelocationplot(self.alltabdata[opentab]["LocFig"],self.alltabdata[opentab]["LocAx"],lat,lon,dtg,exportlon,exportlat,exportrelief,6)
+        self.alltabdata[opentab]["ProfCanvases"]["T"].draw() #update figure canvases
+        self.alltabdata[opentab]["LocCanvas"].draw()
+        self.alltabdata[opentab]["pt_type"] = 0  # sets that none of the point selector buttons have been pushed
+        self.alltabdata[opentab]["hasbeenprocessed"] = True #note that the autoQC driver has run at least once
+
+        #configure spinboxes to run "applychanges" function after being changed
+        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].valueChanged.connect(self.applychanges)
+        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].valueChanged.connect(self.applychanges)
+        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].valueChanged.connect(self.applychanges)
+
+        self.alltabdata[opentab]["tabtype"] = "PE_p"
+        
+        
             
     except Exception:
         trace_error()
@@ -652,112 +667,138 @@ def runqc(self):
             rawdepthV = rawdepthT.copy()
             check_for_gaps = False
             
-            
-        try:
-            # running QC, comparing to climo
-            temperature, depthT = qc.autoqc(rawtemperature, rawdepthT, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
-            
-            #running for salinity as well
-            if probetype == "AXCTD":
-                salinity, depthS = qc.autoqc(rawsalinity, rawdepthS, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
-            if probetype == "AXCP":
-                U, depthU = qc.autoqc(rawU, rawdepthU, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
-                V, depthV = qc.autoqc(rawV, rawdepthV, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
+        
+        if len(rawdepthT) > 0:
+            try:
+                # running QC, comparing to climo
+                temperature, depthT = qc.autoqc(rawtemperature, rawdepthT, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
                 
-            if self.settingsdict["comparetoclimo"] and climodepths.size != 0:
-                matchclimo, climobottomcutoff = oci.comparetoclimo(temperature, depthT, climotemps, climodepths,climotempfill,climodepthfill)
+                #running for salinity as well
+                if probetype == "AXCTD":
+                    salinity, depthS = qc.autoqc(rawsalinity, rawdepthS, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
+                if probetype == "AXCP":
+                    U, depthU = qc.autoqc(rawU, rawdepthU, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
+                    V, depthV = qc.autoqc(rawV, rawdepthV, self.settingsdict["smoothlev"],self.settingsdict["profres"], self.settingsdict["maxstdev"], check_for_gaps)
+                    
+                if self.settingsdict["comparetoclimo"] and climodepths.size != 0:
+                    matchclimo, climobottomcutoff = oci.comparetoclimo(temperature, depthT, climotemps, climodepths,climotempfill,climodepthfill)
+                else:
+                    matchclimo = True
+                    climobottomcutoff = np.NaN
+                    
+            except Exception:
+                temperature = np.array([np.NaN])
+                depthT = np.array([0])
+                salinity = np.array([np.NaN])
+                depthS = np.array([0])
+                U = np.array([np.NaN])
+                depthU = np.array([0])
+                V = np.array([np.NaN])
+                depthV = np.array([0])
+                
+                matchclimo = climobottomcutoff = 0
+                trace_error()
+                self.posterror("Error raised in automatic profile QC")
+            
+                
+            #saving QC profile first (before truncating depth due to ID'd bottom strikes)
+            self.alltabdata[opentab]["profdata"]["depthT_qc"] = depthT.copy() #using copy method so further edits made won't be reflected in these stored versions of the QC'ed profile
+            self.alltabdata[opentab]["profdata"]["temperature_qc"] = temperature.copy()
+            
+            if probetype == 'AXCTD':
+                self.alltabdata[opentab]["profdata"]["depthS_qc"] = depthS.copy()
+                self.alltabdata[opentab]["profdata"]["salinity_qc"] = salinity.copy()
+            elif probetype == 'AXCP':
+                self.alltabdata[opentab]["profdata"]["depthU_qc"] = depthU.copy()
+                self.alltabdata[opentab]["profdata"]["U_qc"] = U.copy()
+                self.alltabdata[opentab]["profdata"]["depthV_qc"] = depthV.copy()
+                self.alltabdata[opentab]["profdata"]["V_qc"] = V.copy()
+                
+            
+    
+            # limit profile depth by climatology cutoff, ocean depth cutoff
+            maxdepth = np.ceil(np.max(depthT))
+            if probetype == 'AXCTD':
+                maxdepth = np.max([maxdepth,np.ceil(np.max(depthS))])
+            elif probetype == 'AXCP':
+                maxdepth = np.max([maxdepth, np.ceil(np.max(depthU)), np.ceil(np.max(depthV))])
+                
+            isbottomstrike = 0
+            if self.settingsdict["useoceanbottom"] and np.isnan(oceandepth) == 0 and oceandepth <= maxdepth:
+                maxdepth = oceandepth
+                isbottomstrike = 1
+            if self.settingsdict["useclimobottom"] and np.isnan(climobottomcutoff) == 0 and climobottomcutoff <= maxdepth:
+                isbottomstrike = 1
+                maxdepth = climobottomcutoff
+                
+            isbelowmaxdepth = np.less_equal(depthT, maxdepth)
+            temperature = temperature[isbelowmaxdepth]
+            depthT = depthT[isbelowmaxdepth]
+            
+            if probetype == 'AXCTD':
+                isbelowmaxdepth = np.less_equal(depthS, maxdepth)
+                salinity = salinity[isbelowmaxdepth]
+                depthS = depthS[isbelowmaxdepth]
+            elif probetype == 'AXCP':
+                isbelowmaxdepth = np.less_equal(depthU, maxdepth)
+                U = U[isbelowmaxdepth]
+                depthU = depthU[isbelowmaxdepth]
+                isbelowmaxdepth = np.less_equal(depthV, maxdepth) 
+                V = V[isbelowmaxdepth]
+                depthV = depthV[isbelowmaxdepth]
+    
+            # writing values to alltabs structure: prof temps, and matchclimo
+            self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
+            self.alltabdata[opentab]["profdata"]["depthT_plot"] = depthT
+            self.alltabdata[opentab]["profdata"]["temperature_plot"] = temperature
+            if probetype == 'AXCTD':
+                self.alltabdata[opentab]["profdata"]["depthS_plot"] = depthS
+                self.alltabdata[opentab]["profdata"]["salinity_plot"] = salinity
+            elif probetype == "AXCP":
+                self.alltabdata[opentab]["profdata"]["depthU_plot"] = depthU
+                self.alltabdata[opentab]["profdata"]["U_plot"] = U
+                self.alltabdata[opentab]["profdata"]["depthV_plot"] = depthV
+                self.alltabdata[opentab]["profdata"]["V_plot"] = V
+    
+            # resetting depth correction QSpinBoxes
+            self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
+            self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setValue(0)
+            self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setValue(0)
+    
+            # adjusting bottom strike checkbox as necessary
+            if isbottomstrike == 1:
+                self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(True)
             else:
-                matchclimo = True
-                climobottomcutoff = np.NaN
-                
-        except Exception:
-            temperature = np.array([np.NaN])
-            depthT = np.array([0])
-            salinity = np.array([np.NaN])
-            depthS = np.array([0])
-            U = np.array([np.NaN])
-            depthU = np.array([0])
-            V = np.array([np.NaN])
-            depthV = np.array([0])
-            
-            matchclimo = climobottomcutoff = 0
-            trace_error()
-            self.posterror("Error raised in automatic profile QC")
+                self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(False)
+    
+            self.updateprofeditplots() #update profile plot, data on window
+            success = True
         
             
-        #saving QC profile first (before truncating depth due to ID'd bottom strikes)
-        self.alltabdata[opentab]["profdata"]["depthT_qc"] = depthT.copy() #using copy method so further edits made won't be reflected in these stored versions of the QC'ed profile
-        self.alltabdata[opentab]["profdata"]["temperature_qc"] = temperature.copy()
-        
-        if probetype == 'AXCTD':
-            self.alltabdata[opentab]["profdata"]["depthS_qc"] = depthS.copy()
-            self.alltabdata[opentab]["profdata"]["salinity_qc"] = salinity.copy()
-        elif probetype == 'AXCP':
-            self.alltabdata[opentab]["profdata"]["depthU_qc"] = depthU.copy()
-            self.alltabdata[opentab]["profdata"]["U_qc"] = U.copy()
-            self.alltabdata[opentab]["profdata"]["depthV_qc"] = depthV.copy()
-            self.alltabdata[opentab]["profdata"]["V_qc"] = V.copy()
-            
-        
-
-        # limit profile depth by climatology cutoff, ocean depth cutoff
-        maxdepth = np.ceil(np.max(depthT))
-        if probetype == 'AXCTD':
-            maxdepth = np.max([maxdepth,np.ceil(np.max(depthS))])
-        elif probetype == 'AXCP':
-            maxdepth = np.max([maxdepth, np.ceil(np.max(depthU)), np.ceil(np.max(depthV))])
-            
-        isbottomstrike = 0
-        if self.settingsdict["useoceanbottom"] and np.isnan(oceandepth) == 0 and oceandepth <= maxdepth:
-            maxdepth = oceandepth
-            isbottomstrike = 1
-        if self.settingsdict["useclimobottom"] and np.isnan(climobottomcutoff) == 0 and climobottomcutoff <= maxdepth:
-            isbottomstrike = 1
-            maxdepth = climobottomcutoff
-            
-        isbelowmaxdepth = np.less_equal(depthT, maxdepth)
-        temperature = temperature[isbelowmaxdepth]
-        depthT = depthT[isbelowmaxdepth]
-        
-        if probetype == 'AXCTD':
-            isbelowmaxdepth = np.less_equal(depthS, maxdepth)
-            salinity = salinity[isbelowmaxdepth]
-            depthS = depthS[isbelowmaxdepth]
-        elif probetype == 'AXCP':
-            isbelowmaxdepth = np.less_equal(depthU, maxdepth)
-            U = U[isbelowmaxdepth]
-            depthU = depthU[isbelowmaxdepth]
-            isbelowmaxdepth = np.less_equal(depthV, maxdepth) 
-            V = V[isbelowmaxdepth]
-            depthV = depthV[isbelowmaxdepth]
-
-        # writing values to alltabs structure: prof temps, and matchclimo
-        self.alltabdata[opentab]["profdata"]["matchclimo"] = matchclimo
-        self.alltabdata[opentab]["profdata"]["depthT_plot"] = depthT
-        self.alltabdata[opentab]["profdata"]["temperature_plot"] = temperature
-        if probetype == 'AXCTD':
-            self.alltabdata[opentab]["profdata"]["depthS_plot"] = depthS
-            self.alltabdata[opentab]["profdata"]["salinity_plot"] = salinity
-        elif probetype == "AXCP":
-            self.alltabdata[opentab]["profdata"]["depthU_plot"] = depthU
-            self.alltabdata[opentab]["profdata"]["U_plot"] = U
-            self.alltabdata[opentab]["profdata"]["depthV_plot"] = depthV
-            self.alltabdata[opentab]["profdata"]["V_plot"] = V
-
-        # resetting depth correction QSpinBoxes
-        self.alltabdata[opentab]["tabwidgets"]["maxdepth"].setValue(int(np.round(maxdepth)))
-        self.alltabdata[opentab]["tabwidgets"]["depthdelay"].setValue(0)
-        self.alltabdata[opentab]["tabwidgets"]["sfccorrection"].setValue(0)
-
-        # adjusting bottom strike checkbox as necessary
-        if isbottomstrike == 1:
-            self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(True)
         else:
-            self.alltabdata[opentab]["tabwidgets"]["isbottomstrike"].setChecked(False)
-
-        self.updateprofeditplots() #update profile plot, data on window
-        success = True
-        
+            self.alltabdata[opentab]["profdata"]["depthT_qc"] = np.array([]) 
+            self.alltabdata[opentab]["profdata"]["temperature_qc"] = np.array([]) 
+            self.alltabdata[opentab]["profdata"]["matchclimo"] = True
+            self.alltabdata[opentab]["profdata"]["depthT_plot"] = np.array([]) 
+            self.alltabdata[opentab]["profdata"]["temperature_plot"] = np.array([])
+            
+            if probetype == 'AXCTD':
+                self.alltabdata[opentab]["profdata"]["depthS_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["salinity_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["depthS_plot"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["salinity_plot"] = np.array([])
+            elif probetype == "AXCP":
+                self.alltabdata[opentab]["profdata"]["depthU_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["U_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["depthV_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["V_qc"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["depthU_plot"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["U_plot"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["depthV_plot"] = np.array([])
+                self.alltabdata[opentab]["profdata"]["V_plot"] = np.array([])
+            
+            
+            
     except Exception:
         trace_error()
         self.posterror("Failed to run autoQC")
@@ -1100,70 +1141,72 @@ def on_release(self,event):
             depthplot = self.alltabdata[opentab]["profdata"]["depthV_qc"]
             
         
-        #ADD A POINT
-        if self.alltabdata[opentab]["pt_type"] == 1:
+        if len(depthplot) > 0:
             
-            rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
-            if csfig == 'T':
-                rawdata = self.alltabdata[opentab]["profdata"]["temperature_raw"]
-            elif csfig == 'S':
-                rawdata = self.alltabdata[opentab]["profdata"]["salinity_raw"]
-            elif csfig == 'U':
-                rawdata = self.alltabdata[opentab]["profdata"]["U_raw"]
-            elif csfig == 'V':
-                rawdata = self.alltabdata[opentab]["profdata"]["V_raw"]
+            #ADD A POINT
+            if self.alltabdata[opentab]["pt_type"] == 1:
                 
-            pt = np.argmin(abs(rawdata-xx)**2 + abs(rawdepth-yy)**2)
-            adddata = rawdata[pt]
-            adddepth = rawdepth[pt]
-            if not adddepth in depthplot:
-                try: #if np array
-                    ind = np.where(adddepth > depthplot)
-                    ind = ind[0][-1]+1 #index to add
-                    depthplot = np.insert(depthplot,ind,adddepth)
-                    dataplot = np.insert(dataplot,ind,adddata)
-                except: #if list
-                    i = 0
-                    for i,cdepth in enumerate(depthplot):
-                        if cdepth > adddepth:
-                            break
-                    depthplot.insert(i,adddepth)
-                    dataplot.insert(i,adddata)
+                rawdepth = self.alltabdata[opentab]["profdata"]["depth_raw"]
+                if csfig == 'T':
+                    rawdata = self.alltabdata[opentab]["profdata"]["temperature_raw"]
+                elif csfig == 'S':
+                    rawdata = self.alltabdata[opentab]["profdata"]["salinity_raw"]
+                elif csfig == 'U':
+                    rawdata = self.alltabdata[opentab]["profdata"]["U_raw"]
+                elif csfig == 'V':
+                    rawdata = self.alltabdata[opentab]["profdata"]["V_raw"]
                     
-        #REMOVE A POINT
-        elif self.alltabdata[opentab]["pt_type"] == 2:
-            pt = np.argmin(abs(dataplot-xx)**2 + abs(depthplot-yy)**2)
-            try: #if its an array
-                dataplot = np.delete(dataplot,pt)
-                depthplot = np.delete(depthplot,pt)
-            except: #if its a list
-                dataplot.pop(pt)
-                depthplot.pop(pt)
-
-        #REMOVE A SPIKE
-        elif self.alltabdata[opentab]["pt_type"] == 3:
-            y1 = np.min([self.y1_spike,yy])
-            y2 = np.max([self.y1_spike,yy])
-            goodvals = (depthplot < y1) | (depthplot > y2)
-            dataplot = dataplot[goodvals]
-            depthplot = depthplot[goodvals]
-                
-        #replace values in profile
-        if csfig == 'T':
-            self.alltabdata[opentab]["profdata"]["depthT_qc"] = depthplot
-            self.alltabdata[opentab]["profdata"]["temperature_qc"] = dataplot
-        elif csfig == 'S':
-            self.alltabdata[opentab]["profdata"]["depthS_qc"] = depthplot
-            self.alltabdata[opentab]["profdata"]["salinity_qc"] = dataplot
-        elif csfig == 'U':
-            self.alltabdata[opentab]["profdata"]["depthU_qc"] = depthplot
-            self.alltabdata[opentab]["profdata"]["U_qc"] = dataplot
-        elif csfig == 'V':
-            self.alltabdata[opentab]["profdata"]["depthV_qc"] = depthplot
-            self.alltabdata[opentab]["profdata"]["V_qc"] = dataplot
-        
-        #applying user corrections
-        self.applychanges()
+                pt = np.argmin(abs(rawdata-xx)**2 + abs(rawdepth-yy)**2)
+                adddata = rawdata[pt]
+                adddepth = rawdepth[pt]
+                if not adddepth in depthplot:
+                    try: #if np array
+                        ind = np.where(adddepth > depthplot)
+                        ind = ind[0][-1]+1 #index to add
+                        depthplot = np.insert(depthplot,ind,adddepth)
+                        dataplot = np.insert(dataplot,ind,adddata)
+                    except: #if list
+                        i = 0
+                        for i,cdepth in enumerate(depthplot):
+                            if cdepth > adddepth:
+                                break
+                        depthplot.insert(i,adddepth)
+                        dataplot.insert(i,adddata)
+                        
+            #REMOVE A POINT
+            elif self.alltabdata[opentab]["pt_type"] == 2:
+                pt = np.argmin(abs(dataplot-xx)**2 + abs(depthplot-yy)**2)
+                try: #if its an array
+                    dataplot = np.delete(dataplot,pt)
+                    depthplot = np.delete(depthplot,pt)
+                except: #if its a list
+                    dataplot.pop(pt)
+                    depthplot.pop(pt)
+    
+            #REMOVE A SPIKE
+            elif self.alltabdata[opentab]["pt_type"] == 3:
+                y1 = np.min([self.y1_spike,yy])
+                y2 = np.max([self.y1_spike,yy])
+                goodvals = (depthplot < y1) | (depthplot > y2)
+                dataplot = dataplot[goodvals]
+                depthplot = depthplot[goodvals]
+                    
+            #replace values in profile
+            if csfig == 'T':
+                self.alltabdata[opentab]["profdata"]["depthT_qc"] = depthplot
+                self.alltabdata[opentab]["profdata"]["temperature_qc"] = dataplot
+            elif csfig == 'S':
+                self.alltabdata[opentab]["profdata"]["depthS_qc"] = depthplot
+                self.alltabdata[opentab]["profdata"]["salinity_qc"] = dataplot
+            elif csfig == 'U':
+                self.alltabdata[opentab]["profdata"]["depthU_qc"] = depthplot
+                self.alltabdata[opentab]["profdata"]["U_qc"] = dataplot
+            elif csfig == 'V':
+                self.alltabdata[opentab]["profdata"]["depthV_qc"] = depthplot
+                self.alltabdata[opentab]["profdata"]["V_qc"] = dataplot
+            
+            #applying user corrections
+            self.applychanges()
 
 
     except Exception:

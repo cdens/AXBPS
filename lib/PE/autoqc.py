@@ -22,31 +22,46 @@ import numpy as np
 
 def autoqc(rawdata,rawdepth,smoothlev,profres,maxdev,checkforgaps):
     
+    #remove NaNs
+    isgood = [False if (np.isnan(rd*rz)) else True for rd,rz in zip(rawdata,rawdepth)]
+    rawdepth = rawdepth[isgood]
+    rawdata = rawdata[isgood]
+    
 
     #Step 1: Find and remove gaps due to VHF interference kicking off early Mk21 start (should be AXBT issue only)
-    if checkforgaps:
+    if checkforgaps and len(rawdepth) > 0:
         rawdepth,rawdata = removegaps(rawdepth,rawdata)
     
     #Step 2: remove spikes using running standard deviation filter
-    depth_despike,data_despike = rundespiker(rawdepth,rawdata,maxdev)
-    
+    if len(rawdepth) > 0:
+        depth_despike,data_despike = rundespiker(rawdepth,rawdata,maxdev)
+    else:
+        depth_despike = data_despike = []
+        
     #Step 3: smooth the despiked profile
-    depth_smooth,data_smooth = runsmoother(depth_despike,data_despike,smoothlev)
+    if len(depth_despike) > 0:
+        depth_smooth,data_smooth = runsmoother(depth_despike,data_despike,smoothlev)
+    else:
+        depth_smooth = data_smooth = []
     
     #Step 4: pull critical points from profile to save (note- returned variables are lists)
-    depth,dataerature = subsample_profile(depth_smooth,data_smooth,profres)
+    if len(depth_smooth) > 0:
+        depth,data = subsample_profile(depth_smooth,data_smooth,profres)
+    else:
+        depth = data = []
 
     #add surface value if one doesn't exist
-    if depth[0] != 0:
-        sst = dataerature[0]
-        depth.insert(0,0)
-        dataerature.insert(0,sst)
+    if len(depth) > 0:
+        if depth[0] != 0:
+            sst = data[0]
+            depth.insert(0,0)
+            data.insert(0,sst)
     
     #convert back to numpy arrays
-    dataerature = np.array(dataerature)
+    data = np.array(data)
     depth = np.array(depth)
     
-    return [dataerature,depth]
+    return [data,depth]
     
     
     
@@ -64,7 +79,7 @@ def removegaps(rawdepth,rawdata):
                 isgap.append(1) #NOTE: the logical 1 is placed at the first depth AFTER the gap
             else:
                 isgap.append(0)
-
+        
         #if there are gaps, find the deepest one and correct t/d profile with that depth as the surface (only works with linear fall rate equation)
         if np.sum(isgap) > 0:
             lastgap = np.max(np.argwhere(isgap))

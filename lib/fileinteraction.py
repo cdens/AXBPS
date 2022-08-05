@@ -3,12 +3,12 @@
 #
 #    This file is part of the Airborne eXpendable Buoy Processing System
 #
-#    ARES is free software: you can redistribute it and/or modify
+#    AXBPS is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 3 of the License, or
 #    (at your option) any later version.
 #
-#    ARES is distributed in the hope that it will be useful,
+#    AXBPS is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
@@ -612,12 +612,13 @@ def writefinfile(finfile,cdtg,lat,lon,num,depth,temperature,salinity=None,U=None
         V = np.array([None] * len(depth))
         
     #getting rid of any NaNs
-    isgood = np.array([False if np.isnan(cT*cz) else True for (cz,cT) in zip(depth, temperature)])
-    depth = depth[isgood]
-    temperature = temperature[isgood]
-    salinity = salinity[isgood]
-    U = U[isgood]
-    V = V[isgood]
+    if len(depth) > 0:
+        isgood = np.array([False if np.isnan(cT*cz) else True for (cz,cT) in zip(depth, temperature)])
+        depth = depth[isgood]
+        temperature = temperature[isgood]
+        salinity = salinity[isgood]
+        U = U[isgood]
+        V = V[isgood]
     
     #setting number of observation vars (e.g. T,z,S) and datapoints per line 
     if hasSal and hasCurrent: #temperature, salinity, U, V vs. depth
@@ -804,9 +805,10 @@ def readjjvvfile(jjvvfile,relyear=None):
 def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike):
     
     #getting rid of any NaNs
-    isgood = np.array([False if np.isnan(cT*cz) else True for (cz,cT) in zip(depth, temperature)])
-    depth = depth[isgood]
-    temperature = temperature[isgood]
+    if len(depth) > 0:
+        isgood = np.array([False if np.isnan(cT*cz) else True for (cz,cT) in zip(depth, temperature)])
+        depth = depth[isgood]
+        temperature = temperature[isgood]
     
     #open file for writing
     with open(jjvvfile,'w') as f_out:
@@ -886,7 +888,6 @@ def writejjvvfile(jjvvfile,temperature,depth,cdtg,lat,lon,identifier,isbtmstrike
 # =============================================================================
 #                   BUFR File writing only
 # =============================================================================            
-
         
 
 def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth, temperature, salinity=None, U=None, V=None, optionalinfo=None):
@@ -901,10 +902,11 @@ def writebufrfile(bufrfile, cdtg, lon, lat, identifier, originatingcenter, depth
         nancheck *= salinity
     if hasCurrent:
         nancheck *= U * V
-        
-    isgood = np.array([False if np.isnan(cnancheck) else True for cnancheck in nancheck])
-    depth = depth[isgood]
-    temperature = temperature[isgood]
+    
+    if len(depth) > 0:
+        isgood = np.array([False if np.isnan(cnancheck) else True for cnancheck in nancheck])
+        depth = depth[isgood]
+        temperature = temperature[isgood]
     
     
     binarytype = 'big'  # big-endian

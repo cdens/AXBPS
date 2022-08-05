@@ -557,7 +557,13 @@ def saveDASfiles(self,opentab,outfileheader,probetype):
         hasCurrent = False
         rawdata = {'depth':self.alltabdata[opentab]["rawdata"]["depth"], 'temperature': self.alltabdata[opentab]["rawdata"]["temperature"], 'salinity':self.alltabdata[opentab]["rawdata"]["salinity"], 'time':self.alltabdata[opentab]["rawdata"]["time"], 'frequency':[999] * len(self.alltabdata[opentab]["rawdata"]["depth"]), 'U':None, 'V':None}
         edf_data = {'Time (s)': self.alltabdata[opentab]["rawdata"]["time"], 'Frame (hex)': self.alltabdata[opentab]["rawdata"]["frame"], 'Depth (m)':self.alltabdata[opentab]["rawdata"]["depth"],'Temperature (degC)':self.alltabdata[opentab]["rawdata"]["temperature"],'Conductivity (mS/cm)':self.alltabdata[opentab]["rawdata"]["conductivity"], 'Salinity (PSU)':self.alltabdata[opentab]["rawdata"]["salinity"]}
-        metadata = self.alltabdata[opentab]["processor"].metadata
+        
+        if self.alltabdata[opentab]["rawdata"]["firstpulsetime"] >= 0:
+            metadata = self.alltabdata[opentab]["processor"].metadata
+            
+        else: #default comments to use if no profile detected
+            metadata = {'zcoeff_default':self.settingsdict["zcoeff_axctd"],'zcoeff_valid':4*[False], 'tcoeff_default':self.settingsdict["tcoeff_axctd"],'tcoeff_valid':4*[False], 'ccoeff_default':self.settingsdict["ccoeff_axctd"],'ccoeff_valid':4*[False], 'serial_no':None, 'max_depth':None}
+            
         coeffs = {}
         coeffops = ['z','t','c']
         for c in coeffops:
@@ -762,8 +768,14 @@ def savePEfiles(self,opentab,outfileheader,probetype):
     climotempfill = self.alltabdata[opentab]["profdata"]["climotempfill"]
     depthT = self.alltabdata[opentab]["profdata"]["depthT_plot"]
     temperature = self.alltabdata[opentab]["profdata"]["temperature_plot"]
-    depth1m = np.arange(0,np.floor(depthT[-1]))
-    temperature1m = np.interp(depth1m,depthT,temperature)
+    
+    if len(depthT) > 0:
+        depth1m = np.arange(0,np.floor(depthT[-1]))
+        temperature1m = np.interp(depth1m,depthT,temperature)
+        hasData = True
+    else:
+        depth1m = temperature1m = np.array([])
+        hasData = False
     
     #pulling salinity data if AXCTD
     if hasSal:
@@ -771,8 +783,16 @@ def savePEfiles(self,opentab,outfileheader,probetype):
         climopsalfill = self.alltabdata[opentab]["profdata"]["climopsalfill"]
         depthS = self.alltabdata[opentab]["profdata"]["depthS_plot"]
         salinity = self.alltabdata[opentab]["profdata"]["salinity_plot"]
-        salinity1m = np.interp(depth1m,depthS,salinity)
+        if len(depth1m) > 0:
+            if len(depthS) > 0:
+                salinity1m = np.interp(depth1m,depthS,salinity)
+            else:
+                salinity1m = np.array([np.NaN for _ in range(len(depth1m))])
+        else:
+            salinity1m = np.array([])
+            
         edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m, 'Salinity (PSU)':salinity1m}
+        
     else:
         salinity = None
         salinity1m = None
@@ -782,10 +802,18 @@ def savePEfiles(self,opentab,outfileheader,probetype):
         rawV = self.alltabdata[opentab]["profdata"]['V_raw']
         depthU = self.alltabdata[opentab]["profdata"]["depthU_plot"]
         U = self.alltabdata[opentab]["profdata"]["U_plot"]
-        U1m = np.interp(depth1m,depthU,U)
         depthV = self.alltabdata[opentab]["profdata"]["depthV_plot"]
         V = self.alltabdata[opentab]["profdata"]["V_plot"]
-        V1m = np.interp(depth1m,depthV,V)
+        
+        if len(depth1m) > 0:
+            if len(depthU) > 0 and len(depthV) > 0:
+                U1m = np.interp(depth1m,depthU,U)
+                V1m = np.interp(depth1m,depthV,V)
+            else:
+                U1m = V1m = np.array([np.NaN for _ in range(len(depth1m))])
+        else:
+            U1m = V1m = np.array([])
+        
         edf_data = {'Depth (m)':depth1m, 'Temperature (degC)':temperature1m, 'Zonal Current (m/s)':U1m, 'Meridional Current (m/s)':V1m}
     else:
         U = None
@@ -832,11 +860,14 @@ def savePEfiles(self,opentab,outfileheader,probetype):
             self.posterror("Failed to save FIN file")
             
     if self.settingsdict["savejjvv_qc"]: #save JJVV file (temperature profile only)
-        try:
-            io.writejjvvfile(filename+'.jjvv',temperature, depthT, dropdatetime, lat, lon, identifier, isbtmstrike)
-        except Exception:
-            trace_error()
-            self.posterror("Failed to save JJVV file")
+        if not hasData:
+            self.postwarning("No valid data detected in this profile, skipping JJVV file saving")
+        else:
+            try:
+                io.writejjvvfile(filename+'.jjvv',temperature, depthT, dropdatetime, lat, lon, identifier, isbtmstrike)
+            except Exception:
+                trace_error()
+                self.posterror("Failed to save JJVV file")
             
         
     if self.settingsdict["savedat_qc"]: #save DAT file
