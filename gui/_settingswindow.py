@@ -118,6 +118,7 @@ def setdefaultsettings():
     settingsdict["useclimobottom"] = True  # use climatology to ID bottom strikes
     settingsdict["overlayclimo"] = True  # overlay the climatology on the plot
     settingsdict["comparetoclimo"] = True  # check for climatology mismatch and display result on plot
+    
     settingsdict["savefin_qc"] = True  # file types to save
     settingsdict["saveedf_qc"] = True
     settingsdict["savejjvv_qc"] = True
@@ -125,6 +126,7 @@ def setdefaultsettings():
     settingsdict["savebufr_qc"] = True
     settingsdict["saveprof_qc"] = True
     settingsdict["saveloc_qc"] = True
+    
     settingsdict["useoceanbottom"] = True  # use NTOPO1 bathymetry data to ID bottom strikes
     settingsdict["checkforgaps"] = True  # look for/correct gaps in profile due to false starts from VHF interference
     settingsdict["smoothlev"] = 8.  # Smoothing Window size (m)

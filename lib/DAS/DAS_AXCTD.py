@@ -196,9 +196,12 @@ class AXCTDProcessor(QRunnable):
         self.deadfreq = self.settings['deadfreq'] #frequency to use as "data-less" control to normalize signal levels
         
         #default depth/temperature/conductivity conversion coefficients
-        self.zcoeff = self.settings['zcoeff_axctd']
-        self.tcoeff = self.settings['tcoeff_axctd']
-        self.ccoeff = self.settings['ccoeff_axctd']
+        if sum(self.metadata['zcoeff_valid']) < 4:
+            self.zcoeff = self.settings['zcoeff_axctd']
+        if sum(self.metadata['tcoeff_valid']) < 4:
+            self.tcoeff = self.settings['tcoeff_axctd']
+        if sum(self.metadata['ccoeff_valid']) < 4:
+            self.ccoeff = self.settings['ccoeff_axctd']
         
         #max ranges for good temperature and salinity values
         self.tlims = self.settings['tlims_axctd']

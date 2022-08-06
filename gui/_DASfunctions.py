@@ -491,11 +491,13 @@ def pull_drop_coords_update(self, warn_incorrect):
         
         change_magdata = False
         if latsend is not None:
-            self.alltabdata[opentab]["rawdata"]["maglat"] = latsend
-            change_magdata = True
+            if -90 <= latsend <= 90:
+                self.alltabdata[opentab]["rawdata"]["maglat"] = latsend
+                change_magdata = True
         if lonsend is not None:
-            self.alltabdata[opentab]["rawdata"]["maglon"] = lonsend
-            change_magdata = True
+            if -180 <= lonsend <= 180:
+                self.alltabdata[opentab]["rawdata"]["maglon"] = lonsend
+                change_magdata = True
         if datesend is not None:
             self.alltabdata[opentab]["rawdata"]["magdate"] = datesend
             change_magdata = True

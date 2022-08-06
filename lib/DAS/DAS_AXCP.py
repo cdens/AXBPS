@@ -140,7 +140,7 @@ class AXCPProcessor(QRunnable):
         self.AREA = np.array([])
         self.AERR = np.array([])
         for (rotfavg, fccr, fefr, vc0a, vc0p, ve0a, ve0p, gcca, gefa, nindep, w) in zip(self.ROTF, self.FCCR, self.FEFR, self.VC0A, self.VC0P, self.VE0A, self.VE0P, self.GCCA, self.GEFA, self.NINDEP, self.W):
-            area, aerr, umag, vmag, verr = self.calc_currents(self, rotfavg, fccr, fefr, vc0a, vc0p, ve0a, ve0p, gcca, gefa, nindep, w)
+            area, aerr, umag, vmag, verr = self.calc_currents(rotfavg, fccr, fefr, vc0a, vc0p, ve0a, ve0p, gcca, gefa, nindep, w)
                 
             self.U_MAG = np.append(self.U_MAG, umag)
             self.V_MAG = np.append(self.V_MAG, vmag)
