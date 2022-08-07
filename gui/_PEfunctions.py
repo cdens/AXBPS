@@ -433,6 +433,7 @@ def continuetoqc(self, opentab, rawdata, lat, lon, dropdatetime, identifier, pro
             self.alltabdata[opentab]["plotWidgets"][cid] = QWidget() #creating a widget to add graph and toolbar
             self.alltabdata[opentab]["plotLayouts"][cid] = QGridLayout() #vertical layout style (stack graph/toolbar)
             self.alltabdata[opentab]["plotWidgets"][cid].setLayout(self.alltabdata[opentab]["plotLayouts"][cid]) #set layout
+            self.setnewtabcolor(self.alltabdata[opentab]["plotWidgets"][cid])
             self.alltabdata[opentab]["PlotTabWidget"].addTab(self.alltabdata[opentab]["plotWidgets"][cid], cparam) #add widget as new tab for QTabWidget
             
             #adding temperature plot
