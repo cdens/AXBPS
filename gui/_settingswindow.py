@@ -26,8 +26,7 @@ from traceback import print_exc as trace_error
 import numpy as np
 from os import remove, path
 
-from PyQt5.QtWidgets import (QMainWindow, QLabel, QSpinBox, QDoubleSpinBox, QCheckBox, QPushButton,
-    QMessageBox, QWidget, QTabWidget, QGridLayout, QSlider, QComboBox, QLineEdit)
+from PyQt5.QtWidgets import (QMainWindow, QLabel, QSpinBox, QDoubleSpinBox, QCheckBox, QPushButton, QMessageBox, QWidget, QTabWidget, QGridLayout, QSlider, QComboBox, QLineEdit, QSpacerItem)
 from PyQt5.QtCore import Qt, pyqtSlot, pyqtSignal, QObject
 from PyQt5.QtGui import QIcon, QColor, QPalette, QBrush, QLinearGradient, QFont
 
@@ -272,12 +271,12 @@ class RunSettings(QMainWindow):
 
             #building window/tabs (build one of each tab type)
             self.buildcentertable()
+            self.makegpssettingstab() #add GPS settings
             self.makeprocessorsigthresholdstab() #DAS signal thresholds/probe specific settings
             self.makeprocessorsettingstab()  #general DAS settings
             self.makeaxbtconvertsettingstab() #AXBT conversion equation settings
             self.makeaxctdconvertsettingstab() #AXCTD conversion equation settings
             self.makeprofileeditorsettingstab() #profile editor tab
-            self.makegpssettingstab() #add GPS settings
 
         except Exception:
             trace_error()
@@ -803,6 +802,7 @@ class RunSettings(QMainWindow):
             for i in range(0,12):
                 self.processortablayout.setRowStretch(i, 1)
             self.processortablayout.setRowStretch(13, 4)
+            
 
             # applying the current layout for the tab
             self.processortab.setLayout(self.processortablayout)
@@ -831,8 +831,8 @@ class RunSettings(QMainWindow):
             # and add new buttons and other widgets
             self.sigsettingstabwidgets = {}
             
-            
-            self.sigsettingstabwidgets["axbtsiglabel"] = QLabel("AXBT Signal Settings")
+            #the large spaces in the labels are to override the stretches and ensure each column has the same width
+            self.sigsettingstabwidgets["axbtsiglabel"] = QLabel("AXBT Settings                                           ")
             self.sigsettingstabwidgets["fftwindowlabel"] = QLabel(self.label_fftwindow +str(self.settingsdict["fftwindow"]).ljust(4,'0')) #17
             self.sigsettingstabwidgets["fftwindow"] = QSlider(Qt.Horizontal) #18
             self.sigsettingstabwidgets["fftwindow"].setValue(int(self.settingsdict["fftwindow"] * 100))
@@ -872,7 +872,10 @@ class RunSettings(QMainWindow):
             
             
             
-            self.sigsettingstabwidgets["axctdsiglabel"] = QLabel("AXCTD Settings") #27
+            
+            
+            #the large spaces in the labels are to override the stretches and ensure each column has the same width
+            self.sigsettingstabwidgets["axctdsiglabel"] = QLabel("AXCTD Settings                                          ") #27
             self.sigsettingstabwidgets["minr400label"] = QLabel(self.label_minr400 +str(self.settingsdict["minr400"]).ljust(4,'0')) #28
             self.sigsettingstabwidgets["minr400"] = QSlider(Qt.Horizontal) #29
             self.sigsettingstabwidgets["minr400"].setMinimum(0)
@@ -923,7 +926,11 @@ class RunSettings(QMainWindow):
             self.sigsettingstabwidgets["usebandpass"].setChecked(self.settingsdict["usebandpass"])
             
             
-            self.sigsettingstabwidgets["axcpsiglabel"] = QLabel("AXCP Settings")
+            
+            
+            
+            #the large spaces in the labels are to override the stretches and ensure each column has the same width
+            self.sigsettingstabwidgets["axcpsiglabel"] = QLabel("AXCP Settings                                           ")
             
             self.sigsettingstabwidgets["cprefreshratelabel"] = QLabel("Refresh Rate (sec): ")  #38
             self.sigsettingstabwidgets["cprefreshrate"] = QDoubleSpinBox()  #39
@@ -967,7 +974,7 @@ class RunSettings(QMainWindow):
             self.sigsettingstabwidgets["spindownfrotmax"].setMinimum(0.1)
             self.sigsettingstabwidgets["spindownfrotmax"].setMaximum(5)
             self.sigsettingstabwidgets["spindownfrotmax"].setSingleStep(0.05)
-            self.sigsettingstabwidgets["spindownfrotmax"].setValue(np.round(self.settingsdict['spindownfrotmax']*20)/20)
+            self.sigsettingstabwidgets["spindownfrotmax"].setValue( np.round( self.settingsdict ['spindownfrotmax'] * 20) / 20)
             
             
             
@@ -1008,6 +1015,13 @@ class RunSettings(QMainWindow):
             for i in range(0,12):
                 self.sigsettingstablayout.setRowStretch(i, 1)
             self.sigsettingstablayout.setRowStretch(13, 4)
+            
+            
+            #adding spacing to fix layout (setColumnStretch and QSpacerItem were less than helpful)
+            #"If it's stupid but it works, it isn't stupid"
+            self.sigsettingstabwidgets["inter_space"] = QLabel("       ")
+            self.sigsettingstablayout.addWidget(self.sigsettingstabwidgets["inter_space"], 0, 2, 1, 1)
+            self.sigsettingstablayout.addWidget(self.sigsettingstabwidgets["inter_space"], 0, 5, 1, 1)
 
             # applying the current layout for the tab
             self.sigsettingstab.setLayout(self.sigsettingstablayout)
