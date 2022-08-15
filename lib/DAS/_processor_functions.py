@@ -65,6 +65,8 @@ def initialize_common_vars(self,tempdir,tabID,dll,settings,datasource,vhffreq,pr
     self.keepgoing = True  # signal connections
     self.waittoterminate = False #whether to pause on termination of run loop for kill process to complete
     
+    self.stream = None #stores stream object for PyAudio instances only
+    
     #settings
     self.settings = {}
     self.update_settings(settings)
@@ -120,7 +122,7 @@ def initialize_common_vars(self,tempdir,tabID,dll,settings,datasource,vhffreq,pr
         self.hradio, self.threadstatus = cdf.activate_receiver(self.dll,self.sourcetype,self.serial,vhffreq)
         
         # initialize audio stream data variables
-        self.f_s = cdf.get_fs(self.dll, self.sourcetype) #f_s depends on type of receiver connected
+        self.f_s = cdf.get_fs(self.dll, self.sourcetype, hradio=self.hradio) #f_s depends on type of receiver connected
         self.audiostream = [0] * 2 * self.f_s #initializes the buffer with 2 seconds of zeros
 
         #setup WAV file to write (if audio or test, source file is copied instead)
@@ -169,7 +171,7 @@ def kill(self,reason): #stop current thread
         
         self.isrecordingaudio = False
         if not self.isfromaudio and not self.isfromtest:
-            cdf.stop_receiver(self.dll,self.sourcetype,self.hradio)
+            cdf.stop_receiver(self.dll, self.sourcetype, self.hradio, stream=self.stream)
             wave.Wave_write.close(self.wavfile)
             
         if self.probetype == "AXCP":

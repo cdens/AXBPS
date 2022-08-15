@@ -30,8 +30,11 @@
 import numpy as np
 from scipy.io import wavfile #for wav file reading
 import wave #WAV file writing
+import numpy as np
 
 import lib.DAS.winradio_functions as wr
+import lib.DAS.pyaudio_functions as pa
+
 from traceback import print_exc as trace_error
 
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -179,14 +182,28 @@ class ProcessorSignals(QObject):
 class ReceiverTypeNotRecognized(Exception):
     def __init__(self, rtype):
         self.message = f"Receiver type {rtype} not recognized"
+        
+        if rtype == 'PA': #pyaudio is a known device type but this error is raised if arguments are passed incorrectly
+            self.message += '. Verify that the PyAudio object stream and/or device info are being passed as arguments appropriately!'
+            
         super().__init__(self.message)
     
         
         
-def list_receivers(dll): #get a list of all radio receivers
+        
+        
+        
+def list_receivers(dll, inc_audio_devices=False): #get a list of all radio receivers
     
     receivers = []
     rtypes = []
+    
+    #add PyAudio devices (computer audio devices)
+    if inc_audio_devices and 'PA' in dll.keys():
+        pa_devices = pa.listaudiodevices(dll['PA'])
+        receivers.extend(pa_devices)
+        rtypes.extend(['PA' for _ in pa_devices])
+        
     
     #add winradio receivers if DLL loaded (windows environment)
     if 'WR' in dll.keys():
@@ -194,20 +211,36 @@ def list_receivers(dll): #get a list of all radio receivers
         receivers.extend(wr_receivers)
         rtypes.extend(['WR' for _ in wr_receivers])
     
+    
     return receivers,rtypes
     
     
-def get_fs(dll,rtype): #identify sampling frequency of demodulated data from receiver by type
+    
+    
+    
+def get_fs(dll,rtype,hradio=None): #identify sampling frequency of demodulated data from receiver by type
     if rtype == 'WR': 
         f_s = 64000  #WiNRADIO sampling frequency is always 64 kHz
+        
+    elif rtype == 'PA' and hradio is not None: #pyaudio requires device index for sampling frequency
+        f_s = int(np.round(dll['PA'].get_device_info_by_index(hradio)['defaultSampleRate']))    
+    
     else:
         raise ReceiverTypeNotRecognized(rtype)
+        
     return f_s
+    
+    
+    
     
     
 def activate_receiver(dll,rtype,serial,vhffreq): #power on/configure radio receiver
     if rtype == 'WR':
         hradio,status = wr.activate_receiver(dll['WR'], serial, vhffreq,)
+        
+    elif rtype == 'PA':
+        hradio,status = pa.activate_receiver(dll['PA'], serial)
+        
     else:
         raise ReceiverTypeNotRecognized(rtype)
         
@@ -215,28 +248,48 @@ def activate_receiver(dll,rtype,serial,vhffreq): #power on/configure radio recei
     
     
     
+    
+    
+    
 def change_receiver_freq(dll,rtype,hradio,freq): #switch VHF frequency being demodulated
     if rtype == 'WR':
         status = wr.change_receiver_freq(dll['WR'],hradio,freq)
+    
+    elif rtype == 'PA':
+        pass #computer audio devices aren't demodulating so they dont have an RF frequency to change
+        
     else:
         raise ReceiverTypeNotRecognized(rtype)
     
     return status
+    
+    
+    
     
     
 def check_connected(dll,rtype,hradio): #verify that specified receiver is actively connected/on
     if rtype == 'WR':
         status = wr.check_receiver_connected(dll['WR'],hradio)
+        
+    elif rtype == 'PA':
+        status = pa.check_receiver_connected(dll['PA'],hradio)
+        
     else:
         raise ReceiverTypeNotRecognized(rtype)
     
     return status
     
+    
+    
         
     
-def stop_receiver(dll,rtype,hradio): #redirect audio stream/callback to null and stop/power off receiver
-    if rtype == 'WR':
+def stop_receiver(dll,rtype,hradio,stream=None): 
+    if rtype == 'WR': # winradio- redirect audio stream/callback to null and stop/power off receiver
         wr.stop_receiver(dll['WR'],hradio)
+    
+    elif rtype == 'PA' and stream is not None: #pyaudio requires a stream object to be passed
+        pa.stop_receiver(stream)
+        
     else:
         raise ReceiverTypeNotRecognized(rtype)
     
@@ -244,9 +297,14 @@ def stop_receiver(dll,rtype,hradio): #redirect audio stream/callback to null and
     
 def initialize_receiver_callback(dll, rtype, hradio, destination, tabID): #specify callback function for audio stream 
     if rtype == 'WR':
-        status = wr.setup_receiver_stream(dll['WR'],hradio,destination,tabID)
+        status = wr.setup_receiver_stream(dll['WR'], hradio, destination, tabID)
+        
+    elif rtype == 'PA': #for PyAudio, status is an object containing the stream information
+        status = pa.setup_receiver_stream(dll['PA'], hradio, destination, tabID)
+        
     else:
         raise ReceiverTypeNotRecognized(rtype)
+        
     return status
     
     

@@ -94,13 +94,14 @@ class AXBTProcessor(QRunnable):
         try:
             
             #Declaring the callbuck function to update the audio buffer (importing from DAS_callbacks)
-            if self.sourcetype == 'WR': #callback for winradio
-                # from lib.DAS._DAS_callbacks import wr_axbt_callback as updateaudiobuffer
+            if self.sourcetype not in ['TT','AA']: #use callback for realtime processing
                 
                 # initializes audio callback function
                 status = cdf.initialize_receiver_callback(self.dll, self.sourcetype, self.hradio, receiver_callback, self.tabID)
                 if status:
                     timemodule.sleep(0.3)  # gives the buffer time to populate
+                    self.stream = status #important for PyAudio to be able to kill the stream
+                    
                 else:
                     self.kill(7)
     

@@ -36,6 +36,9 @@ import datetime as dt
 import numpy as np
 import wave
 
+import pyaudio
+import importlib #to refresh pyaudio import for updated connections
+
 from gsw import SP_from_C #conductivity-to-salinity conversion
 
 import lib.DAS.DAS_AXBT as das_axbt 
@@ -155,6 +158,9 @@ def makenewprocessortab(self):
         self.alltabdata[opentab]["tabwidgets"]["datetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.alltabdata[opentab]["tabwidgets"]["timetitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.alltabdata[opentab]["tabwidgets"]["idtitle"].setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        
+        #disable the VHF frequency/channel adjustment settings for audio and pyaudio instances
+        self.enableVHFoptionsbydatasource(opentab)
         
         #should be 19 entries 
         widgetorder = ["datasourcetitle", "refreshdataoptions", "datasource", "probetitle", "probetype", "channeltitle", "freqtitle", "vhfchannel", "vhffreq", "startprocessing", "stopprocessing", "processprofile", "saveprofile", "datetitle", "dateedit", "timetitle", "timeedit", "lattitle", "latedit", "lontitle", "lonedit", "idtitle", "idedit", "updatedropposition"]
@@ -372,8 +378,10 @@ def datasourcerefresh(self):
             self.alltabdata[opentab]["tabwidgets"]["datasource"].clear()
             
             # Getting necessary data
-            if self.dll != 0:
-                receiver_options, rtypes = list_receivers(self.dll)
+            if self.dll:
+                importlib.reload(pyaudio)
+                self.dll['PA'] = pyaudio.PyAudio()
+                receiver_options, rtypes = list_receivers(self.dll, inc_audio_devices=self.settingsdict['inc_audio_devices'])
             else:
                 receiver_options = rtypes = []
             
@@ -399,7 +407,10 @@ def datasourcerefresh(self):
                     
                     
             self.alltabdata[opentab]["datasource"] = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentText()
+            if 'vhfchannel' in self.alltabdata[opentab].keys():
+                self.enableVHFoptionsbydatasource(opentab)
             
+                
         else:
             self.postwarning("You cannot refresh input devices while processing. Please click STOP to discontinue processing before refreshing device list")
     except Exception:
@@ -408,7 +419,17 @@ def datasourcerefresh(self):
         
         
         
-        
+def enableVHFoptionsbydatasource(self, opentab):
+    
+    #disable the VHF frequency/channel adjustment settings for audio and pyaudio instances
+    newindex = self.alltabdata[opentab]["tabwidgets"]["datasource"].currentIndex()
+    sourcetype = self.alltabdata[opentab]["sourcetypes"][newindex]
+    if sourcetype in ['AA','PA']:
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setEnabled(False)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setEnabled(False)
+    else:
+        self.alltabdata[opentab]["tabwidgets"]["vhfchannel"].setEnabled(True)
+        self.alltabdata[opentab]["tabwidgets"]["vhffreq"].setEnabled(True)
         
         
         
@@ -437,6 +458,10 @@ def datasourcechange(self):
         #only lets you change the WINRADIO if the current tab isn't already processing
         if not self.alltabdata[opentab]["isprocessing"]:
             self.alltabdata[opentab]["datasource"] = woption
+            
+            #disable the VHF frequency/channel adjustment settings for audio and pyaudio instances
+            self.enableVHFoptionsbydatasource(opentab)
+            
         elif self.alltabdata[opentab]["datasource"] != woption:
             if index >= 0:
                  self.alltabdata[opentab]["tabwidgets"]["datasource"].setCurrentIndex(index)

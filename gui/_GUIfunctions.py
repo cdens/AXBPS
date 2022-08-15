@@ -27,6 +27,8 @@ from datetime import datetime
 if cursys() == 'Windows':
     import ctypes
     
+import pyaudio
+    
 from tempfile import gettempdir
 
 from PyQt5.QtWidgets import (QAction, QWidget, QFileDialog, QTabWidget, QVBoxLayout, QDesktopWidget, 
@@ -172,6 +174,7 @@ def initUI(self):
 
     # loading all radio receiver library files
     self.dll = {}
+    self.dll['PA'] = pyaudio.PyAudio()
     if cursys() == 'Windows': #radio receivers with windows DLLs to load
         try:
             if calcsize("P")*8 == 32: #32-bit
@@ -183,7 +186,6 @@ def initUI(self):
         except:
             self.postwarning("Failed to load WiNRADIO driver!")
             trace_error()
-            
     else:
         self.postwarning("WiNRADIO communications only supported with Windows! Processing and editing from audio/ASCII files is still available.")
         
