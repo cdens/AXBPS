@@ -220,7 +220,7 @@ class AXBTProcessor(QRunnable):
         if len(self.taper) != N: #rebuild if different length of data included
             taper = tukey(len(pcmdata), alpha=0.25)
         pcmdata = taper * pcmdata
-    
+            
         # calculating fft, converting to power
         fftdata = np.abs(np.fft.fft(pcmdata))
     

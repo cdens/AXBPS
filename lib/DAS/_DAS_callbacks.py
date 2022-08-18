@@ -31,6 +31,10 @@ from ctypes import (Structure, pointer, c_int, c_ulong, c_char, c_uint32,
 c_char_p, c_void_p, POINTER, c_int16, cast, CFUNCTYPE)
 
 
+
+
+
+
 # =============================================================================
 #                      WINRADIO CALLBACK FUNCTIONS
 # =============================================================================
@@ -106,18 +110,21 @@ def define_callbacks(self, probetype, sourcetype):
         
         if probetype == "AXBT": #audio buffer tail is moved by the callback function
                 
-            def receiver_callback(bufferdata, nframes, time_info, status):
-                try:
+            def receiver_callback(bufferdata_bytes, nframes, time_info, status):
+                try:                    
+                    #bytearray to signed int16 buffer
+                    bufferdata = [int.from_bytes(bufferdata_bytes[i:i+2],"little")-32767 for i in range(0,len(bufferdata_bytes),2)]
+                    
                     self.audiostream.extend(bufferdata[:]) #append data to end
                     del self.audiostream[:nframes] #remove data from start
                     returntype = pyaudio.paContinue
-                                            
+                    
                     #recording to wav file: this terminates if the file exceeds a certain length
                     if self.isrecordingaudio and self.nframes > self.maxsavedframes:
                         self.isrecordingaudio = False
                         self.killaudiorecording()
                     elif self.isrecordingaudio:
-                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata_bytes))
                             
                 except Exception:
                     trace_error()  
@@ -130,8 +137,11 @@ def define_callbacks(self, probetype, sourcetype):
         
         elif probetype == "AXCTD" or probetype == "AXCP": #audio buffer tail is moved by the DAS thread
                 
-            def receiver_callback(bufferdata, nframes, time_info, status):
+            def receiver_callback(bufferdata_bytes, nframes, time_info, status):
                 try:
+                    #bytearray to signed int16 buffer
+                    bufferdata = [int.from_bytes(bufferdata_bytes[i:i+2],"little")-32767 for i in range(0,len(bufferdata_bytes),2)]
+                    
                     self.audiostream.extend(bufferdata[:]) #append data to end
                     returntype = pyaudio.paContinue
                                             
@@ -140,7 +150,7 @@ def define_callbacks(self, probetype, sourcetype):
                         self.isrecordingaudio = False
                         self.killaudiorecording()
                     elif self.isrecordingaudio:
-                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata))
+                        wave.Wave_write.writeframes(self.wavfile,bytearray(bufferdata_bytes))
                             
                 except Exception:
                     trace_error()  
