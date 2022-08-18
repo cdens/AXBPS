@@ -44,20 +44,12 @@ import numpy as np
 #p is a pyaudio instance
 def listaudiodevices(p):
     miclist = []
-    # indices = []
-    
-    # p = pyaudio.PyAudio()
     for i in range(p.get_device_count()):
         try:
             if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
                 curmic = p.get_device_info_by_index(i).get('name')
                 curindex = i
                 miclist.append(f"{curmic} ({i})")
-                # miclist.append(p.get_device_info_by_index(i).get('name'))
-                # indices.append(i)
-                #cdict = p.get_device_info_by_index(i)
-                #for ckey in cdict:
-                #    print(f"{ckey}: {cdict[ckey]}\n")
         except OSError:
             pass
     
