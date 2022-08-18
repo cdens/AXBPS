@@ -98,7 +98,7 @@ def setup_receiver_stream(p, hradio, destination, tabID):
     if platform.lower() == "darwin": #MacOS specific stream info input
         status = pyaudio.Stream(p, f_s, 1, frametype, input=True, output=False, input_device_index=hradio, start=True, stream_callback=destination, input_host_api_specific_stream_info= pyaudio.PaMacCoreStreamInfo())
     else: #windows or linux
-        status = pyaudio.Stream(self.p, f_s, 1, frametype, input=True, output=False, input_device_index=hradio, start=True, stream_callback=destination)
+        status = pyaudio.Stream(p, f_s, 1, frametype, input=True, output=False, input_device_index=hradio, start=True, stream_callback=destination)
         
     return status
     
