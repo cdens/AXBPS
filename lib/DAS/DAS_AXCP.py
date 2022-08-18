@@ -203,10 +203,10 @@ class AXCPProcessor(QRunnable):
             
             
             #initialize self.demodbufferstartind
+            self.demod_buffer = np.array([]) #buffer (list) for demodulating PCM data
             self.demodbufferstartind = 0
-            if not self.isfromaudio: #can stop/restart test or realtime processing tabs only (not audio)
-                self.demodbufferstartind = int(self.f_s * (dt.datetime.utcnow()-self.starttime).total_seconds())
-                #start index is based on current time for realtime/test
+            e = 0
+            buffer_head = 0 #for realtime processing only
                 
             #MAIN PROCESSOR LOOP
             while self.keepgoing:
@@ -229,14 +229,19 @@ class AXCPProcessor(QRunnable):
                         if self.disconnectcount >= 30 and not cdf.check_connected(self.dll, self.sourcetype, self.hradio):
                             self.kill(8)
                             
+                        #removing processed data from head of buffer
+                        if buffer_head > 0:
+                            self.demod_buffer = np.delete(self.demod_buffer, range(buffer_head))
+                            
                         #pulling data from audio buffer
                         lenbuffer = len(self.audiostream)
                         if lenbuffer >= self.minpointsperloop:
                             self.demod_buffer = np.append(self.demod_buffer, self.audiostream[:lenbuffer])
                             del self.audiostream[:lenbuffer] #pull data from receiver buffer to demodulation buffer, remove data from head of receiver buffer
-                            e = self.demodbufferstartind + lenbuffer #won't use the entire array
-                        else:
-                            e = self.demodbufferstartind #start index = end index, causes processor to skip this iteration and add more points to the buffer
+                            e += lenbuffer #increases buffer tail by number of appended points
+                        
+                        #if the buffer length isn't long enough, then start index = end index
+                        #causes processor to skip this iteration and add more points to the buffer
                         
                         
                         
@@ -282,9 +287,14 @@ class AXCPProcessor(QRunnable):
                         #wait to run this until any final data has been passed
                         if not self.status and oldstatus: #spindown detected
                             self.kill(0) #auto terminate on spindown
-                                
+                            
                         #increment demod buffer index forward
+                        buffer_head = e - self.demodbufferstartind
                         self.demodbufferstartind = e 
+                    
+                    else:
+                        buffer_head = 0
+                        
                         
                 self.processing_active = False
                 

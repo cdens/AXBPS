@@ -280,9 +280,8 @@ class AXCTDProcessor(QRunnable):
             
             #initialize self.demodbufferstartind
             self.demodbufferstartind = 0
-            if not self.isfromaudio: #can stop/restart test or realtime processing tabs only (not audio)
-                self.demodbufferstartind = int(self.f_s * (dt.datetime.utcnow()-self.starttime).total_seconds())
-                #start index is based on current time for realtime/test
+            e = 0
+            buffer_head = 0 #for realtime processing only
                 
             #MAIN PROCESSOR LOOP
             while self.keepgoing:
@@ -302,14 +301,19 @@ class AXCTDProcessor(QRunnable):
                     if self.disconnectcount >= 30 and not cdf.check_connected(self.dll, self.sourcetype, self.hradio):
                         self.kill(8)
                         
+                    #removing processed data from head of buffer
+                    if buffer_head > 0:
+                        self.demod_buffer = np.delete(self.demod_buffer, range(buffer_head))
+                        
                     #pulling data from audio buffer
                     lenbuffer = len(self.audiostream)
                     if lenbuffer >= self.minpointsperloop:
                         self.demod_buffer = np.append(self.demod_buffer, self.audiostream[:lenbuffer])
                         del self.audiostream[:lenbuffer] #pull data from receiver buffer to demodulation buffer, remove data from head of receiver buffer
-                        e = self.demodbufferstartind + lenbuffer #won't use the entire array
-                    else:
-                        e = self.demodbufferstartind #start index = end index, causes processor to skip this iteration and add more points to the buffer
+                        e += lenbuffer #increases buffer tail by number of appended points
+                    
+                    #if the buffer length isn't long enough, then start index = end index
+                    #causes processor to skip this iteration and add more points to the buffer
                     
                     
                     
@@ -362,11 +366,16 @@ class AXCTDProcessor(QRunnable):
                     #increment demod buffer index forward
                     if self.status > 0: #if active demodulation occuring, increment to start of next bit, corrected for padding
                         if self.next_demod_ind > self.demod_Npad:
-                            self.demodbufferstartind += self.next_demod_ind - self.demod_Npad
+                            buffer_head = self.next_demod_ind - self.demod_Npad
                         else:
-                            self.demodbufferstartind += self.f_s/self.bitrate #skip one bit, keep going
+                            buffer_head = self.f_s/self.bitrate #skip one bit, keep going
+                            
+                        self.demodbufferstartind += buffer_head
                     else: #signal level calcs only, increment buffer by pointsperloop
+                        buffer_head = e - self.demodbufferstartind
                         self.demodbufferstartind = e 
+                else:
+                    buffer_head = 0
                         
                         
                         
