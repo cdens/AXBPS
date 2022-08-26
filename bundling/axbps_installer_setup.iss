@@ -19,6 +19,7 @@ Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64 
 LicenseFile={{AXBPSPATH}}\License_GNU_GPL_v3.txt
+DisableDirPage=No
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
