@@ -5,7 +5,7 @@
 ; NOTE: The value of AppId uniquely identifies this application.
 ; Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{EBBBC69F-B2EE-477C-840F-97022F4AC1C1}
+AppId={{A395753D-3F91-47D4-8EF6-23FCAF0BC202}
 AppName=AXBPS
 AppVersion={{AXBPSVERSION}}
 AppVerName=AXBPSv{{AXBPSVERSION}} 
